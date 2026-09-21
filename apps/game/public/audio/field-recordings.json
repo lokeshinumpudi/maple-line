@@ -1,0 +1,82 @@
+{
+  "date": "2026-09-21",
+  "status": "local gameplay edits; listening review pending",
+  "loop_overlap_owner": "recordings.js blendLoop, 0.65 seconds after decoding",
+  "assets": [
+    {
+      "id": "forest-wind",
+      "title": "Wind in the Trees",
+      "author": "Joseph SARDIN",
+      "source_page": "https://bigsoundbank.com/forest-wind-in-the-trees-s0904.html",
+      "license": "CC0-1.0",
+      "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "source_sha256": "25f907ab068df5836b28af2c923468b97d2b75afbc56cce27834d3526ac7b3c0",
+      "source_kind": "publisher MP3 download; lossy, not original PCM master",
+      "file": "forest-wind.mp3",
+      "sha256": "48a6ab161a33ce7999debf1ce45ad12fdb51adf3a3283d57fd7210143846f83a",
+      "bytes": 289287,
+      "start_seconds": 20,
+      "duration_seconds": 18,
+      "filters": "aformat=channel_layouts=mono,highpass=f=100,lowpass=f=6500,volume=12dB,afade=t=in:d=0.01,afade=t=out:st=17.99:d=0.01",
+      "sample_rate": 44100,
+      "channels": 1,
+      "encoding": "MP3 128 kbit/s",
+      "measurements": {
+        "input_i": -27.88,
+        "input_tp": -12.58,
+        "input_lra": 6.3
+      },
+      "listening_review": "pending"
+    },
+    {
+      "id": "rain-roof",
+      "title": "Rain on car roof",
+      "author": "Joseph SARDIN",
+      "source_page": "https://bigsoundbank.com/rain-on-car-roof-s1293.html",
+      "license": "CC0-1.0",
+      "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "source_sha256": "a97e3a529334af6a20cb8007d900eef94cc4cd999ff309437a6a204215c55233",
+      "source_kind": "publisher MP3 download; lossy, not original PCM master",
+      "file": "roof-rain.mp3",
+      "sha256": "ec4e359d3ecc5c8dfaaffc5b388c73b27147bda4a1dcebd85f1de0baa8dfbeba",
+      "bytes": 224961,
+      "start_seconds": 15,
+      "duration_seconds": 14,
+      "filters": "aformat=channel_layouts=mono,highpass=f=100,lowpass=f=7000,volume=-4.03dB,afade=t=in:d=0.01,afade=t=out:st=13.99:d=0.01",
+      "sample_rate": 44100,
+      "channels": 1,
+      "encoding": "MP3 128 kbit/s",
+      "measurements": {
+        "input_i": -24.38,
+        "input_tp": -9.25,
+        "input_lra": 0.2
+      },
+      "listening_review": "pending"
+    },
+    {
+      "id": "cicadas-tokyo",
+      "title": "Tokyo-cicadas.wav",
+      "author": "xserra",
+      "source_page": "https://freesound.org/people/xserra/sounds/320519/",
+      "license": "CC-BY-4.0",
+      "license_url": "https://creativecommons.org/licenses/by/4.0/",
+      "source_sha256": "8af3f5e98a6db2ce68dd0eb1851a71c2145a2bdae43ebbdf0bc3795b5aacf3d2",
+      "source_kind": "Freesound public HQ MP3 preview; lossy, not downloadable original master",
+      "file": "summer-cicadas.mp3",
+      "sha256": "cdf2a4b52050ade6f036f7516cb8938199a2e8edb7b1f1bdf44e0cd5ff048823",
+      "bytes": 289270,
+      "start_seconds": 12,
+      "duration_seconds": 18,
+      "filters": "aformat=channel_layouts=mono,highpass=f=1400,lowpass=f=8500,volume=-11.46dB,afade=t=in:d=0.01,afade=t=out:st=17.99:d=0.01",
+      "sample_rate": 44100,
+      "channels": 1,
+      "encoding": "MP3 128 kbit/s",
+      "measurements": {
+        "input_i": -24.39,
+        "input_tp": -13.36,
+        "input_lra": 0.6
+      },
+      "listening_review": "pending"
+    }
+  ]
+}

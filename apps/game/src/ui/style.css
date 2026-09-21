@@ -1,0 +1,1724 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Outfit:wght@300;400;500;600&display=swap');
+
+:root {
+  font-family: 'DM Sans', sans-serif;
+  color: #fff8e8;
+  background: #8ba8a5;
+  font-synthesis: none;
+  --surface: #142c29eb;
+  --paper: #fff8e8;
+  --muted: #c4cdc2;
+  --accent: #f0d49b;
+  --line: #e7e2c529;
+  --edge: clamp(18px, 3vw, 40px);
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  overflow: hidden;
+}
+[hidden] {
+  display: none !important;
+}
+button,
+select,
+textarea {
+  font: inherit;
+}
+button,
+select {
+  color: inherit;
+  cursor: pointer;
+  border: 1px solid var(--line);
+  background: #ffffff08;
+  border-radius: 9px;
+  padding: 10px 14px;
+  min-height: 44px;
+  font-size: 12px;
+  transition:
+    background 150ms,
+    border-color 150ms;
+}
+button:hover,
+select:hover {
+  background-color: #ffffff16;
+  border-color: #e7e2c55e;
+}
+button:active {
+  background-color: #ffffff25;
+}
+button:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+summary:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 4px;
+}
+button:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+select option {
+  background: #142c29;
+  color: var(--paper);
+}
+kbd {
+  font: inherit;
+  opacity: 0.65;
+  margin-left: 5px;
+}
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+canvas {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.vignette {
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  background: linear-gradient(180deg, #10252354, transparent 24%, transparent 53%, #0b2325a8);
+}
+body:not(.playing) .vignette {
+  background:
+    linear-gradient(180deg, #1025235c, transparent 23%),
+    linear-gradient(0deg, #0b2325de, #0b232526 58%, transparent 80%);
+}
+header {
+  position: fixed;
+  inset: max(22px, env(safe-area-inset-top)) var(--edge) auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-shadow: 0 2px 16px #102523;
+}
+.mark {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 42px;
+  border: 1px solid #fff8e875;
+  border-radius: 14px 14px 5px 5px;
+  font-size: 23px;
+}
+.eyebrow {
+  font-size: 9px;
+  letter-spacing: 2px;
+  font-weight: 600;
+}
+.brand .eyebrow {
+  font-size: 7px;
+  letter-spacing: 1.8px;
+}
+h1 {
+  font:
+    400 23px Outfit,
+    sans-serif;
+  margin: 3px 0 0;
+  letter-spacing: -0.4px;
+}
+h1 span {
+  font-size: 10px;
+  margin-left: 12px;
+  letter-spacing: 2px;
+  opacity: 0.7;
+}
+.simple-header-actions {
+  display: flex;
+  gap: 8px;
+}
+.simple-header-actions button {
+  background: #142c298f;
+  backdrop-filter: blur(12px);
+}
+.simple-header-actions button:hover {
+  background: #28453be8;
+}
+.simple-header-actions #create-world {
+  color: var(--accent);
+}
+body:not(.playing) #create-world,
+body:not(.playing) .ride-dock,
+body:not(.playing) #speedometer,
+body:not(.playing) main,
+body:not(.playing) #world-active-badge {
+  display: none;
+}
+#world-active-badge {
+  position: absolute;
+  top: 59px;
+  left: 0;
+  max-width: calc(100vw - 2 * var(--edge));
+  font-size: 10px;
+  color: var(--accent);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  padding: 7px 12px;
+}
+
+/* The welcome screen leaves the center of the scene open. */
+.intro {
+  position: fixed;
+  left: clamp(24px, 6vw, 88px);
+  bottom: clamp(40px, 9vh, 100px);
+  width: min(530px, calc(100vw - 48px));
+  max-height: calc(100dvh - 130px);
+  overflow-y: auto;
+  padding: 5px;
+  text-shadow: 0 2px 25px #10252345;
+}
+.intro > .eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--accent);
+  font-size: 9px;
+}
+.welcome-line {
+  display: inline-block;
+  width: 26px;
+  height: 1px;
+  background: var(--accent);
+  position: relative;
+}
+.welcome-line::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: -2px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+.intro h2 {
+  font:
+    400 clamp(48px, 6vw, 82px)/0.99 Outfit,
+    sans-serif;
+  letter-spacing: -2.7px;
+  margin: 24px 0 18px;
+}
+.intro > p {
+  color: #e2e6d7;
+  font-size: 14px;
+  line-height: 1.6;
+  margin: 0 0 27px;
+}
+.welcome-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.welcome-actions button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 28px;
+  min-height: 50px;
+  font-size: 13px;
+  padding: 14px 18px;
+}
+.welcome-actions #start {
+  min-width: 174px;
+  color: #18372f;
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.welcome-actions #start:hover {
+  background: #ffe6b5;
+}
+#welcome-create-world {
+  background: #142c298c;
+  border-color: #fff8e83d;
+}
+#welcome-create-world:hover {
+  background: #28453be8;
+}
+.welcome-actions span {
+  font-size: 19px;
+}
+.welcome-note {
+  display: block;
+  margin-top: 16px;
+  font-size: 10px;
+  color: #c4cdc2;
+  letter-spacing: 0.2px;
+}
+
+/* Location and next stop sit above the driving controls. */
+.journey {
+  position: fixed;
+  left: var(--edge);
+  bottom: 137px;
+  width: 260px;
+  text-shadow: 0 2px 12px #102523;
+}
+.journey > .eyebrow,
+.route-labels {
+  display: none;
+}
+.journey h2 {
+  font:
+    400 23px Outfit,
+    sans-serif;
+  letter-spacing: -0.3px;
+  margin: 0 0 14px;
+}
+.journey p {
+  display: none;
+}
+.destination {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+.station-dot {
+  width: 7px;
+  height: 7px;
+  border: 1px solid var(--accent);
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.destination small {
+  display: block;
+  color: var(--muted);
+  font-size: 8px;
+  letter-spacing: 1.4px;
+  margin-bottom: 4px;
+}
+.destination strong {
+  display: block;
+  font-size: 12px;
+  font-weight: 500;
+}
+.destination b {
+  margin-left: auto;
+  font-size: 12px;
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+}
+.route {
+  height: 2px;
+  background: #e7e2c52e;
+  margin-top: 15px;
+}
+.route i {
+  position: relative;
+  display: block;
+  width: 0;
+  height: 100%;
+  background: var(--accent);
+}
+.route i::after {
+  content: '';
+  position: absolute;
+  right: -2px;
+  top: -2px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+.journey .trip-stats {
+  display: none;
+}
+.station-challenge .journey #instruction {
+  display: block;
+  margin: 0 0 12px;
+  padding: 10px;
+  background: var(--surface);
+  border-radius: 8px;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--paper);
+}
+
+.ride-dock {
+  position: fixed;
+  inset: auto auto max(22px, env(safe-area-inset-bottom)) 50%;
+  transform: translateX(-50%);
+  display: grid;
+  grid-template-columns: auto auto auto auto;
+  align-items: center;
+  column-gap: 5px;
+  width: max-content;
+  max-width: calc(100vw - 2 * var(--edge));
+  padding: 9px 10px 7px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  box-shadow: 0 8px 30px #071d2933;
+  backdrop-filter: blur(16px);
+}
+.ride-dock button {
+  border: 0;
+  background: transparent;
+  white-space: nowrap;
+}
+.ride-dock button:hover {
+  background: #ffffff12;
+}
+#ride-driving {
+  background: #f0d49b17;
+  color: var(--accent);
+}
+#ride-driving[aria-pressed='true'] {
+  background: var(--accent);
+  color: #18372f;
+}
+.speed-row {
+  display: flex;
+  align-items: center;
+  padding: 0 18px 0 8px;
+  border-right: 1px solid var(--line);
+  margin-right: 4px;
+}
+#speed {
+  display: inline-block;
+  min-width: 40px;
+  text-align: right;
+  font:
+    400 31px/1 Outfit,
+    sans-serif;
+  font-variant-numeric: tabular-nums;
+}
+.speed-row small {
+  margin-left: 6px;
+  font-size: 9px;
+  color: var(--muted);
+}
+.limit {
+  display: none;
+}
+.camera-control {
+  display: flex;
+  align-items: center;
+}
+.camera-control > span:not(.game-select) {
+  display: none;
+}
+.camera-control select {
+  width: 150px;
+  background: transparent;
+  border: 0;
+  font-size: 12px;
+}
+#ride-caption {
+  grid-column: 1 / -1;
+  text-align: center;
+  color: var(--muted);
+  font-size: 10px;
+  margin: 7px 4px 0;
+  padding: 8px 0 1px;
+  border-top: 1px solid var(--line);
+}
+#ride-caption::before {
+  content: '';
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  margin: 0 7px 1px 0;
+  border-radius: 50%;
+  background: var(--accent);
+}
+.instruments {
+  position: fixed;
+  right: var(--edge);
+  bottom: 137px;
+  width: 274px;
+  padding: 17px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface);
+  backdrop-filter: blur(16px);
+}
+.drive-label {
+  display: flex;
+  justify-content: space-between;
+  color: var(--accent);
+  font-size: 9px;
+  letter-spacing: 1.2px;
+}
+.power-track {
+  height: 3px;
+  background: #ffffff18;
+  margin: 11px 0 16px;
+}
+.power-track i {
+  display: block;
+  background: var(--accent);
+  height: 100%;
+  width: 0;
+  transition: width 150ms;
+}
+.service-buttons {
+  display: flex;
+  gap: 6px;
+}
+.service-buttons button {
+  flex: 1;
+  padding: 10px 7px;
+  font-size: 11px;
+  white-space: nowrap;
+}
+.service-buttons {
+  margin-top: 7px;
+}
+.service-buttons button[aria-pressed='true'] {
+  background: var(--accent);
+  color: #18372f;
+}
+#emergency {
+  color: #ffd1b9;
+}
+#emergency[aria-pressed='true'] {
+  background: #943e30;
+  color: #fff8e8;
+}
+.hint {
+  font-size: 8px;
+  text-align: center;
+  color: var(--muted);
+  margin: 12px 0 0;
+}
+
+/* Native dialogs keep keyboard focus inside the active panel. */
+#world-builder,
+#journey-menu {
+  position: fixed;
+  inset: 0 var(--edge) 0 auto;
+  margin: auto 0;
+  width: min(420px, calc(100vw - 32px));
+  max-height: calc(100dvh - 32px);
+  overflow: auto;
+  padding: 26px;
+  border: 1px solid #e7e2c540;
+  border-radius: 18px;
+  background: #142c29f5;
+  color: var(--paper);
+  box-shadow: 0 24px 90px #071d2966;
+  backdrop-filter: blur(16px);
+}
+#world-builder::backdrop,
+#journey-menu::backdrop {
+  background: #071d2966;
+}
+.world-builder-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.world-builder-heading .eyebrow {
+  color: var(--accent);
+}
+#world-close,
+#journey-menu-close {
+  min-width: 44px;
+  border: 0;
+  background: #ffffff08;
+  padding: 4px 10px;
+  font-size: 24px;
+  line-height: 1;
+}
+#world-builder h2,
+#journey-menu h2 {
+  font:
+    400 30px Outfit,
+    sans-serif;
+  letter-spacing: -0.5px;
+  margin: 12px 0;
+}
+#journey-menu h2 {
+  margin: 0;
+}
+.world-builder-intro,
+.menu-intro {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.7;
+  margin: 8px 0 22px;
+}
+#world-form label {
+  display: block;
+  font-size: 11px;
+  margin-bottom: 10px;
+}
+#world-prompt {
+  width: 100%;
+  resize: vertical;
+  min-height: 94px;
+  max-height: 180px;
+  border: 1px solid #e7e2c54d;
+  border-radius: 10px;
+  padding: 13px;
+  background: #0b221c80;
+  color: var(--paper);
+  font-size: 13px;
+  line-height: 1.7;
+}
+#world-prompt::placeholder {
+  color: #b4c0b5;
+}
+.world-examples {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 12px 0 18px;
+}
+.world-examples button {
+  font-size: 10px;
+  padding: 8px 10px;
+  min-height: 36px;
+  border-radius: 20px;
+}
+#world-submit,
+.modal button {
+  background: var(--accent);
+  color: #18372f;
+  border: 0;
+  width: 100%;
+  padding: 14px 16px;
+  text-align: left;
+  font-size: 13px;
+}
+#world-submit:hover,
+.modal button:hover {
+  background: #ffe6b5;
+}
+.world-steps {
+  display: flex;
+  justify-content: space-between;
+  list-style: none;
+  padding: 18px 0 0;
+  margin: 16px 0 12px;
+  border-top: 1px solid var(--line);
+  font-size: 10px;
+  color: var(--muted);
+}
+.world-steps .complete {
+  color: var(--accent);
+}
+#world-status {
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--paper);
+}
+#world-status[data-state='error'],
+#world-status[data-state='unsupported'] {
+  color: #ffd3a6;
+}
+#world-plan {
+  padding: 13px;
+  background: #ffffff06;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  margin: 14px 0;
+}
+#world-plan .eyebrow {
+  font-size: 8px;
+  letter-spacing: 1.5px;
+  color: var(--accent);
+}
+#world-plan-summary {
+  font-size: 12px;
+  line-height: 1.7;
+  margin: 9px 0;
+}
+#world-seed {
+  font-size: 9px;
+  color: var(--muted);
+}
+.world-builder-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.world-builder-actions button {
+  font-size: 11px;
+}
+.world-scope {
+  font-size: 10px;
+  color: var(--muted);
+  line-height: 1.7;
+  margin: 18px 0 0;
+}
+#journey-menu section {
+  padding: 18px 0;
+  border-top: 1px solid var(--line);
+}
+#journey-menu h3 {
+  font-size: 10px;
+  letter-spacing: 1px;
+  font-weight: 500;
+  margin: 0 0 12px;
+  color: var(--accent);
+}
+#journey-menu .explore-bar,
+#journey-menu .top-actions {
+  position: static;
+  display: flex;
+  flex-wrap: wrap;
+  width: 100%;
+  justify-content: flex-start;
+  gap: 8px;
+}
+#journey-menu .explore-bar label {
+  flex: 1 1 150px;
+}
+#journey-menu select {
+  width: 100%;
+  font-size: 12px;
+}
+#journey-menu .tag,
+.footer-note {
+  display: none;
+}
+#menu-other {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+#menu-other h3 {
+  flex-basis: 100%;
+}
+#menu-help {
+  border-top: 1px solid var(--line);
+  padding-top: 16px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.8;
+}
+#menu-help summary {
+  cursor: pointer;
+  min-height: 44px;
+}
+#menu-help button {
+  display: block;
+  margin: 12px 0 0;
+}
+.modal {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: min(430px, calc(100vw - 32px));
+  max-height: calc(100dvh - 32px);
+  overflow: auto;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 30px;
+  box-shadow: 0 20px 100px #123a;
+}
+.modal h2 {
+  font:
+    400 34px Outfit,
+    sans-serif;
+}
+.modal p {
+  font-size: 14px;
+  color: var(--muted);
+  line-height: 1.8;
+}
+.modal button {
+  margin-top: 20px;
+}
+#restore-hud {
+  position: fixed;
+  left: var(--edge);
+  bottom: 22px;
+  background: var(--surface);
+  z-index: 25;
+}
+#control-status {
+  position: fixed;
+  bottom: 128px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: max-content;
+  max-width: min(390px, calc(100vw - 32px));
+  padding: 12px 16px;
+  background: #142c29f5;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  font-size: 12px;
+  text-align: center;
+  pointer-events: none;
+  z-index: 26;
+}
+.hud-hidden header,
+.hud-hidden .explore-bar,
+.hud-hidden main,
+.hud-hidden footer,
+.hud-hidden #speedometer,
+.hud-hidden #scene-inspector {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+#scene-inspector {
+  position: fixed;
+  right: 24px;
+  top: 110px;
+  width: min(470px, calc(100vw - 32px));
+  max-height: 75vh;
+  overflow: auto;
+  background: #142c29f5;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 20px;
+  z-index: 30;
+  box-shadow: 0 20px 60px #061e2370;
+}
+#scene-inspector strong {
+  font-size: 17px;
+  font-weight: 500;
+}
+#scene-inspector > div {
+  display: flex;
+  gap: 7px;
+  margin: 15px 0;
+}
+#scene-inspector button {
+  font-size: 11px;
+  padding: 8px;
+}
+#scene-inspector pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 10px;
+  line-height: 1.6;
+  color: var(--muted);
+  margin: 0;
+}
+#loading {
+  position: fixed;
+  inset: 0;
+  background: #142c29;
+  display: grid;
+  place-items: center;
+  letter-spacing: 2px;
+  font-size: 13px;
+}
+
+@media (max-width: 700px) {
+  header {
+    top: max(18px, env(safe-area-inset-top));
+  }
+  .brand {
+    gap: 9px;
+    flex-shrink: 0;
+  }
+  .brand h1 {
+    white-space: nowrap;
+  }
+  .mark {
+    width: 30px;
+    height: 36px;
+    font-size: 20px;
+  }
+  h1 {
+    font-size: 20px;
+  }
+  h1 span,
+  .brand .eyebrow {
+    display: none;
+  }
+  .simple-header-actions button {
+    padding: 10px;
+    font-size: 11px;
+    white-space: nowrap;
+  }
+  .simple-header-actions {
+    gap: 6px;
+  }
+  .simple-header-actions .ml-story-launch {
+    font-size: 0;
+  }
+  .simple-header-actions .ml-story-launch::after {
+    content: 'Notebook';
+    font-size: 11px;
+  }
+  .intro {
+    bottom: max(42px, env(safe-area-inset-bottom));
+  }
+  .intro h2 {
+    font-size: clamp(48px, 10vw, 66px);
+    margin-top: 20px;
+  }
+  .journey {
+    bottom: 167px;
+    width: 240px;
+  }
+  .journey h2 {
+    font-size: 21px;
+    margin-bottom: 12px;
+  }
+  .manual-driving .journey {
+    display: none;
+  }
+  .ride-dock {
+    grid-template-columns: auto 1fr 1fr;
+    width: min(440px, calc(100vw - 28px));
+    padding: 8px;
+    gap: 4px;
+    bottom: max(14px, env(safe-area-inset-bottom));
+  }
+  .speed-row {
+    grid-row: 1 / 3;
+    padding: 5px 12px 5px 4px;
+    margin-right: 4px;
+  }
+  .speed-row > div:not(.limit) {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+  }
+  #speed {
+    min-width: 38px;
+    font-size: 32px;
+    text-align: center;
+  }
+  .speed-row small {
+    margin: 0;
+  }
+  .ride-dock button {
+    font-size: 11px;
+    padding: 10px;
+  }
+  .camera-control {
+    grid-column: 3;
+    grid-row: 1;
+  }
+  .camera-control select {
+    width: 100%;
+    min-width: 0;
+    padding: 10px 3px;
+    font-size: 11px;
+  }
+  #ride-driving {
+    grid-column: 2 / 4;
+    grid-row: 2;
+  }
+  #ride-caption {
+    margin: 0;
+    padding: 8px 0 2px;
+    font-size: 9px;
+  }
+  .instruments {
+    bottom: 167px;
+    right: 14px;
+    width: min(300px, calc(100vw - 28px));
+  }
+  #world-builder,
+  #journey-menu {
+    inset: 0;
+    margin: auto;
+    padding: 22px;
+  }
+  #control-status {
+    bottom: auto;
+    top: 90px;
+  }
+}
+@media (max-width: 380px) {
+  .brand .mark {
+    display: none;
+  }
+  .intro {
+    left: 19px;
+    width: calc(100vw - 38px);
+  }
+  .welcome-actions {
+    gap: 7px;
+  }
+  .welcome-actions button {
+    padding: 12px;
+    font-size: 12px;
+    gap: 12px;
+  }
+  .welcome-actions #start {
+    min-width: 142px;
+  }
+  .intro > p {
+    font-size: 12px;
+  }
+}
+@media (max-height: 560px) and (min-width: 701px) {
+  .intro {
+    bottom: 25px;
+    max-height: calc(100dvh - 104px);
+  }
+  .intro h2 {
+    font-size: 45px;
+    margin: 13px 0;
+  }
+  .intro > p {
+    margin-bottom: 15px;
+  }
+  .welcome-note {
+    margin-top: 10px;
+  }
+  .journey {
+    bottom: 126px;
+  }
+  .instruments {
+    bottom: 126px;
+    padding: 12px;
+  }
+  .hint {
+    display: none;
+  }
+}
+@media (max-height: 560px) and (max-width: 700px) {
+  .intro {
+    bottom: 18px;
+  }
+  .intro h2 {
+    font-size: 40px;
+    margin: 12px 0;
+  }
+  .intro > p,
+  .welcome-note {
+    display: none;
+  }
+  .journey {
+    display: none;
+  }
+  .instruments {
+    bottom: 160px;
+    padding: 10px;
+  }
+  .hint {
+    display: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition: none !important;
+  }
+}
+
+/* A live speed dial is visible in both passenger and manual modes. */
+.speed-row {
+  position: relative;
+  width: 110px;
+  height: 66px;
+  padding: 0 15px 0 0;
+  justify-content: center;
+}
+.speed-row > div:not(.limit) {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding-top: 13px;
+}
+.speed-dial {
+  position: absolute;
+  width: 88px;
+  height: 58px;
+  left: 0;
+  top: 0;
+  overflow: visible;
+}
+.speed-dial path {
+  fill: none;
+  stroke-width: 3;
+  stroke-linecap: round;
+}
+.speed-dial-track {
+  stroke: #ffffff24;
+}
+#speed-dial-fill {
+  stroke: var(--accent);
+  stroke-dasharray: 100;
+  stroke-dashoffset: 100;
+  transition: stroke-dashoffset 150ms linear;
+}
+.speed-dial text {
+  fill: var(--muted);
+  font-size: 8px;
+}
+#speed {
+  min-width: 0;
+  font-size: 25px;
+  line-height: 1;
+}
+.speed-row small {
+  margin: 0;
+  font-size: 8px;
+}
+@media (max-width: 700px) {
+  .speed-row {
+    width: 94px;
+    height: 74px;
+    padding-right: 7px;
+  }
+  .speed-row > div:not(.limit) {
+    padding-top: 4px;
+  }
+  .speed-dial {
+    width: 84px;
+    top: 0;
+  }
+}
+
+/* Separate the view controls from the instruments at the edges. */
+.ride-dock {
+  inset: auto var(--edge) max(24px, env(safe-area-inset-bottom));
+  transform: none;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: end;
+  width: auto;
+  max-width: none;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+  pointer-events: none;
+}
+.ride-dock > * {
+  pointer-events: auto;
+}
+.ride-dock .journey {
+  position: static;
+  width: min(245px, 100%);
+  padding-right: 24px;
+}
+.ride-dock .journey h2 {
+  font-size: 20px;
+  margin-bottom: 12px;
+}
+.ride-dock .journey .route {
+  margin-top: 12px;
+}
+.ride-controls {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 5px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  backdrop-filter: blur(16px);
+}
+.ride-controls button {
+  padding: 10px 13px;
+}
+.ride-controls #ride-driving {
+  background: transparent;
+}
+.ride-controls #ride-driving:hover {
+  background: #f0d49b17;
+}
+.ride-controls #ride-driving[aria-pressed='true'] {
+  background: var(--accent);
+}
+#ride-caption {
+  position: absolute;
+  bottom: calc(100% + 10px);
+  left: 0;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  font-size: 10px;
+  text-shadow: 0 2px 8px #102523;
+}
+#speedometer {
+  position: fixed;
+  right: var(--edge);
+  bottom: max(24px, env(safe-area-inset-bottom));
+  z-index: 20;
+  justify-self: end;
+  grid-row: auto;
+  width: 104px;
+  height: 106px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface);
+  backdrop-filter: blur(16px);
+  padding: 0;
+  margin: 0;
+}
+#speedometer .speed-dial {
+  top: 9px;
+  left: 7px;
+  width: 88px;
+  height: 58px;
+}
+#speedometer > div:not(.limit) {
+  position: absolute;
+  inset: 23px 0 auto;
+  padding: 0;
+}
+#speedometer .limit {
+  position: absolute;
+  inset: auto 0 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  color: var(--muted);
+  font-size: 8px;
+  letter-spacing: 0.08em;
+}
+#speedometer .limit b {
+  display: grid;
+  place-items: center;
+  width: 23px;
+  height: 23px;
+  border: 1px solid var(--accent);
+  border-radius: 50%;
+  color: var(--paper);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
+}
+#speed-limit-marker {
+  stroke: var(--accent);
+  stroke-width: 2;
+}
+#speedometer.is-overspeed #speed {
+  color: #ffb28f;
+}
+#speedometer.is-overspeed #speed-dial-fill {
+  stroke: #ffb28f;
+}
+#overspeed-cue {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  right: 0;
+  padding: 5px 8px;
+  border-radius: 6px;
+  background: #382c25ed;
+  color: #ffcfb8;
+  white-space: nowrap;
+  font-size: 10px;
+}
+.manual-driving .instruments {
+  bottom: 151px;
+}
+@media (max-width: 700px) {
+  .ride-dock {
+    inset: auto 14px max(18px, env(safe-area-inset-bottom));
+    grid-template-columns: minmax(0, 1fr) 84px;
+    gap: 12px;
+  }
+  .ride-dock .journey {
+    display: block;
+    grid-column: 1 / -1;
+    width: 100%;
+    padding: 0;
+  }
+  .ride-dock .journey h2 {
+    font-size: 18px;
+    margin-bottom: 7px;
+  }
+  .ride-dock .journey .destination {
+    gap: 7px;
+  }
+  .ride-dock .destination small {
+    display: inline;
+    font-size: 7px;
+    margin-right: 7px;
+  }
+  .ride-dock .destination strong {
+    display: inline;
+    font-size: 11px;
+  }
+  .ride-dock .journey .route {
+    display: none;
+  }
+  .ride-controls {
+    display: grid;
+    grid-template-columns: 0.65fr 1fr;
+    gap: 2px;
+    width: 100%;
+  }
+  .ride-controls .camera-control {
+    grid-row: 1;
+    grid-column: 2;
+  }
+  .ride-controls .camera-control select {
+    width: 100%;
+    padding-right: 2px;
+  }
+  .ride-controls #ride-driving {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    border-top: 1px solid var(--line);
+    border-radius: 0 0 8px 8px;
+    min-height: 38px;
+    padding: 7px;
+  }
+  #ride-caption {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+  }
+  #speedometer {
+    right: 14px;
+    bottom: max(18px, env(safe-area-inset-bottom));
+    width: 84px;
+    height: 95px;
+    align-self: stretch;
+  }
+  #speedometer .speed-dial {
+    width: 72px;
+    left: 5px;
+    top: 5px;
+  }
+  #speedometer > div:not(.limit) {
+    top: 19px;
+    padding: 0;
+  }
+  #speedometer .limit {
+    bottom: 6px;
+    gap: 5px;
+  }
+  .manual-driving .ride-dock .journey {
+    display: none;
+  }
+  .manual-driving .instruments {
+    bottom: 151px;
+  }
+}
+@media (max-height: 560px) {
+  .ride-dock .journey {
+    display: none;
+  }
+  .ride-dock {
+    grid-template-columns: 1fr auto;
+  }
+  .ride-controls {
+    justify-self: start;
+  }
+}
+@media (max-width: 700px) {
+  .welcome-actions button {
+    white-space: nowrap;
+    gap: 14px;
+  }
+  .welcome-actions #start {
+    min-width: 148px;
+  }
+}
+@media (max-width: 480px) {
+  .brand .mark {
+    display: none;
+  }
+  header {
+    gap: 8px;
+  }
+}
+@media (max-width: 480px) {
+  header {
+    flex-wrap: wrap;
+  }
+  .brand {
+    flex-basis: 100%;
+  }
+  .simple-header-actions {
+    width: 100%;
+  }
+  .simple-header-actions button {
+    flex: 1;
+  }
+  #world-active-badge {
+    top: 91px;
+  }
+}
+
+.train-systems {
+  margin: 18px 0;
+  border-block: 1px solid var(--line);
+  padding: 14px 0;
+}
+.train-systems summary {
+  cursor: pointer;
+}
+.train-systems label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 14px;
+  font-size: 12px;
+}
+.train-systems p {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.6;
+}
+.train-systems input {
+  accent-color: var(--accent);
+}
+
+.sound-credits {
+  color: var(--muted, #bed0be);
+  font-size: 11px;
+  padding: 8px;
+  text-underline-offset: 3px;
+}
+
+/* A single notched controller keeps power and braking mutually exclusive. */
+.manual-driving .instruments {
+  width: min(310px, calc(100vw - 28px));
+  max-height: calc(100dvh - 240px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.lever-label,
+.sound-volume-label {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  font-size: 12px;
+  color: var(--paper);
+}
+#drive-notch {
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+#drive-lever,
+#sound-volume {
+  width: 100%;
+  min-height: 44px;
+  margin: 4px 0;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+#drive-lever {
+  background: linear-gradient(90deg, #bf765f 0 45%, #b7c0a8 45% 55%, #e6c887 55% 100%) center / 100%
+    5px no-repeat;
+}
+.lever-scale {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  color: var(--muted);
+  margin: -3px 0 15px;
+}
+#motion-feedback {
+  margin: 14px 0 5px;
+  color: var(--paper);
+  font-size: 12px;
+}
+#stopping-guide,
+.sound-menu-note {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+#stopping-guide {
+  min-height: 17px;
+  margin: 0 0 12px;
+}
+.welcome-sound {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-top: 16px;
+  color: var(--paper);
+  font-size: 12px;
+}
+.welcome-sound input {
+  accent-color: var(--accent);
+  width: 17px;
+  height: 17px;
+}
+.simple-header-actions #sound[aria-pressed='true'] {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+#menu-atmosphere .sound-volume-label {
+  margin-top: 16px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .power-track i {
+    transition: none;
+  }
+}
+
+.world-saved-library {
+  margin: 16px 0;
+  border-top: 1px solid #d7ddca;
+  padding-top: 14px;
+}
+.world-saved-library summary {
+  cursor: pointer;
+  font-size: 13px;
+}
+.world-saved-library label {
+  display: block;
+  margin: 12px 0 6px;
+  font-size: 12px;
+}
+.world-saved-library select {
+  width: 100%;
+  max-width: 100%;
+  padding: 10px;
+  border-radius: 8px;
+  background: #f7f5e9;
+  color: #243b32;
+  border: 1px solid #c5cdb9;
+}
+#world-saved-summary {
+  font-size: 12px;
+  line-height: 1.5;
+  opacity: 0.8;
+}
+#world-use-saved {
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 1px solid #c5cdb9;
+  background: #e5ebd8;
+  color: #243b32;
+  cursor: pointer;
+}
+
+/* The route lives on the HUD; settings hold the less frequent adjustments. */
+#places-toggle {
+  color: var(--accent);
+}
+#places-toggle::before {
+  content: '◇';
+  margin-right: 8px;
+}
+#places-picker {
+  width: min(760px, calc(100vw - 28px));
+  max-height: calc(100dvh - 36px);
+  margin: auto;
+  padding: clamp(18px, 3vw, 32px);
+  border: 1px solid #d9d6b740;
+  border-radius: 22px;
+  background: #142f2af8;
+  color: var(--paper);
+  overflow-y: auto;
+  box-shadow: 0 24px 100px #061c2380;
+}
+#places-picker::backdrop {
+  background: #09241c88;
+  backdrop-filter: blur(5px);
+}
+.places-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.places-heading .eyebrow {
+  font-size: 9px;
+  color: var(--accent);
+  letter-spacing: 0.14em;
+}
+#places-title {
+  margin: 10px 0 0;
+  font-size: clamp(28px, 4vw, 42px);
+  font-weight: 400;
+  letter-spacing: -0.04em;
+}
+.places-close {
+  font-size: 25px;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 4px;
+}
+.places-intro {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.6;
+  margin: 12px 0 24px;
+}
+.places-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+.place-card {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  text-align: left;
+  padding: 0 0 15px;
+  overflow: hidden;
+  border-radius: 13px;
+  background: #ffffff05;
+  border: 1px solid #e7dec329;
+  transition:
+    border-color 150ms,
+    background 150ms;
+}
+.place-card:hover,
+.place-card:focus-visible {
+  background: #e6ce9820;
+  border-color: var(--accent);
+}
+.place-card strong,
+.place-card small {
+  margin-inline: 13px;
+}
+.place-card strong {
+  font-size: 13px;
+  font-weight: 500;
+}
+.place-card small {
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.4;
+}
+/* Photographs captured from each destination in the running game. */
+.place-art {
+  display: block;
+  width: 100%;
+  height: 132px;
+  object-fit: cover;
+  margin-bottom: 8px;
+  background: #203d35;
+}
+.places-all {
+  margin: 24px 0 0;
+  border-top: 1px solid var(--line);
+  padding-top: 18px;
+}
+.places-all summary {
+  cursor: pointer;
+  font-size: 13px;
+  padding: 5px 0;
+}
+.places-list {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 7px;
+  margin-top: 14px;
+}
+.places-list button {
+  text-align: left;
+  font-size: 12px;
+  min-height: 44px;
+}
+.places-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 22px;
+  font-size: 11px;
+  color: var(--muted);
+}
+body:not(.playing) #places-picker #create-world {
+  display: inline-flex;
+}
+.settings-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  margin-bottom: 20px;
+}
+.settings-tabs button {
+  flex: 1;
+  padding: 10px 5px;
+  font-size: 11px;
+  border: 0;
+  background: transparent;
+}
+.settings-tabs button[aria-selected='true'] {
+  background: var(--accent);
+  color: #17382d;
+}
+#journey-menu [role='tabpanel'] > section:first-child {
+  margin-top: 0;
+}
+#journey-menu h2 {
+  font-size: 26px;
+}
+#journey-menu {
+  width: min(440px, calc(100vw - 28px));
+}
+@media (max-width: 540px) {
+  .places-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+  .place-art {
+    height: 72px;
+  }
+  .places-heading .eyebrow {
+    font-size: 8px;
+  }
+  .places-list {
+    grid-template-columns: 1fr;
+  }
+  .places-footer {
+    flex-wrap: wrap;
+  }
+  .simple-header-actions {
+    flex-wrap: wrap;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .place-card {
+    transition: none;
+  }
+}
+.ride-controls #ride-driving[aria-pressed='true'] {
+  color: #18372f;
+}
+.simple-header-actions .ml-story-launch:hover,
+.simple-header-actions .ml-story-launch.is-active {
+  background: #eee5d0;
+  color: #29443f;
+}
+
+.game-credit {
+  display: block;
+  max-width: 360px;
+  margin-top: 14px;
+  font-size: 10px;
+  line-height: 1.6;
+  color: var(--muted);
+}
+.game-credits {
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--muted);
+}

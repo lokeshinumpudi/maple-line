@@ -1,0 +1,173 @@
+#mobile-hud-toggle,
+.mobile-hud-shortcuts {
+  display: none;
+}
+@media (max-width: 380px) {
+  body.playing .simple-header-actions #sound {
+    width: 44px;
+    flex: 0 0 44px;
+    padding: 0;
+    gap: 0;
+    font-size: 0;
+  }
+}
+@media (max-width: 700px), (max-height: 500px) and (pointer: coarse) {
+  body.playing #mobile-hud-toggle {
+    position: fixed;
+    top: max(12px, env(safe-area-inset-top));
+    left: max(12px, env(safe-area-inset-left));
+    z-index: 30;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    min-height: 44px;
+    padding: 0 13px;
+    border: 1px solid #e5dcc33b;
+    border-radius: 24px;
+    color: var(--paper);
+    background: #142c29c9;
+    backdrop-filter: blur(10px);
+    font-size: 11px;
+    transition:
+      opacity 450ms ease,
+      background 180ms ease;
+  }
+  #mobile-hud-toggle::before {
+    content: '≡';
+    font-size: 18px;
+    line-height: 1;
+  }
+  body.mobile-hud-resting #mobile-hud-toggle {
+    opacity: 0.4;
+  }
+  body.playing #mobile-hud-toggle:is(:hover, :focus-visible) {
+    opacity: 1;
+  }
+  body.playing header {
+    inset: max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) auto auto;
+    width: auto;
+    padding: 0;
+    display: block;
+  }
+  body.playing header > .brand,
+  body.playing #world-active-badge,
+  body.playing .simple-header-actions > :not(#journey-options):not(#places-toggle):not(#sound),
+  body.playing .ride-dock .journey,
+  body.playing #ride-driving,
+  body.playing #restore-hud {
+    display: none;
+  }
+  body.playing .simple-header-actions {
+    width: auto;
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 4px;
+  }
+  body.playing .simple-header-actions :is(#places-toggle, #sound) {
+    min-height: 44px;
+    padding: 0 8px;
+    font-size: 10px;
+    border-radius: 24px;
+  }
+  body.playing #journey-options {
+    border-radius: 24px;
+    padding: 0 13px;
+    font-size: 11px;
+  }
+  body.playing .ride-dock {
+    inset: auto auto max(12px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
+    display: block;
+    width: calc(100% - 126px);
+    max-width: 250px;
+  }
+  body.playing .ride-controls {
+    display: flex;
+    width: 100%;
+    min-height: 56px;
+    padding: 4px;
+    gap: 2px;
+  }
+  body.playing .ride-controls #pause {
+    font-size: 11px;
+    padding: 8px;
+    min-width: 70px;
+  }
+  body.playing .camera-control {
+    flex: 1;
+    min-width: 0;
+  }
+  body.playing .camera-control .game-select {
+    width: 100%;
+  }
+  body.playing .camera-control .game-select-trigger {
+    width: 100%;
+    min-width: 0;
+    padding: 8px;
+    font-size: 11px;
+  }
+  body.playing #speedometer {
+    right: max(12px, env(safe-area-inset-right));
+    bottom: max(12px, env(safe-area-inset-bottom));
+    width: 92px;
+    height: 78px;
+  }
+  body.playing #speedometer .speed-dial {
+    display: none;
+  }
+  body.playing #speedometer > div:not(.limit) {
+    top: 5px;
+  }
+  body.playing #speedometer #speed {
+    font-size: 29px;
+  }
+  body.playing #speedometer .limit {
+    bottom: 5px;
+  }
+  body.playing .instruments {
+    bottom: max(105px, calc(env(safe-area-inset-bottom) + 93px));
+    max-height: calc(100dvh - 180px);
+    overflow: auto;
+    padding: 12px;
+  }
+  body.playing
+    .instruments
+    :is(.drive-label, .power-track, .lever-scale, .hint, #motion-feedback, #stopping-guide) {
+    display: none;
+  }
+
+  body.playing .service-buttons button {
+    min-height: 44px;
+  }
+  body.playing .service-buttons kbd {
+    display: none;
+  }
+  body.playing :is(header, .ride-dock, #speedometer, main) {
+    transition:
+      opacity 450ms ease,
+      visibility 450ms;
+  }
+  body.playing.mobile-hud-resting
+    :is(header, .ride-dock, #speedometer, main, #scene-inspector, #control-status) {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+  }
+  .mobile-hud-shortcuts {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin: 16px 0;
+  }
+  .mobile-hud-shortcuts button {
+    min-height: 44px;
+    font-size: 12px;
+    background: #f0d49b12;
+    color: var(--paper);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    body.playing :is(header, .ride-dock, #speedometer, main, #mobile-hud-toggle) {
+      transition: none;
+    }
+  }
+}

@@ -1,0 +1,4 @@
+interface:
+  display_name: 'Maple Procedural Worlds'
+  short_description: 'Seeded scenery, region variety, and chunk generation'
+  default_prompt: 'Use $maple-procedural-worlds to improve Maple Line scenery with source-backed techniques and verify repeatability, clearances, and rendering cost.'

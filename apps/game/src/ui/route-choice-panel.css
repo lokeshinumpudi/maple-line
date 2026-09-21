@@ -1,0 +1,68 @@
+.route-choice {
+  position: fixed;
+  z-index: 24;
+  top: 5.5rem;
+  left: 1.2rem;
+  width: min(24rem, calc(100vw - 2.4rem));
+  padding: 1rem 1.2rem;
+  border: 1px solid #e7dcb63b;
+  border-radius: 0.8rem;
+  background: #152d29ed;
+  color: #f4eedb;
+  box-shadow: 0 0.5rem 2rem #0003;
+}
+.route-choice[hidden] {
+  display: none;
+}
+.route-choice__eyebrow {
+  font-size: 0.62rem;
+  letter-spacing: 0.16em;
+  color: #dcc28a;
+}
+.route-choice h2 {
+  margin: 0.4rem 0;
+  font-size: 1.1rem;
+  font-weight: 500;
+}
+.route-choice p {
+  line-height: 1.5;
+  font-size: 0.8rem;
+}
+.route-choice div {
+  display: grid;
+  gap: 0.5rem;
+}
+.route-choice button {
+  text-align: left;
+  padding: 0.65rem;
+  color: inherit;
+  background: #ffffff0c;
+  border: 1px solid #ffffff38;
+  border-radius: 0.35rem;
+  cursor: pointer;
+}
+.route-choice button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.route-choice button[aria-pressed='true'] {
+  border-color: #dcc28a;
+}
+.route-choice button:focus-visible {
+  outline: 2px solid #fff1c7;
+  outline-offset: 3px;
+}
+.route-choice--rolling div,
+.route-choice--rolling h2,
+.route-choice--rolling .route-choice__eyebrow {
+  display: none;
+}
+.route-choice--rolling {
+  top: 5.5rem;
+}
+@media (max-width: 640px) {
+  .route-choice {
+    top: 4.3rem;
+    padding: 0.8rem;
+  }
+}

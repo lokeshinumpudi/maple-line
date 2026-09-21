@@ -1,0 +1,365 @@
+{
+  "version": 1,
+  "worlds": [
+    {
+      "id": "valley-01",
+      "title": "Spring has written a letter in pink",
+      "prompt": "Spring has written a letter in pink. A few blossom trees lean into a clear afternoon, with low village rooftops scattered through the open valley.",
+      "model": "typesafe-ai/jev",
+      "capturedAt": "2026-09-21T05:52:39.754Z",
+      "plan": {
+        "season": "spring",
+        "forest": "balanced",
+        "settlement": "rural",
+        "weather": "clear",
+        "time": "daylight",
+        "seed": 382723984
+      }
+    },
+    {
+      "id": "valley-02",
+      "title": "The forest is holding its breath before night",
+      "prompt": "The forest is holding its breath before night. Snow settles among dense winter evergreens; a little village disappears into the blue of dusk.",
+      "model": "typesafe-ai/jev",
+      "capturedAt": "2026-09-21T05:52:45.366Z",
+      "plan": {
+        "season": "winter",
+        "forest": "dense",
+        "settlement": "rural",
+        "weather": "snow",
+        "time": "dusk",
+        "seed": 1240520685
+      }
+    },
+    {
+      "id": "valley-03",
+      "title": "Take the long way home through a copper-coloured autumn",
+      "prompt": "Take the long way home through a copper-coloured autumn. Thick woodland, small village roofs, and a clear dusk that nobody is in a hurry to leave.",
+      "model": "typesafe-ai/jev",
+      "capturedAt": "2026-09-21T05:52:51.142Z",
+      "plan": {
+        "season": "autumn",
+        "forest": "balanced",
+        "settlement": "town",
+        "weather": "clear",
+        "time": "dusk",
+        "seed": 4225095125
+      }
+    },
+    {
+      "id": "valley-04",
+      "title": "A city at the end of a green day",
+      "prompt": "A city at the end of a green day. Summer trees grow thick beside the railway, tall rooftops gather in the distance, and rain softens everything into dusk.",
+      "model": "typesafe-ai/jev",
+      "capturedAt": "2026-09-21T05:52:56.957Z",
+      "plan": {
+        "season": "summer",
+        "forest": "balanced",
+        "settlement": "city",
+        "weather": "rain",
+        "time": "dusk",
+        "seed": 3110406991
+      }
+    },
+    {
+      "id": "valley-05",
+      "title": "Almost nothing between us and the afternoon",
+      "prompt": "Almost nothing between us and the afternoon. A sparse winter woodland, low country roofs, clear skies, and room for the eye to wander.",
+      "model": "typesafe-ai/jev",
+      "capturedAt": "2026-09-21T05:53:02.703Z",
+      "plan": {
+        "season": "winter",
+        "forest": "sparse",
+        "settlement": "rural",
+        "weather": "clear",
+        "time": "daylight",
+        "seed": 3614387796
+      }
+    },
+    {
+      "id": "valley-06",
+      "title": "Pink blossom, grey rain, the last train feeling",
+      "prompt": "Pink blossom, grey rain, the last train feeling. A dense spring forest around a small town, with dusk arriving before anyone has finished looking.",
+      "model": "typesafe-ai/jev",
+      "capturedAt": "2026-09-21T05:53:08.458Z",
+      "plan": {
+        "season": "spring",
+        "forest": "dense",
+        "settlement": "town",
+        "weather": "rain",
+        "time": "dusk",
+        "seed": 110322428
+      }
+    },
+    {
+      "id": "valley-07",
+      "title": "The valley looks like an old postcard left in the sun",
+      "prompt": "The valley looks like an old postcard left in the sun. Scattered autumn trees, modest village roofs, and a cloudless afternoon.",
+      "model": "typesafe-ai/jev",
+      "capturedAt": "2026-09-21T05:53:14.235Z",
+      "plan": {
+        "season": "autumn",
+        "forest": "balanced",
+        "settlement": "rural",
+        "weather": "clear",
+        "time": "daylight",
+        "seed": 2099511906
+      }
+    },
+    {
+      "id": "valley-08",
+      "title": "A green room with the roof taken off",
+      "prompt": "A green room with the roof taken off. Dense summer woodland around a tiny rural village, all of it bright beneath a clear afternoon sky.",
+      "model": "typesafe-ai/jev",
+      "capturedAt": "2026-09-21T05:53:19.994Z",
+      "plan": {
+        "season": "summer",
+        "forest": "dense",
+        "settlement": "rural",
+        "weather": "clear",
+        "time": "daylight",
+        "seed": 3000738710
+      }
+    },
+    {
+      "id": "valley-09",
+      "title": "Winter has borrowed the city for an evening",
+      "prompt": "Winter has borrowed the city for an evening. Snow falls past tall rooftops and scattered evergreens as the sky turns blue at dusk.",
+      "model": "typesafe-ai/jev",
+      "capturedAt": "2026-09-21T05:53:25.830Z",
+      "plan": {
+        "season": "winter",
+        "forest": "balanced",
+        "settlement": "city",
+        "weather": "snow",
+        "time": "dusk",
+        "seed": 1312583794
+      }
+    },
+    {
+      "id": "valley-10",
+      "title": "The town has gone quiet to listen to the rain",
+      "prompt": "The town has gone quiet to listen to the rain. Balanced autumn woodland, close-set town rooftops, and a slow, grey afternoon.",
+      "model": "typesafe-ai/jev",
+      "capturedAt": "2026-09-21T05:53:31.737Z",
+      "plan": {
+        "season": "autumn",
+        "forest": "balanced",
+        "settlement": "town",
+        "weather": "rain",
+        "time": "daylight",
+        "seed": 692430004
+      }
+    },
+    {
+      "id": "valley-11",
+      "title": "A handful of pink trees and a city too far away to hurry us",
+      "prompt": "A handful of pink trees and a city too far away to hurry us. Sparse spring woodland, tall city roofs on the horizon, clear skies at dusk.",
+      "model": "typesafe-ai/jev",
+      "capturedAt": "2026-09-21T05:53:37.566Z",
+      "plan": {
+        "season": "spring",
+        "forest": "sparse",
+        "settlement": "town",
+        "weather": "clear",
+        "time": "dusk",
+        "seed": 3988650252
+      }
+    },
+    {
+      "id": "valley-12",
+      "title": "Summer rain with nowhere you need to be",
+      "prompt": "Summer rain with nowhere you need to be. A few green trees, low village roofs, an open valley, and the soft light of afternoon.",
+      "model": "typesafe-ai/jev",
+      "capturedAt": "2026-09-21T05:53:43.380Z",
+      "plan": {
+        "season": "summer",
+        "forest": "balanced",
+        "settlement": "rural",
+        "weather": "rain",
+        "time": "daylight",
+        "seed": 1708990862
+      }
+    },
+    {
+      "id": "valley-13",
+      "title": "Copper leaves crowd the edge of town",
+      "prompt": "Copper leaves crowd the edge of town. A dense autumn forest meets tall city rooftops beneath clear daylight; let the railway find the way through.",
+      "model": "typesafe-ai/jev",
+      "capturedAt": "2026-09-21T05:53:49.135Z",
+      "plan": {
+        "season": "autumn",
+        "forest": "dense",
+        "settlement": "town",
+        "weather": "clear",
+        "time": "daylight",
+        "seed": 2968227283
+      }
+    },
+    {
+      "id": "valley-14",
+      "title": "Snow has made a small town smaller",
+      "prompt": "Snow has made a small town smaller. Balanced winter woodland, modest town roofs, and flakes drifting through the afternoon light.",
+      "model": "typesafe-ai/jev",
+      "capturedAt": "2026-09-21T05:53:54.860Z",
+      "plan": {
+        "season": "winter",
+        "forest": "balanced",
+        "settlement": "town",
+        "weather": "snow",
+        "time": "daylight",
+        "seed": 1214625861
+      }
+    },
+    {
+      "id": "valley-15",
+      "title": "The whole hillside seems to remember spring at once",
+      "prompt": "The whole hillside seems to remember spring at once. Dense pink blossom, low country rooftops, and a clear afternoon that feels newly made.",
+      "model": "typesafe-ai/jev",
+      "capturedAt": "2026-09-21T05:54:00.961Z",
+      "plan": {
+        "season": "spring",
+        "forest": "balanced",
+        "settlement": "town",
+        "weather": "clear",
+        "time": "daylight",
+        "seed": 2204128276
+      }
+    },
+    {
+      "id": "valley-16",
+      "title": "Keep the windows full of green until the day runs out",
+      "prompt": "Keep the windows full of green until the day runs out. Balanced summer woodland around a small town beneath the clear blue of dusk.",
+      "model": "typesafe-ai/jev",
+      "capturedAt": "2026-09-21T05:54:06.782Z",
+      "plan": {
+        "season": "summer",
+        "forest": "balanced",
+        "settlement": "town",
+        "weather": "clear",
+        "time": "dusk",
+        "seed": 2001667591
+      }
+    },
+    {
+      "id": "valley-17",
+      "title": "A few autumn trees stand like commas in the rain",
+      "prompt": "A few autumn trees stand like commas in the rain. An open valley, tall city roofs, and a rainy dusk with plenty of pauses.",
+      "model": "typesafe-ai/jev",
+      "capturedAt": "2026-09-21T05:54:12.483Z",
+      "plan": {
+        "season": "autumn",
+        "forest": "sparse",
+        "settlement": "town",
+        "weather": "rain",
+        "time": "dusk",
+        "seed": 1450413185
+      }
+    },
+    {
+      "id": "valley-18",
+      "title": "An evergreen afternoon, rinsed by rain",
+      "prompt": "An evergreen afternoon, rinsed by rain. Dense winter woodland, a small village close to the railway, and a daylight sky the colour of pewter.",
+      "model": "typesafe-ai/jev",
+      "capturedAt": "2026-09-21T05:54:18.287Z",
+      "plan": {
+        "season": "winter",
+        "forest": "dense",
+        "settlement": "town",
+        "weather": "rain",
+        "time": "daylight",
+        "seed": 1723543766
+      }
+    },
+    {
+      "id": "valley-19",
+      "title": "Spring arrives quietly in the city",
+      "prompt": "Spring arrives quietly in the city. Balanced blossom woodland, tall rooftops, and rain falling through the pale afternoon.",
+      "model": "typesafe-ai/jev",
+      "capturedAt": "2026-09-21T05:54:24.074Z",
+      "plan": {
+        "season": "spring",
+        "forest": "balanced",
+        "settlement": "town",
+        "weather": "rain",
+        "time": "daylight",
+        "seed": 638264838
+      }
+    },
+    {
+      "id": "valley-20",
+      "title": "Leave a little space for the evening",
+      "prompt": "Leave a little space for the evening. Sparse summer trees, a small town, and clear dusk over an open green valley.",
+      "model": "typesafe-ai/jev",
+      "capturedAt": "2026-09-21T05:54:29.921Z",
+      "plan": {
+        "season": "summer",
+        "forest": "sparse",
+        "settlement": "town",
+        "weather": "clear",
+        "time": "dusk",
+        "seed": 2434679289
+      }
+    },
+    {
+      "id": "valley-21",
+      "title": "A village folded into the last page of autumn",
+      "prompt": "A village folded into the last page of autumn. Balanced copper woodland, low rural roofs, and rain carrying the afternoon towards dusk.",
+      "model": "typesafe-ai/jev",
+      "capturedAt": "2026-09-21T05:54:35.696Z",
+      "plan": {
+        "season": "autumn",
+        "forest": "balanced",
+        "settlement": "rural",
+        "weather": "rain",
+        "time": "dusk",
+        "seed": 2329211471
+      }
+    },
+    {
+      "id": "valley-22",
+      "title": "A winter town between dark trees and a pale sky",
+      "prompt": "A winter town between dark trees and a pale sky. Dense evergreens, clustered town roofs, and a clear dusk without falling snow.",
+      "model": "typesafe-ai/jev",
+      "capturedAt": "2026-09-21T05:54:41.374Z",
+      "plan": {
+        "season": "winter",
+        "forest": "dense",
+        "settlement": "town",
+        "weather": "clear",
+        "time": "dusk",
+        "seed": 2309125466
+      }
+    },
+    {
+      "id": "valley-23",
+      "title": "The rain has found the smallest village on the line",
+      "prompt": "The rain has found the smallest village on the line. Sparse spring blossom, low rural roofs, and a wet afternoon with nothing to rush towards.",
+      "model": "typesafe-ai/jev",
+      "capturedAt": "2026-09-21T05:54:47.267Z",
+      "plan": {
+        "season": "spring",
+        "forest": "sparse",
+        "settlement": "rural",
+        "weather": "rain",
+        "time": "daylight",
+        "seed": 3579149183
+      }
+    },
+    {
+      "id": "valley-24",
+      "title": "Green trees, grey rooftops, a city on its day off",
+      "prompt": "Green trees, grey rooftops, a city on its day off. Balanced summer woodland around a tall skyline beneath clear afternoon skies.",
+      "model": "typesafe-ai/jev",
+      "capturedAt": "2026-09-21T05:54:53.302Z",
+      "plan": {
+        "season": "summer",
+        "forest": "balanced",
+        "settlement": "city",
+        "weather": "clear",
+        "time": "daylight",
+        "seed": 1694538344
+      }
+    }
+  ]
+}

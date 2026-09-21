@@ -1,0 +1,4 @@
+interface:
+  display_name: 'Maple Browser Graphics'
+  short_description: 'Three.js visual quality and measured frame pacing'
+  default_prompt: 'Use $maple-browser-graphics to diagnose and improve a Maple Line rendering issue, checking the installed Three.js version and comparing visual results and frame time.'

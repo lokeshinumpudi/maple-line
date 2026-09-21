@@ -1,0 +1,278 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="theme-color" content="#193c36" />
+    <title>Maple Line · A valley railway</title>
+    <link rel="stylesheet" href="/src/ui/style.css" />
+  </head>
+  <body>
+    <canvas id="world" aria-label="A three dimensional autumn valley railway"></canvas>
+    <div class="vignette"></div>
+    <header>
+      <div class="brand">
+        <span class="mark">山</span>
+        <div>
+          <span class="eyebrow">THE VALLEY RAILWAY</span>
+          <h1>Maple Line<span>もみじ線</span></h1>
+        </div>
+      </div>
+      <div class="top-actions">
+        <span class="tag">AFTERNOON · 16:42</span
+        ><label class="select-label"
+          ><span class="sr-only">Weather</span
+          ><select id="weather">
+            <option value="clear">Clear skies</option>
+            <option value="rain">Rain</option>
+            <option value="snow">Snow</option>
+          </select></label
+        ><button id="sound" aria-label="Disable sound" aria-pressed="true">Sound on</button
+        ><button id="pause">Pause</button>
+        <button id="hide-hud" title="Hide controls · H" aria-label="Hide controls">Hide UI</button>
+      </div>
+    </header>
+    <nav class="explore-bar" aria-label="Journey settings">
+      <label
+        ><span class="sr-only">Journey mode</span
+        ><select id="mode">
+          <option value="explore">Scenic round trip</option>
+          <option value="challenge">Station challenge</option>
+        </select></label
+      ><label
+        ><span class="sr-only">Visit a location</span
+        ><select id="location">
+          <option value="">Visit a view…</option>
+          <option value="-520">Autumn gorge</option>
+          <option value="-380">Rice terraces</option>
+          <option value="-195">Yuzuki village</option>
+          <option value="95">Cedar shrine</option>
+          <option value="490">Momiji Station</option>
+          <option value="675">City outlook</option>
+        </select></label
+      ><button id="autopilot">Auto drive</button>
+      <button id="create-world" aria-haspopup="dialog">Create a world ✧</button>
+      <span id="world-active-badge" hidden></span>
+    </nav>
+    <main>
+      <section class="journey panel">
+        <span class="eyebrow">LOCAL SERVICE / 03</span>
+        <h2>Through the ravine.</h2>
+        <p id="instruction">Follow the river. Find your rhythm.</p>
+        <div class="destination">
+          <span class="station-dot"></span>
+          <div><small>NEXT STOP</small><strong>Momiji Station</strong></div>
+          <b id="distance">— m</b>
+        </div>
+        <div class="route"><i id="progress"></i></div>
+        <div class="route-labels"><span>RIVER BEND</span><span>CITY OUTLOOK</span></div>
+      </section>
+      <section class="instruments panel">
+        <div class="speed-row">
+          <svg class="speed-dial" viewBox="0 0 100 62" aria-hidden="true">
+            <path class="speed-dial-track" d="M 8 50 A 42 42 0 0 1 92 50" />
+            <path id="speed-dial-fill" d="M 8 50 A 42 42 0 0 1 92 50" pathLength="100" />
+            <path id="speed-limit-marker" d="M 3 50 L 12 50" />
+            <text x="7" y="61">0</text>
+            <text x="83" y="61">160</text>
+          </svg>
+          <div><span id="speed">0</span><small>km/h</small></div>
+          <div class="limit">LIMIT<b>60</b></div>
+          <span id="overspeed-cue" role="status" hidden>Slow down</span>
+        </div>
+        <div class="drive-label">
+          <span id="drive-state">COASTING</span><span id="power-value">0%</span>
+        </div>
+        <div class="power-track"><i id="power-bar"></i></div>
+        <label class="lever-label" for="drive-lever"
+          >Train controller <output id="drive-notch">Coast</output></label
+        >
+        <input
+          id="drive-lever"
+          type="range"
+          min="-5"
+          max="5"
+          step="1"
+          value="0"
+          aria-label="Train power and brake lever"
+          aria-valuetext="Coast"
+        />
+        <div class="lever-scale" aria-hidden="true">
+          <span>B5 · Brake</span><span>Coast</span><span>Power · P5</span>
+        </div>
+        <p id="motion-feedback">Release the brake, then add power.</p>
+        <p id="stopping-guide"></p>
+        <div class="service-buttons">
+          <button id="doors" title="Open or close platform doors · D" aria-pressed="false">
+            Doors <kbd>D</kbd>
+          </button>
+          <button id="emergency" title="Emergency brake · E" aria-pressed="false">
+            Emergency <kbd>E</kbd>
+          </button>
+        </div>
+        <p class="hint">W / S power & brake · A coast · D doors</p>
+      </section>
+    </main>
+    <footer>
+      <label
+        class="camera-control"
+        title="Scenic: drag to look around · scroll to zoom · C changes view"
+      >
+        <span>Camera</span>
+        <select id="camera-view" aria-label="Camera view">
+          <option value="scenic">Scenic view</option>
+          <option value="follow">Follow train</option>
+          <option value="cab">Driver’s view</option>
+          <option value="passenger">Inside the train</option>
+          <option value="vista">Lake &amp; valley view</option>
+        </select>
+      </label>
+      <span class="footer-note">A LITTLE FURTHER FROM EVERYDAY.</span
+      ><button id="restart">↺ Restart</button>
+    </footer>
+    <div id="welcome" class="intro">
+      <span class="eyebrow"
+        ><i class="welcome-line" aria-hidden="true"></i> A LIFETIME ALONG THE LINE</span
+      >
+      <h2>The seasons pass.<br />The line remains.</h2>
+      <p>Four seasons. Familiar faces. One more train home.</p>
+      <div class="welcome-actions">
+        <button id="start">Start riding <span aria-hidden="true">↗</span></button>
+        <button id="welcome-create-world" aria-haspopup="dialog">
+          Create a world <span aria-hidden="true">＋</span>
+        </button>
+      </div>
+      <small class="welcome-note">The train drives. You take in the view.</small>
+      <small class="game-credit"
+        >Created by loki · Inspired by watching Japanese countryside train rides.</small
+      >
+      <label class="welcome-sound"
+        ><input id="start-with-sound" type="checkbox" checked /> Play train &amp; nature
+        sounds</label
+      >
+    </div>
+    <div id="result" class="modal" hidden>
+      <span class="eyebrow">END OF THE LINE</span>
+      <h2 id="result-title">Welcome to Momiji.</h2>
+      <p id="result-body"></p>
+      <button id="again">Another journey ↗</button>
+    </div>
+    <button id="restore-hud" title="Restore controls · H" aria-label="Restore controls" hidden>
+      Controls <kbd>H</kbd>
+    </button>
+    <output id="control-status" role="status" aria-live="polite" hidden></output>
+    <dialog id="world-builder" aria-labelledby="world-builder-title">
+      <div class="world-builder-heading">
+        <span class="eyebrow">MAKE IT YOURS</span
+        ><button id="world-close" aria-label="Close world builder">×</button>
+      </div>
+      <h2 id="world-builder-title">Where shall we go?</h2>
+      <p class="world-builder-intro">Describe the valley you’d like to ride through.</p>
+      <div id="world-builder-content">
+        <form id="world-form">
+          <label for="world-prompt">Your world description</label>
+          <textarea
+            id="world-prompt"
+            minlength="3"
+            maxlength="600"
+            required
+            rows="3"
+            placeholder="Cherry trees, village rooftops, a quiet afternoon…"
+          ></textarea>
+          <div class="world-examples" aria-label="Example descriptions">
+            <button type="button" data-world-prompt="0">A letter in pink</button>
+            <button type="button" data-world-prompt="1">Before the blue hour</button>
+            <button type="button" id="world-surprise">Surprise me ↻</button>
+          </div>
+          <button id="world-submit" type="submit">Create my world ↗</button>
+        </form>
+        <details class="world-saved-library">
+          <summary>Saved Jev worlds · works without the server</summary>
+          <label for="world-saved">Choose a saved valley</label>
+          <select id="world-saved"></select>
+          <p id="world-saved-summary"></p>
+          <button id="world-use-saved" type="button">Build saved world ↗</button>
+        </details>
+        <ol class="world-steps" aria-label="Creation progress">
+          <li data-world-step="1">01 Interpret</li>
+          <li data-world-step="2">02 Build</li>
+          <li data-world-step="3">03 Active</li>
+        </ol>
+        <p id="world-status" role="status" aria-live="polite"></p>
+        <div id="world-plan" hidden>
+          <span id="world-plan-label" class="eyebrow"></span>
+          <p id="world-plan-summary"></p>
+          <small id="world-seed"></small>
+        </div>
+        <div class="world-builder-actions">
+          <button id="world-accept" hidden>Build these supported settings</button
+          ><button id="world-cancel" hidden>Cancel</button>
+        </div>
+        <p class="world-scope">
+          Choose trees, rooftops, weather and time of day along the existing railway. Your
+          description is sent to Jev when available. Saved worlds are built on this device.
+        </p>
+      </div>
+    </dialog>
+    <dialog id="journey-menu" aria-labelledby="journey-menu-title">
+      <div class="world-builder-heading">
+        <h2 id="journey-menu-title">Make yourself at home.</h2>
+        <button id="journey-menu-close" aria-label="Close settings">×</button>
+      </div>
+      <p class="menu-intro">
+        Set the mood, settle into the carriage, and enjoy the line. Your ride waits here.
+      </p>
+      <section id="menu-travel"><h3>How you ride</h3></section>
+
+      <section id="menu-atmosphere">
+        <h3>Weather & sound</h3>
+        <label class="sound-volume-label" for="sound-volume"
+          >Game volume <output id="sound-volume-value">80%</output></label
+        >
+        <input id="sound-volume" type="range" min="0" max="100" step="5" value="80" />
+        <p class="sound-menu-note">
+          Use Sound on the main screen. Close Settings to hear the valley.
+        </p>
+      </section>
+      <details class="train-systems">
+        <summary>Train systems</summary>
+        <label
+          >Headlights
+          <select id="train-lights">
+            <option value="auto">Automatic</option>
+            <option value="on">On</option>
+            <option value="off">Off</option>
+          </select></label
+        >
+        <label
+          >Windscreen wipers
+          <select id="train-wipers">
+            <option value="auto">Follow weather</option>
+            <option value="on">On</option>
+            <option value="off">Off</option>
+          </select></label
+        >
+        <label><input type="checkbox" id="train-power-flow" checked /> Show electrical flow</label>
+        <p>
+          Moving light traces illustrate power from the overhead wire while the train accelerates.
+        </p>
+      </details>
+      <section id="menu-other">
+        <h3>More options</h3>
+        <p class="game-credits">
+          <strong>Maple Line · created by loki</strong><br />Inspired by watching Japanese
+          countryside train rides.
+        </p>
+      </section>
+      <details id="menu-help">
+        <summary>Keyboard controls & development tools</summary>
+        <p>
+          Space: pause · C: change view · H: hide controls<br />W / ↑: power · S / ↓: brake · A / X:
+          coast · D: doors · E: emergency brake
+        </p>
+      </details>
+    </dialog>
+    <div id="loading">Preparing the valley…</div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

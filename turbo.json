@@ -1,0 +1,47 @@
+{
+  "$schema": "https://turborepo.dev/schema.json",
+  "globalDependencies": [".prettierrc.json", ".prettierignore", ".editorconfig", ".oxlintrc.json"],
+  "tasks": {
+    "build": {
+      "dependsOn": ["^build"],
+      "outputs": ["dist/**"]
+    },
+    "build:readable": {
+      "dependsOn": ["^build"],
+      "outputs": ["dist-readable/**"]
+    },
+    "dev": {
+      "cache": false,
+      "persistent": true
+    },
+    "preview": {
+      "dependsOn": ["build"],
+      "cache": false,
+      "persistent": true
+    },
+    "lint": {
+      "outputs": []
+    },
+    "test": {
+      "outputs": []
+    },
+    "format": {
+      "cache": false
+    },
+    "format:check": {
+      "outputs": []
+    },
+    "//#format:workspace": {
+      "cache": false
+    },
+    "//#format:workspace:check": {
+      "outputs": []
+    },
+    "typecheck": {
+      "outputs": []
+    },
+    "@maple-line/director#build": {
+      "outputs": []
+    }
+  }
+}

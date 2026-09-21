@@ -1,0 +1,31 @@
+{
+  "name": "maple-line",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.33.3",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "build:readable": "turbo run build:readable",
+    "preview": "turbo run preview",
+    "test": "turbo run test",
+    "lint": "turbo run lint",
+    "format": "turbo run format //#format:workspace",
+    "format:check": "turbo run format:check //#format:workspace:check",
+    "format:workspace": "prettier --write \"*.{json,md,yaml}\" \".*rc.json\" \".vscode/*.json\" \".agents/**/*.md\" \"docs/**/*.md\" \"artifacts/localhost/**/*.{json,js,md}\" \"scripts/**/*.mjs\"",
+    "format:workspace:check": "prettier --check \"*.{json,md,yaml}\" \".*rc.json\" \".vscode/*.json\" \".agents/**/*.md\" \"docs/**/*.md\" \"artifacts/localhost/**/*.{json,js,md}\" \"scripts/**/*.mjs\"",
+    "check": "turbo run lint test build format:check //#format:workspace:check",
+    "typecheck": "turbo run typecheck",
+    "narration:prepare": "node scripts/prepare-narration.mjs",
+    "build:ship": "pnpm --filter @maple-line/game exec vite build --mode ship && node scripts/bundle-ship-function.mjs",
+    "build:public": "pnpm --filter @maple-line/game exec vite build --mode public"
+  },
+  "devDependencies": {
+    "prettier": "3.9.8",
+    "turbo": "2.11.2"
+  }
+}

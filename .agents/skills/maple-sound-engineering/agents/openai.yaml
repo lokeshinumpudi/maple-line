@@ -1,0 +1,4 @@
+interface:
+  display_name: 'Maple Sound Engineering'
+  short_description: 'Railway audio, ambience, sourcing and mix verification'
+  default_prompt: "Use $maple-sound-engineering to improve Maple Line's sound using the local audio library, scene-driven mixing and measured playback checks."

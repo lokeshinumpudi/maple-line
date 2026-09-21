@@ -1,0 +1,13 @@
+node_modules/
+dist/
+dist-readable/
+package-lock.json
+artifacts/screenshots/
+**/node_modules/
+**/dist/
+**/dist-readable/
+**/dist-public/
+**/dist-ship/
+**/.turbo/
+artifacts/legacy-dist/
+pnpm-lock.yaml

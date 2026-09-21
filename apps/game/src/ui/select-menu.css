@@ -1,0 +1,100 @@
+.game-select {
+  display: inline-flex;
+  min-width: 0;
+  width: 100%;
+}
+.game-select-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  width: 100%;
+  text-align: left;
+  white-space: nowrap;
+}
+.game-select-trigger > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.game-select-trigger::after {
+  content: '';
+  flex: 0 0 6px;
+  height: 6px;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: rotate(45deg) translateY(-2px);
+  opacity: 0.65;
+}
+.game-select-trigger[aria-expanded='true'] {
+  background: #f0d49b16;
+  border-color: #f0d49b70;
+}
+.game-select-list {
+  position: fixed;
+  inset: auto;
+  margin: 0;
+  padding: 7px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border: 1px solid #e7e2c538;
+  border-radius: 14px;
+  background: #142c29fa;
+  color: var(--paper);
+  box-shadow: 0 14px 45px #06171466;
+  backdrop-filter: blur(20px);
+  scrollbar-width: thin;
+  scrollbar-color: #819080 #142c29;
+  font:
+    12px/1.4 'DM Sans',
+    sans-serif;
+}
+.game-select-option {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 10px 34px 10px 12px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.game-select-option[aria-selected='true'] {
+  color: var(--accent);
+  background: #f0d49b10;
+}
+.game-select-check {
+  position: absolute;
+  right: 12px;
+  visibility: hidden;
+}
+.game-select-option[aria-selected='true'] .game-select-check {
+  visibility: visible;
+}
+.game-select-option.is-active,
+.game-select-option:hover {
+  background: #f0d49b1b;
+  border-color: #f0d49b38;
+}
+.game-select-option[aria-disabled='true'] {
+  opacity: 0.4;
+  cursor: default;
+}
+.game-select-group {
+  padding: 14px 12px 6px;
+  color: var(--muted);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.camera-control .game-select-trigger {
+  width: 150px;
+  border: 0;
+  background: transparent;
+}
+@media (max-width: 700px) {
+  .ride-controls .camera-control .game-select-trigger {
+    width: 100%;
+    gap: 8px;
+    padding-inline: 7px;
+  }
+}

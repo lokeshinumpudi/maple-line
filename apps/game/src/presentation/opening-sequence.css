@@ -1,0 +1,60 @@
+.opening-film {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2;
+  background:
+    linear-gradient(90deg, #081711a6, transparent 65%),
+    linear-gradient(0deg, #08171170, transparent 35%, transparent 80%, #08171145);
+}
+.opening-film__veil {
+  position: absolute;
+  inset: 0;
+  background: #101c1b;
+}
+.opening-film__season {
+  position: absolute;
+  top: 105px;
+  left: clamp(29px, 6vw, 93px);
+  color: #f4e9ce;
+  font-size: 9px;
+  letter-spacing: 0.22em;
+}
+.opening-film__rule {
+  position: absolute;
+  height: 1px;
+  left: 6vw;
+  right: 6vw;
+  bottom: 26px;
+  background: #f2e1c33d;
+}
+body:not(.playing) .intro {
+  z-index: 4;
+}
+body:not(.playing) header {
+  z-index: 5;
+}
+body:not(.playing) .intro h2 {
+  font-size: clamp(42px, 4.4vw, 62px);
+}
+@media (prefers-reduced-motion: no-preference) {
+  body:not(.playing) .intro {
+    animation: opening-title 1.8s ease-out both;
+  }
+  @keyframes opening-title {
+    from {
+      opacity: 0;
+      transform: translateY(12px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+}
+@media (max-width: 640px) {
+  .opening-film__season {
+    top: 90px;
+    font-size: 8px;
+  }
+}
