@@ -1,6 +1,6 @@
 # Maple Line project guidance
 
-Maple Line is a standalone Three.js Japanese countryside railway game. It has no connection to the Signal platform or cloud production data.
+Maple Line is a standalone Three.js Japanese countryside railway game. Its optional Signal Ship build uses a site-scoped world-generation function and database; it has no connection to production application data. See docs/HOSTING.md for hosting targets.
 
 Read [README.md](README.md) for current features and limits. For implementation or inspection work, use the local [Maple Line development skill](.agents/skills/maple-line-dev/SKILL.md). Detailed design plans live in [docs/WORLD-PLAN.md](docs/WORLD-PLAN.md); planned features are not evidence of implemented behavior.
 

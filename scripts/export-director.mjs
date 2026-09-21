@@ -5,8 +5,17 @@ const target = process.argv[2];
 if (!target) throw new Error('Provide an output directory for the standalone server.');
 const destination = resolve(target);
 await mkdir(destination, { recursive: true });
-for (const path of ['src', 'api', 'tests', 'vercel.json', 'tsconfig.json'])
+for (const path of ['src', 'api', 'public', 'tests', 'vercel.json', 'tsconfig.json'])
   await cp(`apps/director/${path}`, `${destination}/${path}`, { recursive: true });
+await cp('.prettierrc.json', `${destination}/.prettierrc.json`);
+const tsconfig = JSON.parse(await readFile('apps/director/tsconfig.json', 'utf8'));
+tsconfig.compilerOptions.paths = Object.fromEntries(
+  ['world-spec', 'voice-score'].map((name) => [
+    `@maple-line/${name}`,
+    [`./packages/${name}/index.js`],
+  ]),
+);
+await writeFile(`${destination}/tsconfig.json`, `${JSON.stringify(tsconfig, null, 2)}\n`);
 for (const name of ['world-spec', 'voice-score'])
   await cp(`packages/${name}`, `${destination}/packages/${name}`, {
     recursive: true,

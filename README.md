@@ -205,3 +205,7 @@ Created by **loki**. Inspired by watching Japanese countryside train rides.
 Regional scenery now includes eight seeded village lots around rural stops, six roof/building families, connected access streets, rice paddies and vegetable plots, and varied station residents with repeatable routines. Five bounded rail excursions change the valley views with 80 km/h restrictions. Regional mountain fields add coherent ridges outside the railway corridor; generation uses seed 2719 and preserves rail, water and station clearances.
 
 A separate 700 m rural railway between route z1550–2250 carries an alternating green local and blue parcels service. These are scheduled background trains on their own track, with a halt and end depots. Tokyo spans 2.36 km with suburban approaches, deeper street blocks and a denser centre. Lakes have dry cove paths, boathouses, moorings and local fishing or alpine props. This is still a stylized fictional route, with bounded resident routines and traffic rather than a full city simulation.
+
+## Deployment
+
+The [hosting guide](docs/HOSTING.md) covers the separate Vercel client and Jev server and the Signal Ship build. The standalone backend source is published at [maple-line-server](https://github.com/lokeshinumpudi/maple-line-server). Local development still runs both apps from this workspace.

@@ -18,7 +18,7 @@ It listens on `127.0.0.1:4175`. `DIRECTOR_PORT` may select another local port. T
 
 Without a Gateway key, decisions use deterministic local rules and return `source: "fallback"`. Provider failures, unsupported answers, deadlines, paused journeys, an occupied evaluation slot, or cooldown also return an explicitly labeled fallback. A configured key alone does not prove a provider request succeeded: only a decision response with `source: "jev"` indicates a validated Jev answer.
 
-The browser uses a Vite proxy from `/api/director` to `http://127.0.0.1:4175`. Direct CORS access permits loopback game origins on ports 4173 and 4174. The server binds to loopback and rejects other Host values. This package does not provide a public deployment or user authentication.
+The browser uses a Vite proxy from `/api/director` to `http://127.0.0.1:4175`. Direct CORS access permits loopback game origins on ports 4173 and 4174. The server binds to loopback and rejects other Host values. The Vercel adapter uses configured public origins and `/tmp` narration caching. It does not provide user authentication; see [hosting](HOSTING.md).
 
 ## Contract
 
@@ -79,4 +79,4 @@ Tests inject the evaluator and verify fallback behavior, strict input validation
 
 A live smoke test succeeded: a rainy station request returned `source: "jev"` with `pace: "cautious"` and `stationActivity: "shelter"`. This verifies one provider request, not sustained availability. An HTTP 200 with `source: "fallback"` confirms continuity but does not prove live model access.
 
-See the [local development skill](../.agents/skills/maple-line-dev/SKILL.md) for workspace commands and browser verification. The director does not expose a public deployment; the production game build alone does not start this local service.
+See the [local development skill](../.agents/skills/maple-line-dev/SKILL.md) for workspace commands and browser verification. The production game build does not start the director. Deploy its separate Vercel function and set the client server origin as described in [hosting](HOSTING.md).
