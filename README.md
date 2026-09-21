@@ -2,7 +2,7 @@
 
 A Three.js railway game set in fictional Japanese countryside. Drive a five-car train along about 24.9 km of track with 15 stops, from an autumn gorge through villages, forests, a 152.4 m (500 ft) valley bridge, a mountain tunnel, snow country, terraces and a harbour skyline. The terrain, train, buildings, plants, people, and water textures are generated in code.
 
-The workspace lives at `/Users/lokeshinumpudi/Desktop/maple-line`. It uses pnpm workspaces and Turborepo, with the browser game in `apps/game` and the optional Jev director in `apps/director`. It has no Signal service or production-data connections.
+The workspace lives at `/Users/lokeshinumpudi/Desktop/maple-line`. It uses pnpm workspaces and Turborepo, with the browser game in `apps/game` and the optional Jev director in `apps/director`. The optional Signal Ship build uses a site-scoped world-generation function and database; local development uses the Jev director.
 
 ## Run locally
 
@@ -209,3 +209,5 @@ A separate 700 m rural railway between route z1550–2250 carries an alternating
 ## Deployment
 
 The [hosting guide](docs/HOSTING.md) covers the separate Vercel client and Jev server and the Signal Ship build. The standalone backend source is published at [maple-line-server](https://github.com/lokeshinumpudi/maple-line-server). Local development still runs both apps from this workspace.
+
+The [illustrated runbook](https://signal-ship.internal.loophealth.com/s/maple-line-runbook/) covers 36 concepts with interactive diagrams and copyable agent skills. It loads separately from the game.

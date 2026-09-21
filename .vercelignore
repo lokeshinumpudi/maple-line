@@ -1,0 +1,17 @@
+.env
+.env.*
+**/.env
+**/.env.*
+node_modules
+**/node_modules
+.git
+.cache
+.turbo
+**/.turbo
+artifacts
+assets/audio-library
+**/dist
+**/dist-readable
+**/dist-ship
+**/dist-public
+*.log

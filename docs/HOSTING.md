@@ -13,3 +13,11 @@ Hosted requests retain JSON validation, body limits, deadlines, and per-instance
 The function uses `signal.llm`, validates bounded scenery settings, and saves the generation using `signal.db`. Browser database writes are disabled. Reusing a request ID returns the saved result. Signal builds use local sightseeing routines and text-only story presentation; Jev and Sarvam keys are not included. Saved Jev presets remain available as an explicitly labelled fallback.
 
 Build success does not verify hosting, model access, or the browser's WebGL support. Test a generated world and the published game on each target after deploying.
+
+## Runbook
+
+The [Maple Line Runbook](https://signal-ship.internal.loophealth.com/s/maple-line-runbook/) is a separate Signal site. The game links to it without downloading its images or lessons at startup. The guide links back to the Signal game, and both “Built by Loki” credits link to `https://signal.internal.loophealth.com`.
+
+Run `pnpm build:runbook` to build `artifacts/runbook-site`. The authored guide lives in `runbook/`; its 36 chapters include game captures, interactive SVG diagrams, individual copyable skills and a downloadable skill collection. `skills-pack.json` contains the ZIP payload because Signal static hosting does not accept ZIP files directly.
+
+Publish only `index.html`, `ship.json`, `assets/`, `skills/`, `skills.json`, `skills-pack.json` and `all-skills.md`. Do not include hidden files, local environment files or Vercel project metadata. Use file patches for subsequent Signal updates so existing cloud assets remain intact.

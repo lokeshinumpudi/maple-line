@@ -22,7 +22,8 @@
     "typecheck": "turbo run typecheck",
     "narration:prepare": "node scripts/prepare-narration.mjs",
     "build:ship": "pnpm --filter @maple-line/game exec vite build --mode ship && node scripts/bundle-ship-function.mjs",
-    "build:public": "pnpm --filter @maple-line/game exec vite build --mode public"
+    "build:public": "pnpm --filter @maple-line/game exec vite build --mode public",
+    "build:runbook": "node scripts/build-runbook.mjs"
   },
   "devDependencies": {
     "prettier": "3.9.8",

@@ -17,3 +17,4 @@ artifacts/
 .cache/
 assets/audio-library/
 .vercel/
+.vercel

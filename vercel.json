@@ -5,6 +5,7 @@
   "installCommand": "pnpm install --frozen-lockfile",
   "outputDirectory": "apps/game/dist-public",
   "rewrites": [
+    { "source": "/maple-line/", "destination": "/index.html" },
     { "source": "/maple-line", "destination": "/index.html" },
     { "source": "/maple-line/:path*", "destination": "/:path*" }
   ]

@@ -1722,3 +1722,19 @@ body:not(.playing) #places-picker #create-world {
   line-height: 1.7;
   color: var(--muted);
 }
+
+.runbook-link {
+  display: block;
+  width: fit-content;
+  margin-top: 14px;
+  color: inherit;
+  opacity: 0.78;
+  font-size: 11px;
+  line-height: 1.5;
+  text-underline-offset: 4px;
+}
+.game-credit a,
+.game-credits a {
+  color: inherit;
+  text-underline-offset: 3px;
+}
