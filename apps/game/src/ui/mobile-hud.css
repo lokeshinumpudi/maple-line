@@ -147,8 +147,7 @@
       opacity 450ms ease,
       visibility 450ms;
   }
-  body.playing.mobile-hud-resting
-    :is(header, .ride-dock, main, #scene-inspector, #control-status) {
+  body.playing.mobile-hud-resting :is(header, .ride-dock, main, #scene-inspector, #control-status) {
     opacity: 0;
     visibility: hidden;
     pointer-events: none;

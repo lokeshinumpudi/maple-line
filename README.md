@@ -6,10 +6,10 @@ A local train through a made-up Japanese countryside.
 
 ![Five red carriages along an autumn hillside](runbook/captures/train.jpg)
 
-| | |
-| --- | --- |
+|                                                   |                                                       |
+| ------------------------------------------------- | ----------------------------------------------------- |
 | ![The valley bridge](runbook/captures/bridge.jpg) | ![Rain beside the village](runbook/captures/rain.jpg) |
-| ![Dusk on the line](runbook/captures/dusk.jpg) | ![The forest](runbook/captures/forest.jpg) |
+| ![Dusk on the line](runbook/captures/dusk.jpg)    | ![The forest](runbook/captures/forest.jpg)            |
 
 [![Ride along the rice terraces](media/ride.jpg)](media/ride.mp4)
 

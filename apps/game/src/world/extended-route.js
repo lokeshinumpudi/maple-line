@@ -1,3 +1,4 @@
+import { bridgeRiverProfile, carveBridgeRiver } from './bridge-river.js';
 import { TERRAIN_LATERAL_SAMPLES, naturalValleyTerrain } from './terrain-surface.js';
 import { scenicAlignmentOffset, SCENIC_BENDS } from '../simulation/scenic-alignment.js';
 import { regionalVariation, regionalMountainHeight } from './region-variation.js';
@@ -143,6 +144,15 @@ export function scenicTerrain(worldX, z) {
   const tunnelClearance = 1 - smooth((tunnelDistance - 80) / 180);
   y += regionalMountainHeight(fromRail, z) * (1 - Math.max(bridgeClearance, tunnelClearance));
   y -= bridgeFactor(z) * 79 * Math.exp(-Math.abs(fromRail) / 430);
+  if (Math.abs(z - landmarks.bridgeZ) < 85)
+    y = carveBridgeRiver(
+      y,
+      worldX,
+      z,
+      routeCenter(landmarks.bridgeZ) + 28,
+      landmarks.bridgeZ,
+      routeElevation(landmarks.bridgeZ),
+    );
   if (z > landmarks.tunnelStartZ - 110 && z < landmarks.tunnelEndZ + 110) {
     const approach = Math.min(
       smooth((z - landmarks.tunnelStartZ + 110) / 110),
@@ -162,7 +172,12 @@ export function scenicTerrain(worldX, z) {
     }
   }
   for (const stop of additionalStops) {
-    if (stop.theme === 'city' || Math.abs(z - stop.z) > 153) continue;
+    if (
+      stop.theme === 'city' ||
+      Math.abs(z - stop.z) > 153 ||
+      Math.abs(z - landmarks.bridgeZ) < landmarks.bridgeSpan / 2 + 45
+    )
+      continue;
     const street =
       (1 - smooth((Math.abs(fromRail - 48) - 3) / 3)) *
       (1 - smooth((Math.abs(z - stop.z) - 145) / 8));
@@ -421,6 +436,15 @@ export function createExtendedWorld({ THREE, scene, railPoint, center = routeCen
         lateral = between(-260, 260),
         x = p.x + lateral;
       if (tokyoDistrictWeight(z, lateral) > 0.01) continue;
+      if (Math.abs(z - landmarks.bridgeZ) < 30) {
+        const river = bridgeRiverProfile(
+          x,
+          routeCenter(landmarks.bridgeZ) + 28,
+          landmarks.bridgeZ,
+          routeElevation(landmarks.bridgeZ),
+        );
+        if (river.reach > 0.1 && Math.abs(z - river.z) < river.halfWidth + 5) continue;
+      }
       if (villageLots.some((lot) => Math.abs(z - lot.z) < 18 && Math.abs(x - lot.x) < 17)) continue;
       if (!inForestGrove(x, z, 2719)) continue;
       if (fieldAt(x, z)) continue;
@@ -680,8 +704,9 @@ export function createExtendedWorld({ THREE, scene, railPoint, center = routeCen
       // A village street links the station forecourt to both rows of homes.
       if (!urban) {
         for (let dz = -145; dz < 145; dz += 6) {
-          const z = stop.z + dz,
-            x = railPoint(z).x + 48,
+          const z = stop.z + dz;
+          if (Math.abs(z - landmarks.bridgeZ) < landmarks.bridgeSpan / 2 + 45) continue;
+          const x = railPoint(z).x + 48,
             y = scenicTerrain(x, z) + 0.08;
           box(m.ballast, x, y, z, 5.2, 0.14, 6.05);
           box(m.stone, x + 3.2, y + 0.08, z, 1.3, 0.12, 6.05);
@@ -697,13 +722,15 @@ export function createExtendedWorld({ THREE, scene, railPoint, center = routeCen
         }
         // Garden lane in front of the inner row, plus door spurs onto both house rows.
         for (let dz = -120; dz <= 120; dz += 6) {
-          const z = stop.z + dz,
-            x = railPoint(z).x + 21,
+          const z = stop.z + dz;
+          if (Math.abs(z - landmarks.bridgeZ) < landmarks.bridgeSpan / 2 + 45) continue;
+          const x = railPoint(z).x + 21,
             y = scenicTerrain(x, z) + 0.08;
           box(m.stone, x, y, z, 1.7, 0.12, 6.05);
         }
         for (const along of [-112, -78, 78, 112]) {
           const z = stop.z + along;
+          if (Math.abs(z - landmarks.bridgeZ) < landmarks.bridgeSpan / 2 + 45) continue;
           for (const lateral of [21, 23, 25, 27, 29, 46, 48, 50, 52, 54, 56, 58]) {
             const x = railPoint(z).x + lateral,
               y = scenicTerrain(x, z) + 0.08;
@@ -834,9 +861,29 @@ export function createExtendedWorld({ THREE, scene, railPoint, center = routeCen
           ground = scenicTerrain(p.x, z);
         box(m.stone, p.x, (p.y + ground) / 2 - 2, z, 8, 5, 4);
       }
-      // A river crosses the railway seventy metres below the uninterrupted main span.
+      // A river crosses the railway eighty metres below the uninterrupted main span.
       const p = railPoint(landmarks.bridgeZ);
-      box(m.water, p.x, p.y - 77, landmarks.bridgeZ, 570, 0.12, 13, 0, false);
+      const riverPositions = [],
+        riverIndices = [];
+      for (let lateral = -550, row = 0; lateral <= 550; lateral += 5, row++) {
+        const x = p.x + lateral;
+        const river = bridgeRiverProfile(x, p.x, landmarks.bridgeZ, p.y);
+        for (const side of [-1, 1])
+          riverPositions.push(x, river.waterY, river.z + side * river.halfWidth);
+        if (row) {
+          const i = row * 2;
+          riverIndices.push(i - 2, i - 1, i, i, i - 1, i + 1);
+        }
+      }
+      const riverGeometry = new THREE.BufferGeometry();
+      riverGeometry.setAttribute('position', new THREE.Float32BufferAttribute(riverPositions, 3));
+      riverGeometry.setIndex(riverIndices);
+      riverGeometry.computeVertexNormals();
+      ownedGeometries.push(riverGeometry);
+      const riverMesh = new THREE.Mesh(riverGeometry, m.water);
+      riverMesh.name = 'Takabashi · river through ravine';
+      riverMesh.receiveShadow = true;
+      group.add(riverMesh);
       group.userData.bridge = {
         spanMetres: landmarks.bridgeSpan,
         feet: 500,
