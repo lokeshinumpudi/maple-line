@@ -1,0 +1,264 @@
+{
+  "assets": {
+    "train": {
+      "caption": "Train carriages beside the rice terraces",
+      "box": [19, 36, 80, 45]
+    },
+    "roof": {
+      "caption": "Carriage roof, vents, windows and body panels",
+      "box": [34, 40, 57, 24]
+    },
+    "wheels": {
+      "caption": "Close view of wheels, underframe and sliding doors",
+      "box": [5, 41, 80, 20]
+    },
+    "bridge": {
+      "caption": "Steel valley bridge and its cast shadow",
+      "box": [12, 27, 86, 28]
+    },
+    "driver": {
+      "caption": "Forward view through the driver's cab",
+      "box": [37, 14, 28, 50]
+    },
+    "forest": {
+      "caption": "Repeated trees across the rice-terrace hills",
+      "box": [2, 36, 95, 35]
+    },
+    "foliage": {
+      "caption": "Broadleaf crowns, trunks and conifers on the hillside",
+      "box": [32, 17, 54, 43]
+    },
+    "station": {
+      "caption": "Momiji platform and the stopped train",
+      "box": [17, 37, 82, 40]
+    },
+    "sign": {
+      "caption": "Momiji destination board, viewed below the platform canopy",
+      "box": [21, 37, 58, 26]
+    },
+    "rain": {
+      "caption": "Rain over the village railway",
+      "box": [3, 2, 93, 65]
+    },
+    "dusk": {
+      "caption": "Carriages and the track bend at dusk",
+      "box": [3, 25, 96, 61]
+    },
+    "water": {
+      "caption": "River surface, shallow bank and reflected detail",
+      "box": [49, 13, 49, 85]
+    },
+    "cast": {
+      "caption": "Haru and Emi with the recorder and notebook",
+      "box": [38, 32, 25, 45]
+    }
+  },
+  "subjects": {
+    "River surface": {
+      "asset": "water",
+      "box": [58, 14, 40, 83],
+      "observation": "The water combines extra pictures of the scene with moving surface detail. It looks rippled without simulating every moving drop of water."
+    },
+    "Shallow river": {
+      "asset": "water",
+      "box": [35, 51, 38, 37],
+      "observation": "Surface detail changes how light appears to hit the water. The shallow bank helps show where the water meets the land."
+    },
+    "Bank and shallows": {
+      "asset": "water",
+      "box": [31, 47, 40, 37],
+      "observation": "The riverbank and riverbed use the same path as the water. Their edges must agree so the river does not leave holes or spill onto dry ground."
+    },
+    "Submerged detail": {
+      "asset": "water",
+      "box": [72, 16, 21, 40],
+      "observation": "A separate picture of the scene supplies what appears below the surface. Depth checks help keep objects in front of the river from appearing underwater."
+    },
+    "Rain-lit river": {
+      "asset": "water",
+      "box": [58, 14, 40, 83],
+      "label": "River surface response"
+    },
+    "Curved roof": {
+      "asset": "roof",
+      "box": [35, 42, 54, 21],
+      "observation": "A 2D outline is extended along the carriage to make the rounded roof. It is real shape, so its outline stays curved from different camera angles."
+    },
+    "Roof and fittings": {
+      "asset": "roof",
+      "box": [35, 39, 54, 24]
+    },
+    "Lit carriage roof": {
+      "asset": "roof",
+      "box": [35, 39, 54, 24]
+    },
+    "Wheel area": {
+      "asset": "wheels",
+      "box": [3, 41, 81, 18],
+      "observation": "Wheels and axles are built from cylinder shapes. During a ride, their turn angle comes from how far the train has travelled. This photo shows the parts; the experiment below explains the movement."
+    },
+    "Door leaves": {
+      "asset": "wheels",
+      "box": [63, 1, 21, 47],
+      "observation": "Each sliding door moves inside its carriage group. The carriage can follow the track while the door separately opens or closes."
+    },
+    "Body panels": {
+      "asset": "roof",
+      "box": [42, 50, 39, 32]
+    },
+    "Painted body": {
+      "asset": "roof",
+      "box": [42, 58, 39, 24],
+      "observation": "The same body shape can look like painted metal or another surface by changing its material settings."
+    },
+    "Window strip": {
+      "asset": "roof",
+      "box": [43, 52, 31, 18],
+      "observation": "The window material lets the carriage interior show through. Reflected light and the window frame help make the glass visible."
+    },
+    "Window frames": {
+      "asset": "roof",
+      "box": [43, 52, 31, 18],
+      "observation": "Frames, glass and body panels sit at different depths. That separation helps the game decide which surface should appear in front."
+    },
+    "Cream/red boundary": {
+      "asset": "roof",
+      "box": [40, 55, 43, 26],
+      "observation": "These colored panels meet at their edges instead of covering exactly the same surface. That avoids flicker when the camera moves."
+    },
+    "First carriage": {
+      "asset": "train",
+      "box": [65, 46, 34, 35]
+    },
+    "Middle carriage": {
+      "asset": "train",
+      "box": [41, 42, 26, 23]
+    },
+    "Rear carriage": {
+      "asset": "train",
+      "box": [18, 36, 13, 13]
+    },
+    "Whole rendered view": {
+      "asset": "train",
+      "box": [1, 1, 98, 98]
+    },
+    "Pick a carriage": {
+      "asset": "roof",
+      "box": [35, 41, 56, 48]
+    },
+    "Pick a tree": {
+      "asset": "foliage",
+      "box": [34, 28, 9, 20]
+    },
+    "Station lettering": {
+      "asset": "sign",
+      "box": [21, 37, 58, 26],
+      "observation": "The letters are drawn into an image and placed on a flat sign. The game does not need a separate 3D shape for every letter."
+    },
+    "Diagonal steel members": {
+      "asset": "bridge",
+      "box": [13, 32, 86, 23],
+      "observation": "Each beam needs a length and a direction. The builder points a simple shape between two endpoints instead of placing every corner by hand."
+    },
+    "Train orientation": {
+      "asset": "bridge",
+      "box": [19, 26, 37, 10]
+    },
+    "Faceted hillside": {
+      "asset": "bridge",
+      "box": [1, 2, 47, 22]
+    },
+    "Deep valley": {
+      "asset": "bridge",
+      "box": [5, 47, 89, 45]
+    },
+    "Bridge shadow": {
+      "asset": "bridge",
+      "box": [13, 68, 86, 30]
+    },
+    "Distant track": {
+      "asset": "driver",
+      "box": [43, 34, 11, 18],
+      "observation": "The rails look closer together farther away. That is perspective: the camera makes distant objects occupy fewer pixels."
+    },
+    "Near track": {
+      "asset": "driver",
+      "box": [39, 45, 15, 18],
+      "observation": "Nearby sleepers occupy more of the picture. The camera view angle changes how wide and deep the track feels."
+    },
+    "Track bend": {
+      "asset": "dusk",
+      "box": [2, 24, 27, 18]
+    },
+    "Carriage spacing": {
+      "asset": "dusk",
+      "box": [24, 32, 42, 35]
+    },
+    "Broadleaf crowns": {
+      "asset": "foliage",
+      "box": [33, 17, 22, 25],
+      "observation": "Many trees reuse the same source shapes. Their positions, sizes and colors vary, so the hill does not look like identical copies in a row."
+    },
+    "Conifers": {
+      "asset": "foliage",
+      "box": [59, 33, 7, 24],
+      "observation": "Repeated cone-like layers make these trees. The game can draw matching shapes together to reduce repeated drawing instructions."
+    },
+    "Rocks": {
+      "asset": "foliage",
+      "box": [44, 31, 11, 14],
+      "observation": "These rocks can share a source shape. Rotating and resizing the copies gives each a different appearance."
+    },
+    "Canopy": {
+      "asset": "foliage",
+      "box": [33, 17, 22, 25],
+      "observation": "Code on the graphics processor moves the leaf points to suggest wind. The upper branches move more than the base. A still image shows the affected shape; the experiment explains the motion."
+    },
+    "Trunk bases": {
+      "asset": "foliage",
+      "box": [37, 35, 4, 12],
+      "observation": "The bottom of each tree stays steadier than its crown. Otherwise the whole tree would slide or bend away from the ground."
+    },
+    "Foreground trees": {
+      "asset": "foliage",
+      "box": [62, 57, 37, 42],
+      "observation": "Nearby trees remain visible. Skipping distant objects saves drawing work, but their data may still be stored in memory."
+    },
+    "Falling rain": {
+      "asset": "rain",
+      "box": [4, 1, 68, 30],
+      "observation": "Thin moving lines make the rain streaks. The buildings stay in place while the game updates the positions of those lines."
+    },
+    "Distant skyline": {
+      "asset": "rain",
+      "box": [1, 1, 24, 23],
+      "observation": "Fog reduces contrast in the distance. It makes faraway scenery fade toward the sky color."
+    },
+    "Terrain and vegetation": {
+      "asset": "forest",
+      "box": [3, 35, 94, 37]
+    },
+    "Sky and distant hills": {
+      "asset": "dusk",
+      "box": [1, 1, 38, 29]
+    },
+    "Dark foreground": {
+      "asset": "dusk",
+      "box": [2, 59, 80, 39]
+    },
+    "Stopped train": {
+      "asset": "station",
+      "box": [17, 37, 42, 21]
+    },
+    "Platform and doors": {
+      "asset": "station",
+      "box": [44, 43, 54, 37]
+    },
+    "Departure feedback": {
+      "asset": "sign",
+      "box": [21, 37, 58, 26],
+      "label": "Station destination sign",
+      "observation": "The destination board helps the player identify the stop. Whether departure is allowed comes from the driving and station rules; this still image does not show a live clearance."
+    }
+  }
+}

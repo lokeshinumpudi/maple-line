@@ -157,6 +157,46 @@ export function addRegionalBuilding({
       part('timber', i * w * 0.18, h * 0.55, front + 0.18, 0.12, h * 0.94, 0.14);
     for (const side of [-1, 1]) part('timber', side * w * 0.35, 0.85, front + 0.75, 1.1, 1.25, 1.1);
   }
+  // Side and rear elevations: bounded windows, projecting sills, timber dividers, eave brackets.
+  // Sills stay under the 0.6 roof overhang; brackets sit just below the gable base (h + 0.46).
+  // The farmhouse +x side is occupied by its shed, so only its -x side is detailed.
+  const sideX = w / 2 + 0.07;
+  const rear = -(d / 2 + 0.07);
+  const sideFloors = kind === 'shopfront' ? 2 : 1;
+  const windowZ = kind === 'shopfront' || kind === 'storehouse' ? [0] : [-d * 0.22, d * 0.22];
+  const sill = kind === 'storehouse' ? 'stone' : 'timber';
+  const pane = kind === 'storehouse' || kind === 'harbour-shed' ? 'rail' : 'glass';
+  const ww = kind === 'storehouse' ? 0.7 : kind === 'harbour-shed' ? 1.6 : 1.15;
+  const wh = kind === 'storehouse' ? 0.7 : kind === 'harbour-shed' ? 1 : 1.3;
+  const window = (px, py, pz, alongX) => {
+    const [fx, fz] = alongX ? [0.17, ww] : [ww, 0.17];
+    const [gx, gz] = alongX ? [0.07, ww - 0.3] : [ww - 0.3, 0.07];
+    const [sx, sz] = alongX ? [0.28, ww + 0.2] : [ww + 0.2, 0.28];
+    const out = alongX ? Math.sign(px) : Math.sign(pz);
+    part('timber', px, py, pz, fx, wh, fz);
+    part(pane, px + (alongX ? out * 0.1 : 0), py, pz + (alongX ? 0 : out * 0.1), gx, wh - 0.3, gz);
+    part(
+      sill,
+      px + (alongX ? out * 0.12 : 0),
+      py - wh / 2 - 0.05,
+      pz + (alongX ? 0 : out * 0.12),
+      sx,
+      0.1,
+      sz,
+    );
+  };
+  for (const side of kind === 'farmhouse' ? [-1] : [-1, 1]) {
+    for (let floor = 0; floor < sideFloors; floor++) {
+      const wy = kind === 'storehouse' ? h * 0.72 : 1.9 + (floor * h) / 2;
+      for (const wz of windowZ) window(side * sideX, wy, wz, true);
+    }
+    if (timber)
+      for (const post of [-1, 1])
+        part('timber', side * (sideX + 0.02), h * 0.53, post * d * 0.43, 0.14, h * 0.94, 0.14);
+    for (const bracket of [-1, 1])
+      part('timber', side * (sideX + 0.25), h + 0.28, bracket * d * 0.36, 0.5, 0.14, 0.14);
+  }
+  window(0, kind === 'storehouse' ? h * 0.72 : 1.9, rear, false);
   return {
     id,
     type: kind,

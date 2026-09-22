@@ -1,10 +1,1798 @@
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Libre+Caslon+Display&display=swap');
-:root{--paper:#eee9df;--ink:#23372e;--soft:#6d756a;--line:#c8cec0;--red:#a84132;--foreground:var(--ink);--muted-foreground:var(--soft);--background:var(--paper);--border:var(--line);--muted:#dedfce;--primary:var(--red);--primary-foreground:#fff7e9;--viz-series-1:#406950;--viz-series-2:#b36b43;color-scheme:light}
-*{box-sizing:border-box}html{scroll-behavior:smooth;scroll-padding-top:32px}body{margin:0;background:var(--paper);color:var(--ink);font:15px/1.7 'DM Sans',sans-serif;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' opacity='.032' filter='url(%23n)'/%3E%3C/svg%3E")}
-a{color:inherit;text-underline-offset:5px}button,input,select{font:inherit}button,a,input,summary{-webkit-tap-highlight-color:transparent}button{cursor:pointer}button:disabled{cursor:default;opacity:.38}a:focus-visible,button:focus-visible,input:focus-visible,summary:focus-visible{outline:2px solid var(--red);outline-offset:5px}.skip{position:absolute;top:-100px;left:20px;padding:12px;background:var(--paper);z-index:9}.skip:focus{top:12px}.masthead{max-width:1480px;margin:auto;display:flex;align-items:center;justify-content:space-between;padding:25px 4vw;border-bottom:1px solid var(--line);gap:25px}.wordmark{font-size:12px;letter-spacing:.14em;text-decoration:none;display:flex;align-items:center;gap:13px;font-weight:700}.seal{border:1px solid var(--red);color:var(--red);display:grid;place-items:center;width:31px;height:36px;font:27px 'Libre Caslon Display',Georgia,serif}.thin{font-weight:400;color:var(--soft)}.masthead nav{display:flex;gap:27px;font-size:12px}.masthead nav a{text-decoration:none}.play-link{color:var(--red)}.cover{max-width:1480px;margin:auto;display:grid;grid-template-columns:1fr 1fr;gap:6vw;padding:80px 6vw 62px;align-items:center}.eyebrow{font-size:10px;text-transform:uppercase;letter-spacing:.18em;font-weight:600}.cover h1{font:clamp(64px,7.7vw,116px)/.98 'Libre Caslon Display',Georgia,serif;letter-spacing:-.045em;margin:24px 0;color:var(--ink)}.cover h1 em{font-weight:400;color:var(--red)}.cover-description{font-size:17px;line-height:1.7;max-width:350px;color:var(--soft);margin:28px 0}.begin{display:inline-flex;gap:60px;align-items:center;border-bottom:1px solid var(--ink);padding:9px 0;text-decoration:none;font-size:13px}.begin span{color:var(--red);font-size:22px}.cover-index{display:flex;gap:37px;margin-top:44px;color:var(--soft);font-size:10px;text-transform:uppercase;letter-spacing:.05em}.cover-index b{font:24px 'Libre Caslon Display',Georgia,serif;color:var(--ink);margin-right:8px}.cover-art{margin:0;position:relative;padding:20px 0 0 22px}.cover-art:before{content:'';position:absolute;top:0;left:0;width:75%;height:87%;border:1px solid #a5b39b;border-radius:48% 48% 0 0;transform:rotate(-5deg);pointer-events:none}.cover-art img{display:block;width:100%;height:500px;object-fit:cover;object-position:45% center;border-radius:47% 47% 2px 2px;filter:saturate(.72) sepia(.08)}.art-caption{display:flex;justify-content:space-between;gap:15px;font-size:9px;text-transform:uppercase;letter-spacing:.08em;padding-top:16px}.vertical-note{position:absolute;right:-25px;top:140px;writing-mode:vertical-rl;font-size:9px;letter-spacing:.18em;color:var(--soft)}.chapter-ribbon{display:flex;gap:30px;justify-content:center;align-items:center;border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:18px;font:18px 'Libre Caslon Display',Georgia,serif}.chapter-ribbon i{color:#9da18d}.studio{display:grid;grid-template-columns:260px minmax(0,1fr);gap:65px;max-width:1320px;margin:auto;padding:70px 40px 90px}.contents{align-self:start;position:sticky;top:25px}.contents details>summary{font:26px 'Libre Caslon Display',Georgia,serif;list-style:none;cursor:pointer;border-bottom:1px solid var(--ink);padding-bottom:14px;display:flex;justify-content:space-between;align-items:center}.contents summary>span{font:9px 'DM Sans',sans-serif;letter-spacing:.09em;text-transform:uppercase;color:var(--soft)}.search-label{display:block;margin:21px 0 5px;font-size:10px;letter-spacing:.07em;text-transform:uppercase}#concept-search{border:0;border-bottom:1px solid var(--line);background:transparent;padding:8px 0 11px;width:100%;outline-offset:3px;font-size:13px;color:var(--ink)}#chapter-list{max-height:58vh;overflow:auto;margin-top:22px;padding-right:12px;scrollbar-width:thin;scrollbar-color:#b9bea9 transparent}#chapter-list h3{font-size:9px;line-height:1.6;letter-spacing:.09em;text-transform:uppercase;color:var(--red);font-weight:600;margin:22px 0 10px}#chapter-list h3:first-child{margin-top:0}.chapter-link{display:flex;align-items:baseline;gap:13px;text-align:left;font-size:12px;line-height:1.5;border:0;width:100%;background:transparent;padding:8px 6px;color:var(--soft)}.chapter-link span:first-child{font-size:10px;color:#9b9f90;min-width:16px;font-variant-numeric:tabular-nums}.chapter-link:hover{color:var(--ink);background:#e4e3d5}.chapter-link[aria-current=page]{color:var(--ink);background:#dfe2d1;border-left:2px solid var(--red)}.chapter-link[aria-current=page] span:first-child{color:var(--red)}.pack-link{font-size:11px;display:flex;justify-content:space-between;margin:22px 0 10px;padding:14px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line);text-decoration:none}.pack-link span{color:var(--red)}.contents-foot{font-size:10px;color:var(--soft);line-height:1.8}.lesson-page{min-width:0}#maple-three-school{scroll-margin-top:32px}#maple-three-school>.lesson-head:first-of-type,#maple-three-school>p:first-of-type,.lesson-select{display:none!important}.lesson-navigation{font-size:10px;letter-spacing:.06em;text-transform:uppercase;border-bottom:1px solid var(--line);padding-bottom:17px}.lesson-navigation #maple-stage{order:-1;flex:1;min-width:200px}.lesson-navigation button{border:0;background:none;padding:4px 8px;font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:var(--ink)}#maple-title{font:clamp(35px,4vw,54px)/1.09 'Libre Caslon Display',Georgia,serif;letter-spacing:-.025em;font-weight:400;margin:28px 0}.view-switch{display:inline-flex!important;padding:3px;border:1px solid var(--line);border-radius:3px;margin:0 0 23px!important}.btn{border:1px solid var(--line);background:transparent;color:var(--ink);padding:8px 14px;font-size:11px;line-height:1.5;border-radius:2px}.view-switch .btn{border:0}.btn[aria-pressed=true]{background:var(--ink);color:var(--paper)}#maple-photo-caption{font-size:10px;letter-spacing:.05em;color:var(--soft);margin-bottom:10px}#maple-three-school .game-photo{margin:0 0 16px}.game-photo{border:7px solid #f8f4ec;outline:1px solid #d2d1c3}#maple-photo{filter:saturate(.84)}#maple-three-school .game-highlight{border:1px solid #faf1d5;outline:1px solid #a34e35;box-shadow:0 0 0 2000px #102e2814}#maple-three-school .game-highlight span{font-size:10px;padding:2px 6px}#maple-hotspots{display:flex;flex-wrap:wrap;gap:7px}#maple-hotspots .btn{font-size:10px;padding:7px 9px}#maple-observation{font-size:12px;line-height:1.75;color:var(--soft);padding-left:17px;border-left:2px solid #b58b5c;margin:20px 0 30px}.lesson-copy{font-size:15px;line-height:1.9}#maple-definition{font-family:'Libre Caslon Display',Georgia,serif;font-size:26px;line-height:1.45;letter-spacing:-.01em}#maple-impact{font-size:13px;color:var(--soft);margin-top:8px!important}#maple-studio-detail{display:grid;grid-template-columns:1fr 1fr;gap:25px!important;margin:28px 0 38px!important;padding-top:22px;border-top:1px solid var(--line);font-size:12px;line-height:1.85}#maple-studio-detail strong{display:block;font-size:10px;letter-spacing:.07em;text-transform:uppercase;margin-bottom:5px;color:var(--red)}hr{border:0;border-top:1px solid var(--line);margin:32px 0}.lesson-head h3{font:27px 'Libre Caslon Display',Georgia,serif;font-weight:400;margin:0}.text-small{font-size:10px}.text-muted{color:var(--soft)}pre{padding:24px;background:#263b32;color:#dedfc7;border-radius:3px;font:12px/1.9 ui-monospace,SFMono-Regular,Consolas,monospace;tab-size:2}code{font:inherit}p code{font:11px ui-monospace,monospace;padding:2px 4px;background:#dce0d0}.source-row{font-size:10px;line-height:1.8}.source-row a{color:var(--red)}.exercise{font-size:13px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:21px 0;margin:26px 0!important}#maple-mechanism{background:#e3e4d6;border:1px solid var(--line);padding:18px;margin-bottom:24px;border-radius:3px}.drawing{font-size:12px}.lesson-control{font-size:11px}.lesson-control output{float:right;color:var(--red);font-weight:600}input[type=range]{accent-color:var(--red);width:100%}#maple-status{font-size:11px;line-height:1.7;margin-top:10px}.skill-panel{margin-top:43px;padding:28px 30px;background:#e0e1cd;border:1px solid #bec5b1;border-radius:3px}.skill-heading{display:flex;justify-content:space-between;align-items:center}.skill-panel h3{font:35px 'Libre Caslon Display',Georgia,serif;font-weight:400;margin:0 0 10px}.skill-panel .eyebrow{color:var(--red);font-size:9px;margin:0 0 9px}.skill-symbol{font:50px 'Libre Caslon Display',Georgia,serif;color:var(--red)}.skill-panel p:not(.eyebrow){font-size:12px;line-height:1.8;max-width:580px}.skill-actions{display:flex;align-items:center;gap:22px;flex-wrap:wrap;margin:24px 0}.skill-actions button{background:var(--ink);color:var(--paper);border:0;padding:13px 19px;font-size:11px;display:flex;gap:28px;border-radius:2px}.skill-actions a{font-size:11px;cursor:pointer}.skill-panel details>summary{font-size:11px;cursor:pointer;padding-top:17px;border-top:1px solid #bac3ae}.skill-panel pre{font-size:11px;max-height:440px;overflow:auto}.skill-panel #skill-feedback{min-height:18px;margin-bottom:0;color:var(--red)}footer{border-top:1px solid var(--line);max-width:1480px;margin:auto;padding:30px 5vw;display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap;font-size:10px;color:var(--soft)}footer a{text-decoration:none;color:var(--ink)}[hidden]{display:none!important}
-@media(min-width:1500px){.cover-art img{height:540px}}@media(max-width:1050px){.studio{gap:35px;grid-template-columns:220px minmax(0,1fr);padding-inline:30px}.cover{padding-top:55px}.cover-art img{height:420px}.masthead .thin{display:none}.cover-index{gap:18px}}
-@media(max-width:850px){.masthead{padding:18px 22px}.masthead nav{gap:16px}.masthead nav a:first-child{display:none}.cover{gap:25px;padding:42px 25px 35px}.cover h1{font-size:67px}.cover-art img{height:345px}.cover-description{font-size:14px}.cover-index{display:block;margin-top:25px}.cover-index span{display:block;margin:5px 0}.art-caption{font-size:8px;display:block}.art-caption span{display:block}.vertical-note{right:-14px;font-size:7px}.studio{display:block;padding:35px 25px 55px}.contents{position:static;margin-bottom:35px}.contents details{border-bottom:1px solid var(--line);padding-bottom:15px}.contents details>summary:after{content:'+';font:22px 'DM Sans',sans-serif}.contents details[open]>summary:after{content:'−'}.contents details>summary>span{margin-left:auto;margin-right:20px}.contents details>summary{font-size:23px;border:0;padding:0}.contents .pack-link,.contents-foot{display:none}#chapter-list{max-height:400px}.chapter-link{padding:10px 5px}.chapter-ribbon{font-size:15px;gap:18px}#maple-title{font-size:42px}.lesson-navigation #maple-stage{font-size:9px}#maple-studio-detail{gap:20px!important}.lesson-page{max-width:760px;margin:auto}}
-@media(max-width:580px){.masthead nav a:nth-child(2){display:none}.wordmark{font-size:10px;gap:9px}.masthead nav{font-size:10px}.cover{grid-template-columns:1fr;padding:34px 24px 28px}.cover-copy{position:relative;z-index:1}.cover h1{font-size:74px;margin-top:20px}.cover-description{max-width:270px;margin:20px 0}.cover-index{display:flex;gap:24px;margin-top:27px}.cover-art{margin:8px 20px 0;padding:13px 0 0 14px}.cover-art img{height:285px;object-position:50% 48%}.art-caption{display:flex;font-size:7px}.vertical-note{top:70px}.chapter-ribbon{gap:12px;font-size:13px;padding:16px 8px}.studio{padding:30px 20px 45px}.lesson-navigation{gap:4px!important}.lesson-navigation #maple-stage{width:100%;flex-basis:100%;margin-bottom:10px}.lesson-navigation button:first-child{padding-left:0}#maple-title{font-size:38px}#maple-definition{font-size:24px}#maple-studio-detail{grid-template-columns:1fr;gap:18px!important}pre{padding:18px;font-size:11px}#maple-hotspots .btn{font-size:9px}.skill-panel{padding:23px 20px}.skill-panel h3{font-size:30px}.skill-actions{gap:16px}.lesson-head{align-items:start!important;gap:6px!important}.lesson-head h3{font-size:25px}.lesson-head span{width:100%}footer{padding:25px 22px;gap:15px}.game-photo{border-width:4px}#maple-mechanism{padding:10px}.cover-index b{font-size:21px}.cover-index span{font-size:8px}.eyebrow{font-size:8px}}
-@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{animation:none!important;transition:none!important}}
+:root {
+  --paper: #eee9df;
+  --ink: #23372e;
+  --soft: #6d756a;
+  --line: #c8cec0;
+  --red: #a84132;
+  --foreground: var(--ink);
+  --muted-foreground: var(--soft);
+  --background: var(--paper);
+  --border: var(--line);
+  --muted: #dedfce;
+  --primary: var(--red);
+  --primary-foreground: #fff7e9;
+  --viz-series-1: #406950;
+  --viz-series-2: #b36b43;
+  color-scheme: light;
+}
+* {
+  box-sizing: border-box;
+}
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 32px;
+}
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font:
+    15px/1.7 'DM Sans',
+    sans-serif;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' opacity='.032' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+a {
+  color: inherit;
+  text-underline-offset: 5px;
+}
+button,
+input,
+select {
+  font: inherit;
+}
+button,
+a,
+input,
+summary {
+  -webkit-tap-highlight-color: transparent;
+}
+button {
+  cursor: pointer;
+}
+button:disabled {
+  cursor: default;
+  opacity: 0.38;
+}
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+summary:focus-visible {
+  outline: 2px solid var(--red);
+  outline-offset: 5px;
+}
+.skip {
+  position: absolute;
+  top: -100px;
+  left: 20px;
+  padding: 12px;
+  background: var(--paper);
+  z-index: 9;
+}
+.skip:focus {
+  top: 12px;
+}
+.masthead {
+  max-width: none;
+  margin: auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 25px 4vw;
+  border-bottom: 1px solid var(--line);
+  gap: 25px;
+}
+.wordmark {
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  font-weight: 700;
+}
+.seal {
+  border: 1px solid var(--red);
+  color: var(--red);
+  display: grid;
+  place-items: center;
+  width: 31px;
+  height: 36px;
+  font:
+    27px 'Libre Caslon Display',
+    Georgia,
+    serif;
+}
+.thin {
+  font-weight: 400;
+  color: var(--soft);
+}
+.masthead nav {
+  display: flex;
+  gap: 27px;
+  font-size: 12px;
+}
+.masthead nav a {
+  text-decoration: none;
+}
+.play-link {
+  color: var(--red);
+}
+.cover {
+  max-width: none;
+  margin: auto;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6vw;
+  padding: 80px 6vw 62px;
+  align-items: center;
+}
+.eyebrow {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  font-weight: 600;
+}
+.cover h1 {
+  font:
+    clamp(64px, 7.7vw, 116px)/0.98 'Libre Caslon Display',
+    Georgia,
+    serif;
+  letter-spacing: -0.045em;
+  margin: 24px 0;
+  color: var(--ink);
+}
+.cover h1 em {
+  font-weight: 400;
+  color: var(--red);
+}
+.cover-description {
+  font-size: 17px;
+  line-height: 1.7;
+  max-width: 350px;
+  color: var(--soft);
+  margin: 28px 0;
+}
+.begin {
+  display: inline-flex;
+  gap: 60px;
+  align-items: center;
+  border-bottom: 1px solid var(--ink);
+  padding: 9px 0;
+  text-decoration: none;
+  font-size: 13px;
+}
+.begin span {
+  color: var(--red);
+  font-size: 22px;
+}
+.cover-index {
+  display: flex;
+  gap: 37px;
+  margin-top: 44px;
+  color: var(--soft);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.cover-index b {
+  font:
+    24px 'Libre Caslon Display',
+    Georgia,
+    serif;
+  color: var(--ink);
+  margin-right: 8px;
+}
+.cover-art {
+  margin: 0;
+  position: relative;
+  padding: 20px 0 0 22px;
+}
+.cover-art:before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 75%;
+  height: 87%;
+  border: 1px solid #a5b39b;
+  border-radius: 48% 48% 0 0;
+  transform: rotate(-5deg);
+  pointer-events: none;
+}
+.cover-art img {
+  display: block;
+  width: 100%;
+  height: 500px;
+  object-fit: cover;
+  object-position: 45% center;
+  border-radius: 47% 47% 2px 2px;
+  filter: saturate(0.72) sepia(0.08);
+}
+.art-caption {
+  display: flex;
+  justify-content: space-between;
+  gap: 15px;
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding-top: 16px;
+}
+.vertical-note {
+  position: absolute;
+  right: -25px;
+  top: 140px;
+  writing-mode: vertical-rl;
+  font-size: 9px;
+  letter-spacing: 0.18em;
+  color: var(--soft);
+}
+.chapter-ribbon {
+  display: flex;
+  gap: 30px;
+  justify-content: center;
+  align-items: center;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  padding: 18px;
+  font:
+    18px 'Libre Caslon Display',
+    Georgia,
+    serif;
+}
+.chapter-ribbon i {
+  color: #9da18d;
+}
+.studio {
+  display: grid;
+  grid-template-columns: 260px minmax(0, 1fr);
+  gap: 65px;
+  max-width: none;
+  margin: auto;
+  padding: 70px 40px 90px;
+}
+.contents {
+  align-self: start;
+  position: sticky;
+  top: 25px;
+}
+.contents details > summary {
+  font:
+    26px 'Libre Caslon Display',
+    Georgia,
+    serif;
+  list-style: none;
+  cursor: pointer;
+  border-bottom: 1px solid var(--ink);
+  padding-bottom: 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.contents summary > span {
+  font:
+    9px 'DM Sans',
+    sans-serif;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--soft);
+}
+.search-label {
+  display: block;
+  margin: 21px 0 5px;
+  font-size: 10px;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+#concept-search {
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  background: transparent;
+  padding: 8px 0 11px;
+  width: 100%;
+  outline-offset: 3px;
+  font-size: 13px;
+  color: var(--ink);
+}
+#chapter-list {
+  max-height: 58vh;
+  overflow: auto;
+  margin-top: 22px;
+  padding-right: 12px;
+  scrollbar-width: thin;
+  scrollbar-color: #b9bea9 transparent;
+}
+#chapter-list h3 {
+  font-size: 9px;
+  line-height: 1.6;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--red);
+  font-weight: 600;
+  margin: 22px 0 10px;
+}
+#chapter-list h3:first-child {
+  margin-top: 0;
+}
+.chapter-link {
+  display: flex;
+  align-items: baseline;
+  gap: 13px;
+  text-align: left;
+  font-size: 12px;
+  line-height: 1.5;
+  border: 0;
+  width: 100%;
+  background: transparent;
+  padding: 8px 6px;
+  color: var(--soft);
+}
+.chapter-link span:first-child {
+  font-size: 10px;
+  color: #9b9f90;
+  min-width: 16px;
+  font-variant-numeric: tabular-nums;
+}
+.chapter-link:hover {
+  color: var(--ink);
+  background: #e4e3d5;
+}
+.chapter-link[aria-current='page'] {
+  color: var(--ink);
+  background: #dfe2d1;
+  border-left: 2px solid var(--red);
+}
+.chapter-link[aria-current='page'] span:first-child {
+  color: var(--red);
+}
+.pack-link {
+  font-size: 11px;
+  display: flex;
+  justify-content: space-between;
+  margin: 22px 0 10px;
+  padding: 14px 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  text-decoration: none;
+}
+.pack-link span {
+  color: var(--red);
+}
+.contents-foot {
+  font-size: 10px;
+  color: var(--soft);
+  line-height: 1.8;
+}
+.lesson-page {
+  min-width: 0;
+}
+#maple-three-school {
+  scroll-margin-top: 32px;
+}
+#maple-three-school > .lesson-head:first-of-type,
+#maple-three-school > p:first-of-type,
+.lesson-select {
+  display: none !important;
+}
+.lesson-navigation {
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 17px;
+}
+.lesson-navigation #maple-stage {
+  order: -1;
+  flex: 1;
+  min-width: 200px;
+}
+.lesson-navigation button {
+  border: 0;
+  background: none;
+  padding: 4px 8px;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ink);
+}
+#maple-title {
+  font:
+    clamp(35px, 4vw, 54px)/1.09 'Libre Caslon Display',
+    Georgia,
+    serif;
+  letter-spacing: -0.025em;
+  font-weight: 400;
+  margin: 28px 0;
+}
+.view-switch {
+  display: inline-flex !important;
+  padding: 3px;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  margin: 0 0 23px !important;
+}
+.btn {
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--ink);
+  padding: 8px 14px;
+  font-size: 11px;
+  line-height: 1.5;
+  border-radius: 2px;
+}
+.view-switch .btn {
+  border: 0;
+}
+.btn[aria-pressed='true'] {
+  background: var(--ink);
+  color: var(--paper);
+}
+#maple-photo-caption {
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  color: var(--soft);
+  margin-bottom: 10px;
+}
+#maple-three-school .game-photo {
+  margin: 0 0 16px;
+}
+.game-photo {
+  border: 7px solid #f8f4ec;
+  outline: 1px solid #d2d1c3;
+}
+#maple-photo {
+  filter: saturate(0.84);
+}
+#maple-three-school .game-highlight {
+  border: 1px solid #faf1d5;
+  outline: 1px solid #a34e35;
+  box-shadow: 0 0 0 2000px #102e2814;
+}
+#maple-three-school .game-highlight span {
+  font-size: 10px;
+  padding: 2px 6px;
+}
+#maple-hotspots {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+#maple-hotspots .btn {
+  font-size: 10px;
+  padding: 7px 9px;
+}
+#maple-observation {
+  font-size: 12px;
+  line-height: 1.75;
+  color: var(--soft);
+  padding-left: 17px;
+  border-left: 2px solid #b58b5c;
+  margin: 20px 0 30px;
+}
+.lesson-copy {
+  font-size: 15px;
+  line-height: 1.9;
+}
+#maple-definition {
+  font-family: 'Libre Caslon Display', Georgia, serif;
+  font-size: 26px;
+  line-height: 1.45;
+  letter-spacing: -0.01em;
+}
+#maple-impact {
+  font-size: 13px;
+  color: var(--soft);
+  margin-top: 8px !important;
+}
+#maple-studio-detail {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 25px !important;
+  margin: 28px 0 38px !important;
+  padding-top: 22px;
+  border-top: 1px solid var(--line);
+  font-size: 12px;
+  line-height: 1.85;
+}
+#maple-studio-detail strong {
+  display: block;
+  font-size: 10px;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  margin-bottom: 5px;
+  color: var(--red);
+}
+hr {
+  border: 0;
+  border-top: 1px solid var(--line);
+  margin: 32px 0;
+}
+.lesson-head h3 {
+  font:
+    27px 'Libre Caslon Display',
+    Georgia,
+    serif;
+  font-weight: 400;
+  margin: 0;
+}
+.text-small {
+  font-size: 10px;
+}
+.text-muted {
+  color: var(--soft);
+}
+pre {
+  padding: 24px;
+  background: #263b32;
+  color: #dedfc7;
+  border-radius: 3px;
+  font:
+    12px/1.9 ui-monospace,
+    SFMono-Regular,
+    Consolas,
+    monospace;
+  tab-size: 2;
+}
+code {
+  font: inherit;
+}
+p code {
+  font:
+    11px ui-monospace,
+    monospace;
+  padding: 2px 4px;
+  background: #dce0d0;
+}
+.source-row {
+  font-size: 10px;
+  line-height: 1.8;
+}
+.source-row a {
+  color: var(--red);
+}
+.exercise {
+  font-size: 13px;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  padding: 21px 0;
+  margin: 26px 0 !important;
+}
+#maple-mechanism {
+  background: #e3e4d6;
+  border: 1px solid var(--line);
+  padding: 18px;
+  margin-bottom: 24px;
+  border-radius: 3px;
+}
+.drawing {
+  font-size: 12px;
+}
+.lesson-control {
+  font-size: 11px;
+}
+.lesson-control output {
+  float: right;
+  color: var(--red);
+  font-weight: 600;
+}
+input[type='range'] {
+  accent-color: var(--red);
+  width: 100%;
+}
+#maple-status {
+  font-size: 11px;
+  line-height: 1.7;
+  margin-top: 10px;
+}
+.skill-panel {
+  margin-top: 43px;
+  padding: 28px 30px;
+  background: #e0e1cd;
+  border: 1px solid #bec5b1;
+  border-radius: 3px;
+}
+.skill-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.skill-panel h3 {
+  font:
+    35px 'Libre Caslon Display',
+    Georgia,
+    serif;
+  font-weight: 400;
+  margin: 0 0 10px;
+}
+.skill-panel .eyebrow {
+  color: var(--red);
+  font-size: 9px;
+  margin: 0 0 9px;
+}
+.skill-symbol {
+  font:
+    50px 'Libre Caslon Display',
+    Georgia,
+    serif;
+  color: var(--red);
+}
+.skill-panel p:not(.eyebrow) {
+  font-size: 12px;
+  line-height: 1.8;
+  max-width: 580px;
+}
+.skill-actions {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  flex-wrap: wrap;
+  margin: 24px 0;
+}
+.skill-actions button {
+  background: var(--ink);
+  color: var(--paper);
+  border: 0;
+  padding: 13px 19px;
+  font-size: 11px;
+  display: flex;
+  gap: 28px;
+  border-radius: 2px;
+}
+.skill-actions a {
+  font-size: 11px;
+  cursor: pointer;
+}
+.skill-panel details > summary {
+  font-size: 11px;
+  cursor: pointer;
+  padding-top: 17px;
+  border-top: 1px solid #bac3ae;
+}
+.skill-panel pre {
+  font-size: 11px;
+  max-height: 440px;
+  overflow: auto;
+}
+.skill-panel #skill-feedback {
+  min-height: 18px;
+  margin-bottom: 0;
+  color: var(--red);
+}
+footer {
+  border-top: 1px solid var(--line);
+  max-width: none;
+  margin: auto;
+  padding: 30px 5vw;
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
+  font-size: 10px;
+  color: var(--soft);
+}
+footer a {
+  text-decoration: none;
+  color: var(--ink);
+}
+[hidden] {
+  display: none !important;
+}
+@media (min-width: 1500px) {
+  .cover-art img {
+    height: 540px;
+  }
+}
+@media (max-width: 1050px) {
+  .studio {
+    gap: 35px;
+    grid-template-columns: 220px minmax(0, 1fr);
+    padding-inline: 30px;
+  }
+  .cover {
+    padding-top: 55px;
+  }
+  .cover-art img {
+    height: 420px;
+  }
+  .masthead .thin {
+    display: none;
+  }
+  .cover-index {
+    gap: 18px;
+  }
+}
+@media (max-width: 850px) {
+  .masthead {
+    padding: 18px 22px;
+  }
+  .masthead nav {
+    gap: 16px;
+  }
+  .masthead nav a:first-child {
+    display: none;
+  }
+  .cover {
+    gap: 25px;
+    padding: 42px 25px 35px;
+  }
+  .cover h1 {
+    font-size: 67px;
+  }
+  .cover-art img {
+    height: 345px;
+  }
+  .cover-description {
+    font-size: 14px;
+  }
+  .cover-index {
+    display: block;
+    margin-top: 25px;
+  }
+  .cover-index span {
+    display: block;
+    margin: 5px 0;
+  }
+  .art-caption {
+    font-size: 8px;
+    display: block;
+  }
+  .art-caption span {
+    display: block;
+  }
+  .vertical-note {
+    right: -14px;
+    font-size: 7px;
+  }
+  .studio {
+    display: block;
+    padding: 35px 25px 55px;
+  }
+  .contents {
+    position: static;
+    margin-bottom: 35px;
+  }
+  .contents details {
+    border-bottom: 1px solid var(--line);
+    padding-bottom: 15px;
+  }
+  .contents details > summary:after {
+    content: '+';
+    font:
+      22px 'DM Sans',
+      sans-serif;
+  }
+  .contents details[open] > summary:after {
+    content: '−';
+  }
+  .contents details > summary > span {
+    margin-left: auto;
+    margin-right: 20px;
+  }
+  .contents details > summary {
+    font-size: 23px;
+    border: 0;
+    padding: 0;
+  }
+  .contents .pack-link,
+  .contents-foot {
+    display: none;
+  }
+  #chapter-list {
+    max-height: 400px;
+  }
+  .chapter-link {
+    padding: 10px 5px;
+  }
+  .chapter-ribbon {
+    font-size: 15px;
+    gap: 18px;
+  }
+  #maple-title {
+    font-size: 42px;
+  }
+  .lesson-navigation #maple-stage {
+    font-size: 9px;
+  }
+  #maple-studio-detail {
+    gap: 20px !important;
+  }
+  .lesson-page {
+    max-width: 760px;
+    margin: auto;
+  }
+}
+@media (max-width: 580px) {
+  .masthead nav a:nth-child(2) {
+    display: none;
+  }
+  .wordmark {
+    font-size: 10px;
+    gap: 9px;
+  }
+  .masthead nav {
+    font-size: 10px;
+  }
+  .cover {
+    grid-template-columns: 1fr;
+    padding: 34px 24px 28px;
+  }
+  .cover-copy {
+    position: relative;
+    z-index: 1;
+  }
+  .cover h1 {
+    font-size: 74px;
+    margin-top: 20px;
+  }
+  .cover-description {
+    max-width: 270px;
+    margin: 20px 0;
+  }
+  .cover-index {
+    display: flex;
+    gap: 24px;
+    margin-top: 27px;
+  }
+  .cover-art {
+    margin: 8px 20px 0;
+    padding: 13px 0 0 14px;
+  }
+  .cover-art img {
+    height: 285px;
+    object-position: 50% 48%;
+  }
+  .art-caption {
+    display: flex;
+    font-size: 7px;
+  }
+  .vertical-note {
+    top: 70px;
+  }
+  .chapter-ribbon {
+    gap: 12px;
+    font-size: 13px;
+    padding: 16px 8px;
+  }
+  .studio {
+    padding: 30px 20px 45px;
+  }
+  .lesson-navigation {
+    gap: 4px !important;
+  }
+  .lesson-navigation #maple-stage {
+    width: 100%;
+    flex-basis: 100%;
+    margin-bottom: 10px;
+  }
+  .lesson-navigation button:first-child {
+    padding-left: 0;
+  }
+  #maple-title {
+    font-size: 38px;
+  }
+  #maple-definition {
+    font-size: 24px;
+  }
+  #maple-studio-detail {
+    grid-template-columns: 1fr;
+    gap: 18px !important;
+  }
+  pre {
+    padding: 18px;
+    font-size: 11px;
+  }
+  #maple-hotspots .btn {
+    font-size: 9px;
+  }
+  .skill-panel {
+    padding: 23px 20px;
+  }
+  .skill-panel h3 {
+    font-size: 30px;
+  }
+  .skill-actions {
+    gap: 16px;
+  }
+  .lesson-head {
+    align-items: start !important;
+    gap: 6px !important;
+  }
+  .lesson-head h3 {
+    font-size: 25px;
+  }
+  .lesson-head span {
+    width: 100%;
+  }
+  footer {
+    padding: 25px 22px;
+    gap: 15px;
+  }
+  .game-photo {
+    border-width: 4px;
+  }
+  #maple-mechanism {
+    padding: 10px;
+  }
+  .cover-index b {
+    font-size: 21px;
+  }
+  .cover-index span {
+    font-size: 8px;
+  }
+  .eyebrow {
+    font-size: 8px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  * {
+    animation: none !important;
+    transition: none !important;
+  }
+}
 
-.diagram-heading{display:flex;justify-content:space-between;gap:12px;font:22px Georgia,serif;margin:0 0 15px}.diagram-heading span{font:10px/1.8 "DM Sans",sans-serif;color:var(--soft)}
+.diagram-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font:
+    22px Georgia,
+    serif;
+  margin: 0 0 15px;
+}
+.diagram-heading span {
+  font:
+    10px/1.8 'DM Sans',
+    sans-serif;
+  color: var(--soft);
+}
+
+/* Focused chapter activities. */
+.studio {
+  max-width: none;
+  grid-template-columns: 240px minmax(0, 1fr);
+  gap: 38px;
+  padding: 42px 32px 64px;
+}
+#maple-title {
+  margin: 20px 0 14px;
+  font-size: clamp(32px, 3.2vw, 48px);
+}
+#maple-three-school > .lesson-copy {
+  margin: 0 0 20px;
+  gap: 6px;
+  max-width: 960px;
+}
+#maple-three-school > .lesson-copy #maple-definition {
+  font:
+    17px/1.6 'DM Sans',
+    sans-serif;
+  letter-spacing: 0;
+}
+.activity-tabs {
+  display: flex;
+  gap: 6px;
+  border-bottom: 1px solid var(--line);
+  margin: 16px 0 22px;
+  overflow: auto;
+}
+.activity-tabs button {
+  flex: 1;
+  border: 0;
+  border-bottom: 3px solid transparent;
+  padding: 12px 14px;
+  background: transparent;
+  color: var(--soft);
+  font-size: 13px;
+  white-space: nowrap;
+}
+.activity-tabs button[aria-selected='true'] {
+  border-color: var(--red);
+  color: var(--ink);
+  background: #dfe2d1;
+}
+.activity-panel {
+  min-width: 0;
+  scroll-margin-top: 20px;
+}
+#maple-three-school .scene-viewport {
+  overflow: hidden;
+  position: relative;
+  aspect-ratio: 16/9;
+  margin-bottom: 12px;
+}
+.scene-plane {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+}
+#maple-three-school .scene-plane img {
+  width: 100%;
+  height: auto;
+  max-width: none;
+}
+#maple-three-school .scene-plane .game-highlight {
+  box-shadow: none;
+}
+.scene-framing {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 8px 0 12px;
+  font-size: 12px;
+}
+#maple-observation {
+  margin: 14px 0 18px;
+  font-size: 14px;
+  max-width: 900px;
+}
+.lab-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 12px 0 20px;
+}
+.lab-hint {
+  font-size: 13px;
+  line-height: 1.6;
+  max-width: 780px;
+}
+#maple-three-school #maple-mechanism .drawing {
+  height: auto;
+  aspect-ratio: auto;
+  width: 100%;
+  max-height: 360px;
+}
+#maple-three-school .lesson-control[hidden] {
+  display: none;
+}
+.concept-explanation {
+  max-width: 76ch;
+  margin: 28px 0 36px;
+}
+#maple-three-school .concept-explanation h3 {
+  font-size: 17px;
+  margin: 24px 0 8px;
+}
+#maple-three-school .concept-explanation p {
+  font-size: 16px;
+  line-height: 1.8;
+  margin: 0;
+}
+.concept-check {
+  padding: 20px;
+  background: #e3e4d6;
+  border: 1px solid var(--line);
+  margin-bottom: 24px;
+}
+.concept-check h4 {
+  font:
+    26px 'Libre Caslon Display',
+    Georgia,
+    serif;
+  margin: 0 0 10px;
+}
+.quiz-choices {
+  display: grid;
+  gap: 10px;
+}
+.quiz-choices .btn {
+  text-align: left;
+  font-size: 14px;
+  padding: 14px;
+}
+#panel-practice .skill-panel {
+  margin-top: 24px;
+}
+@media (max-width: 1050px) {
+  .studio {
+    grid-template-columns: 210px minmax(0, 1fr);
+    gap: 26px;
+    padding-inline: 24px;
+  }
+}
+@media (max-width: 850px) {
+  .studio {
+    display: block;
+    padding: 24px 20px;
+  }
+  .contents {
+    margin-bottom: 22px;
+  }
+  .lesson-page {
+    max-width: none;
+  }
+  .activity-tabs {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: var(--paper);
+  }
+  .scene-framing {
+    font-size: 11px;
+  }
+  .activity-tabs button {
+    padding: 11px 8px;
+    font-size: 12px;
+  }
+}
+.technical-name {
+  font-size: 12px;
+  color: var(--soft);
+  margin: 0 0 16px;
+}
+.technical-explanation {
+  font-size: 14px;
+  max-width: 900px;
+  line-height: 1.7;
+}
+.play-example {
+  background: var(--ink);
+  color: var(--paper);
+}
+/* Scene and experiment remain together; optional reading uses native disclosures. */
+#panel-experiment {
+  margin: 22px 0;
+}
+#panel-code,
+#panel-practice {
+  border-top: 1px solid var(--line);
+  padding: 16px 0;
+  margin: 0;
+}
+#panel-code > summary,
+#panel-practice > summary {
+  font-size: 15px;
+  cursor: pointer;
+  padding: 6px 0;
+  color: var(--ink);
+}
+#panel-code[open] > summary,
+#panel-practice[open] > summary {
+  margin-bottom: 20px;
+}
+.scene-viewport {
+  max-width: none;
+}
+.scene-framing {
+  max-width: none;
+}
+.technical-name {
+  margin-top: -6px;
+}
+
+/* Use wide displays for the scene and parallel reading sections. */
+@media (min-width: 1800px) {
+  .masthead,
+  .cover,
+  footer {
+    padding-inline: 48px;
+  }
+  .cover {
+    grid-template-columns: minmax(360px, 0.7fr) minmax(0, 1.3fr);
+    gap: 64px;
+  }
+  .studio {
+    padding-inline: 48px;
+    gap: 48px;
+  }
+  .concept-explanation {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: clamp(28px, 2vw, 64px);
+    max-width: none;
+  }
+}
+
+.extra-reading {
+  display: grid;
+  gap: 24px;
+  margin: 0 0 36px;
+  max-width: 76ch;
+}
+#maple-three-school .extra-reading h3 {
+  font-size: 17px;
+  margin: 0 0 8px;
+}
+#maple-three-school .extra-reading p {
+  font-size: 16px;
+  line-height: 1.8;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.reading-references {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  grid-column: 1 / -1;
+}
+@media (min-width: 1800px) {
+  .extra-reading {
+    max-width: none;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 32px 48px;
+  }
+}
+@media (max-width: 850px) {
+  .contents {
+    position: sticky;
+    top: 0;
+    z-index: 8;
+    padding: 12px 0 0;
+    background: var(--paper);
+  }
+  #chapter-list {
+    max-height: 45svh;
+    overscroll-behavior: contain;
+  }
+  #concept-search {
+    font-size: 16px;
+    min-height: 44px;
+  }
+  #maple-three-school {
+    scroll-margin-top: 88px;
+  }
+  .chapter-link,
+  #maple-three-school .btn,
+  .skill-actions button,
+  .skill-actions a,
+  #panel-code > summary,
+  #panel-practice > summary,
+  .contents details > summary {
+    min-height: 44px;
+  }
+  #maple-three-school .btn {
+    padding: 12px;
+    font-size: 14px;
+    white-space: normal;
+  }
+  .scene-framing {
+    flex-wrap: wrap;
+    font-size: 13px;
+  }
+  .scene-framing span {
+    flex: 1 1 180px;
+  }
+  .diagram-heading {
+    flex-wrap: wrap;
+    gap: 4px 12px;
+  }
+  #maple-three-school pre {
+    white-space: pre;
+    overflow-wrap: normal;
+    overflow-x: auto;
+    max-width: 100%;
+    font-size: 13px;
+    line-height: 1.7;
+    overscroll-behavior-x: contain;
+  }
+  .source-row,
+  .technical-name,
+  #maple-photo-caption {
+    font-size: 12px;
+    overflow-wrap: anywhere;
+  }
+  .skill-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .cover h1 {
+    font-size: clamp(54px, 15vw, 74px);
+  }
+}
+
+.example-settings {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.live-game {
+  border-top: 1px solid var(--line);
+  margin-top: 24px;
+  padding-top: 20px;
+}
+#maple-three-school .live-game h3 {
+  font-size: 22px;
+  margin: 0 0 10px;
+}
+.live-game > p {
+  max-width: 76ch;
+  font-size: 15px;
+  line-height: 1.7;
+}
+.live-game-viewport {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background: #243b32;
+  margin-top: 16px;
+}
+.live-game-frame {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+.live-controls {
+  border: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 12px;
+}
+.live-controls legend {
+  margin-bottom: 12px;
+  font-size: 15px;
+}
+.live-controls label {
+  display: grid;
+  gap: 6px;
+  font-size: 13px;
+  flex: 1 1 130px;
+}
+.live-controls select {
+  min-height: 44px;
+  width: 100%;
+  padding: 8px;
+  border: 1px solid var(--line);
+  color: var(--ink);
+  background: var(--paper);
+  font: inherit;
+  font-size: 16px;
+}
+@media (max-width: 580px) {
+  .live-game-viewport {
+    aspect-ratio: 4 / 3;
+  }
+  .live-controls label {
+    flex-basis: calc(50% - 12px);
+    min-width: 0;
+  }
+}
+.diagram-disclosure {
+  margin-top: 24px;
+  border-top: 1px solid var(--line);
+  padding-top: 12px;
+}
+.diagram-disclosure > summary {
+  cursor: pointer;
+  min-height: 44px;
+  display: list-item;
+  padding: 12px 0;
+  font-size: 15px;
+}
+.diagram-disclosure[open] > summary {
+  margin-bottom: 12px;
+}
+
+.lesson-stage {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
+  align-items: start;
+  margin: 20px 0 32px;
+}
+.lesson-introduction {
+  min-width: 0;
+}
+#maple-three-school .lesson-introduction .lesson-copy {
+  display: grid;
+  gap: 14px;
+  margin: 20px 0;
+  max-width: 70ch;
+}
+#maple-three-school .lesson-introduction #maple-definition {
+  font:
+    18px/1.7 'DM Sans',
+    sans-serif;
+  letter-spacing: 0;
+}
+#maple-three-school .lesson-introduction #maple-impact {
+  font-size: 15px;
+  line-height: 1.7;
+}
+.lesson-stage #panel-experiment {
+  min-width: 0;
+  margin: 0;
+}
+.lesson-stage .live-game {
+  margin-top: 0;
+  padding-top: 20px;
+}
+.reference-disclosure {
+  border-top: 1px solid var(--line);
+  margin: 0;
+  padding: 16px 0;
+}
+.reference-disclosure > summary {
+  cursor: pointer;
+  min-height: 44px;
+  padding: 12px 0;
+  font-size: 15px;
+}
+.reference-disclosure[open] > summary {
+  margin-bottom: 16px;
+}
+@media (min-width: 1400px) {
+  .lesson-stage {
+    grid-template-columns: minmax(270px, 0.65fr) minmax(0, 1.65fr);
+    gap: clamp(28px, 3vw, 72px);
+  }
+  .lesson-stage #maple-title {
+    font-size: clamp(32px, 2.6vw, 48px);
+    margin-top: 0;
+  }
+  .lesson-stage .live-game {
+    border-top: 0;
+    padding-top: 0;
+  }
+}
+
+.mobile-chapter-bar {
+  display: none;
+}
+.chapter-drawer {
+  position: fixed;
+  inset: 0 auto 0 0;
+  margin: 0;
+  border: 0;
+  border-right: 1px solid var(--line);
+  width: min(88vw, 360px);
+  max-width: none;
+  height: 100dvh;
+  max-height: none;
+  padding: 24px 20px;
+  background: var(--paper);
+  color: var(--ink);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.chapter-drawer::backdrop {
+  background: rgb(19 37 29 / 48%);
+}
+.chapter-drawer h2 {
+  font:
+    30px Georgia,
+    serif;
+  margin: 0 0 14px;
+}
+.drawer-close,
+.mobile-chapter-bar button {
+  min-height: 44px;
+  padding: 10px 16px;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  color: var(--ink);
+  font:
+    15px 'DM Sans',
+    sans-serif;
+  cursor: pointer;
+}
+.drawer-close {
+  margin-bottom: 12px;
+  width: 100%;
+}
+.chapter-drawer .contents {
+  position: static;
+  margin: 0;
+  padding: 0;
+}
+.chapter-drawer .contents details > summary {
+  display: none;
+}
+.chapter-drawer #chapter-list {
+  max-height: none;
+  overflow: visible;
+}
+.chapter-drawer .contents .pack-link {
+  display: block;
+}
+body:has(.chapter-drawer[open]) {
+  overflow: hidden;
+}
+@media (max-width: 850px) {
+  .mobile-chapter-bar {
+    display: flex;
+    position: sticky;
+    top: 0;
+    z-index: 8;
+    background: var(--paper);
+    padding: 8px 0;
+    margin-bottom: 16px;
+    border-bottom: 1px solid var(--line);
+  }
+}
+
+.demo-panel {
+  border: 1px solid var(--line);
+  background: rgb(255 255 255 / 16%);
+  padding: 18px;
+}
+.demo-tabs {
+  display: flex;
+  gap: 6px;
+  padding-bottom: 16px;
+  margin-bottom: 20px;
+  border-bottom: 1px solid var(--line);
+}
+.demo-tabs button {
+  flex: 1;
+  min-height: 44px;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  color: var(--ink);
+  padding: 10px 12px;
+  font:
+    14px 'DM Sans',
+    sans-serif;
+  cursor: pointer;
+}
+.demo-tabs button[aria-selected='true'] {
+  background: var(--ink);
+  color: var(--paper);
+}
+.demo-panel .live-game {
+  border: 0;
+  padding: 0;
+}
+.mobile-chapter-steps {
+  display: none;
+}
+@media (max-width: 850px) {
+  body {
+    padding-bottom: calc(76px + env(safe-area-inset-bottom));
+  }
+  .mobile-chapter-steps {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    gap: 12px;
+    position: fixed;
+    inset: auto 0 0;
+    z-index: 9;
+    border-top: 1px solid var(--line);
+    padding: 10px 16px calc(10px + env(safe-area-inset-bottom));
+    background: var(--paper);
+  }
+  .mobile-chapter-steps button {
+    min-height: 44px;
+    border: 1px solid var(--line);
+    padding: 10px;
+    background: var(--paper);
+    color: var(--ink);
+    font:
+      15px 'DM Sans',
+      sans-serif;
+  }
+  .mobile-chapter-steps button:disabled {
+    opacity: 0.4;
+  }
+  .mobile-chapter-steps span {
+    font-size: 13px;
+  }
+  #maple-three-school > .lesson-navigation {
+    display: none;
+  }
+  .demo-panel {
+    padding: 12px;
+  }
+}
+/* Keep the explanation and the experiment in the same desktop viewport. */
+.lesson-introduction .concept-explanation {
+  display: block;
+  max-width: none;
+  margin: 20px 0 0;
+}
+#maple-three-school .lesson-introduction .concept-explanation p {
+  font-size: 15px;
+  line-height: 1.7;
+}
+#maple-three-school .lesson-introduction .concept-explanation h3 {
+  margin-top: 20px;
+  font-size: 16px;
+}
+.chapter-live-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  width: 100%;
+}
+.live-controls > strong,
+.chapter-control-hint {
+  flex-basis: 100%;
+  margin: 0;
+}
+.chapter-control-hint,
+.mouse-hint {
+  font-size: 13px;
+  line-height: 1.5;
+}
+.live-controls > legend {
+  display: none;
+}
+.more-scene-controls {
+  flex-basis: 100%;
+}
+.more-scene-controls summary {
+  min-height: 44px;
+  padding: 12px 0;
+  font-size: 14px;
+  cursor: pointer;
+}
+.live-snapshot {
+  max-height: 260px;
+  overflow: auto;
+}
+@media (min-width: 1100px) {
+  .lesson-stage {
+    grid-template-columns: minmax(300px, 0.9fr) minmax(0, 1.3fr);
+    gap: clamp(24px, 2vw, 48px);
+  }
+  .lesson-stage #panel-experiment {
+    position: sticky;
+    top: 24px;
+  }
+  .demo-panel {
+    max-height: calc(100dvh - 48px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+  .live-game-viewport {
+    aspect-ratio: auto;
+    height: clamp(230px, 38dvh, 460px);
+  }
+  .live-game > p:first-of-type {
+    display: none;
+  }
+  #maple-three-school .lesson-stage #maple-title {
+    margin-top: 0;
+    font-size: clamp(30px, 2.3vw, 44px);
+  }
+}
+
+.lesson-overview {
+  padding: 20px 0 12px;
+}
+.lesson-overview .lesson-copy {
+  max-width: 90ch;
+}
+#maple-three-school .lesson-overview #maple-definition {
+  font:
+    18px/1.6 'DM Sans',
+    sans-serif;
+  letter-spacing: 0;
+}
+#maple-three-school .lesson-overview #maple-impact {
+  font-size: 15px;
+  line-height: 1.6;
+}
+.lesson-stage > .concept-explanation {
+  display: block;
+  max-width: none;
+  margin: 0;
+}
+.lesson-stage > .concept-explanation section {
+  padding: 18px 0;
+  border-top: 1px solid var(--line);
+}
+#maple-three-school .lesson-stage .concept-explanation h3 {
+  margin: 0 0 10px;
+}
+#maple-three-school .lesson-stage .concept-explanation p {
+  font-size: 16px;
+  line-height: 1.75;
+}
+.agent-workflow {
+  padding: 24px;
+  border: 1px solid var(--line);
+  background: #e5e7dc;
+}
+.agent-workflow h4 {
+  font-size: 14px;
+  margin: 24px 0 8px;
+}
+#maple-three-school .agent-workflow pre {
+  font-size: 13px;
+  line-height: 1.65;
+}
+#maple-three-school .agent-workflow .agent-question {
+  font-size: 18px;
+  font-family: Georgia, serif;
+}
+.extra-reading:has(.agent-workflow) {
+  max-width: none;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 360px), 1fr));
+  align-items: start;
+}
+@media (min-width: 1400px) {
+  .lesson-overview {
+    display: grid;
+    grid-template-columns: minmax(300px, 0.9fr) minmax(0, 1.3fr);
+    column-gap: clamp(24px, 2vw, 48px);
+    align-items: start;
+  }
+  .lesson-overview #maple-title {
+    margin-top: 0;
+    font-size: 36px;
+  }
+  .lesson-overview .technical-name {
+    grid-column: 1;
+  }
+  .lesson-overview .lesson-copy {
+    grid-column: 2;
+    grid-row: 1 / 3;
+    margin: 0;
+  }
+}
+@media (max-width: 1099px) {
+  .lesson-stage {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+  .lesson-stage > * {
+    width: 100%;
+  }
+  .lesson-stage #panel-experiment {
+    order: -1;
+  }
+}
+.chapter-live-presets button[aria-pressed='true'] {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.live-status:empty {
+  display: none;
+}
+.control-help {
+  flex-basis: 100%;
+  font-size: 13px;
+}
+.control-help summary {
+  cursor: pointer;
+  padding: 8px 0;
+}
+.control-help strong {
+  display: block;
+  margin: 8px 0;
+}
+@media (max-width: 850px) {
+  .demo-tabs {
+    margin-bottom: 10px;
+    padding-bottom: 10px;
+  }
+  .live-game-viewport {
+    height: clamp(250px, 45svh, 420px);
+    aspect-ratio: auto;
+  }
+  .mouse-hint {
+    margin: 6px 0 10px;
+    font-size: 12px;
+  }
+}
+.live-game-viewport.show-crosshair {
+  position: relative;
+}
+.live-game-viewport.show-crosshair::after {
+  content: '+';
+  position: absolute;
+  inset: 50% auto auto 50%;
+  transform: translate(-50%, -50%);
+  color: white;
+  text-shadow: 0 0 3px black;
+  font: 28px monospace;
+  pointer-events: none;
+}
+@media (max-width: 850px) {
+  .lesson-overview,
+  .demo-panel,
+  .demo-tabs {
+    scroll-margin-top: 70px;
+  }
+}

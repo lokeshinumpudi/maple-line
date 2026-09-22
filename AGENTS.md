@@ -19,3 +19,12 @@ Read [README.md](README.md) for current features and limits. For implementation 
 ## Browser sessions
 
 Use the dedicated Chrome Agent session on port 9229 when available. Leave everyday Chrome and port 9222 alone unless the user explicitly requests them. Select the game tab before running game commands; do not close unrelated tabs. The Codex in-app game tab can also be used through its supported browser tools.
+
+## Publishing identity and destinations
+
+Maple Line has two editions of the same project. Preserve this distinction in every build and publication:
+
+- Internal: publish the game and runbook through the Signal Ship platform at `/s/maple-line/` and `/s/maple-line-runbook/` on `signal-ship.internal.loophealth.com`. Internal guide/game backlinks stay on Signal; author credits link to `signal.internal.loophealth.com`.
+- Personal: publish the game at `https://lokeshinumpudi.com/maple-line/` and the guide at `https://lokeshinumpudi.com/maple-line-runbook/`. Public guide/game backlinks and author credits use the personal domain. Use the personal GitHub account `lokeshinumpudi`, SSH host `github-personal`, and repositories `lokeshinumpudi/maple-line` and `lokeshinumpudi/website`.
+- Signal hosting does not imply moving source to the work GitHub account. Keep source ownership and hosting target separate. Never upload local credentials or environment files.
+- Existing Signal sites must receive additive/file-update patches; do not replace them with a deployment that deletes stored objects. See `docs/HOSTING.md` for the build commands and verification steps.

@@ -1,5 +1,13 @@
 /** Declarative development tools. No source evaluation or arbitrary network/file access. */
-export function registerBuildTools({ tool, builder, storage, sampleRoute, art, performance }) {
+export function registerBuildTools({
+  tool,
+  builder,
+  storage,
+  sampleRoute,
+  art,
+  performance,
+  profile,
+}) {
   const object = (properties, required = []) => ({
     type: 'object',
     properties,
@@ -89,6 +97,14 @@ export function registerBuildTools({ tool, builder, storage, sampleRoute, art, p
       object({ durationSeconds: number(1, 10) }),
       true,
       async ({ durationSeconds = 3 }) => performance.measure(durationSeconds),
+    );
+  if (profile)
+    tool(
+      'get_runtime_profile',
+      'Read this browser’s CPU, memory, display, GPU, and renderer limits without changing the game. Use it before measure_game_performance so a sample can be compared on the same machine. Missing APIs are null. Memory figures are JS-heap bytes, origin-storage bytes, or object counts, not GPU memory.',
+      object({}),
+      true,
+      () => profile(),
     );
   tool(
     'get_build_catalog',

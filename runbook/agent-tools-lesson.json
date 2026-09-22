@@ -1,0 +1,39 @@
+{
+  "title": "MCP tools: world exploration and performance",
+  "stage": "Studio · 6. Give agents useful tools",
+  "visual": "agentTools",
+  "kind": "studio",
+  "studio": true,
+  "initial": 0,
+  "label": "Follow the tool request",
+  "definition": "An agent tool is a named function with a description, checked inputs and a structured result. MCP connects agent applications to tool providers. Maple Line uses browser-side WebMCP tools over its live development inspector.",
+  "impact": "Treat the tool layer like an API for questions about the running game: small responses, explicit units, useful errors and the same application rules as the player interface.",
+  "present": "The development game exposes world snapshots, object search and inspection, route sampling, a runtime profile and bounded performance measurements. Native browser registration depends on the browser; a page-local fallback uses the same validated handlers.",
+  "next": "Add a focused diagnostic tool only when an agent question cannot be answered by the existing readers. Start with a compact read-only response and test its input limits before adding any mutation.",
+  "accept": "Reject unknown fields and invalid measurement durations. Verify object lookup, empty results, unavailable browser information and registry disposal. Compare measurement context before drawing conclusions about performance.",
+  "tradeoff": "Large snapshots consume time and context. Frequent inspection can itself add work. Read-only annotations describe intent; executor validation and application rules enforce behavior.",
+  "values": [
+    "Ask a specific question",
+    "Check the input",
+    "Read the live game",
+    "Return useful evidence"
+  ],
+  "steps": [
+    "Choose a named tool and arguments.",
+    "Reject arguments outside the tool contract.",
+    "Read state or collect a bounded timing sample.",
+    "Return the result with context and limits."
+  ],
+  "sample": "// In the local development game, after tool startup:\n// This facade is page-local; it is not a remote MCP server.\nawait window.mapleWebMCP.ready;\nconst tools = window.mapleWebMCP;\nconsole.log(tools.mode); // Check native registration versus fallback.\n\nconst world = await tools.invoke('get_world_state', {});\nconst matches = await tools.invoke('find_objects', { query: 'train' });\n// Read matches.content[0].text, then use a returned UUID:\n// await tools.invoke('inspect_object', { query: returnedUuid });\nconst profile = await tools.invoke('get_runtime_profile', {});\nconst timing = await tools.invoke('measure_game_performance', {\n  durationSeconds: 3,\n});\n// Each result has content; check isError before reading the payload.\n// Timing is observed frame/CPU work, not a direct GPU measurement.\nconsole.log({ world, matches, profile, timing });",
+  "file": "apps/game/src/agent/build-tools.js",
+  "source": "apps/game/src/agent/build-tools.js; apps/game/src/agent/webmcp.js",
+  "start": 93,
+  "end": 101,
+  "ref": 0,
+  "asset": "train",
+  "observation": "The picture shows the train and scenery an agent may inspect. A screenshot cannot reveal current speed, object identity or frame timing by itself. The development tools answer those questions from the running game; the experiment below is an illustration, not a connection to a live game.",
+  "docUrl": "https://developer.chrome.com/docs/ai/webmcp/imperative-api",
+  "docLabel": "Browser WebMCP tools",
+  "exercise": "Try next: in the local development game, read world state, find a carriage, inspect its returned UUID, then collect a three-second performance sample. Explain what the data proves and what still needs a visual check.",
+  "sourceCode": "  if (performance)\n    tool(\n      'measure_game_performance',\n      'Measure live rendering for 1–10 seconds without changing gameplay. Reports observed FPS, median/p95 frame and CPU times, frames over20ms, all-pass draw/triangle averages, resolution, camera and route context. CPU timing is not GPU timing.',\n      object({ durationSeconds: number(1, 10) }),\n      true,\n      async ({ durationSeconds = 3 }) => performance.measure(durationSeconds),\n    );\n  if (profile)"
+}

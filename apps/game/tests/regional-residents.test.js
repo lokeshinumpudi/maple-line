@@ -41,6 +41,51 @@ test('all routines remain on platform clear of railway and target stable props',
   assert.equal(residentPose(cast[6], 100).z, 3);
   assert.equal(residentPose(cast[3], 5).z, residentPose(cast[4], 5).z);
 });
+test('village errands follow the lane and garden path and shelter without teleporting', () => {
+  const village = { ...stop, theme: 'farmland' };
+  const cast = stationResidents(village);
+  const vendor = cast.find((resident) => resident.role === 'vendor');
+  const neighbour = cast.find((resident) => resident.index === 2);
+  const context = { theme: 'farmland', weather: 'clear' };
+  assert.notDeepEqual(
+    [residentPose(vendor, 0, context).x, residentPose(vendor, 0, context).z],
+    [residentPose(neighbour, 0, context).x, residentPose(neighbour, 0, context).z],
+  );
+  for (const resident of [vendor, neighbour]) {
+    for (let time = 0; time < 600; time += 0.25) {
+      const pose = residentPose(resident, time, context);
+      const next = residentPose(resident, time + 0.25, context);
+      assert.equal(pose.frame, 'street');
+      assert.ok(pose.x >= 10 && pose.x <= 58);
+      assert.ok(pose.z >= -78 && pose.z <= 78);
+      assert.ok(Math.hypot(pose.x - next.x, pose.z - next.z) < 0.35);
+      const wet = residentPose(resident, time, { ...context, weather: 'rain' });
+      assert.ok(wet.x >= 28 && Math.abs(Math.abs(wet.z) - 78) < 5);
+      assert.match(wet.activity, /eaves|doorway/);
+    }
+  }
+  assert.ok(residentPose(cast[0], 40, context).x < 8);
+  const parent = new THREE.Group();
+  const people = createRegionalResidents({
+    THREE,
+    parent,
+    stop: village,
+    local: (x, y, z) => new THREE.Vector3(x, y, z),
+    place: (x, z) => new THREE.Vector3(x, 2, z),
+  });
+  let away = null;
+  for (let time = 0.1; time < 80 && !away; time += 0.1) {
+    people.update(time, { weather: 'clear' });
+    const pose = people.getState().residents.find((resident) => resident.role === 'vendor');
+    if (pose.x < 40 && Math.abs(pose.z) < 70) away = { time, ...pose };
+  }
+  assert.ok(away, 'vendor leaves the doorway');
+  people.update(away.time + 0.1, { weather: 'snow' });
+  const sheltered = people.getState().residents.find((resident) => resident.role === 'vendor');
+  assert.ok(Math.hypot(sheltered.x - away.x, sheltered.z - away.z) < 0.2);
+  assert.equal(sheltered.activity, 'walking toward shelter');
+  people.dispose();
+});
 test('resident batch counts stay bounded and geometry is removed on disposal', () => {
   const parent = new THREE.Group();
   const people = createRegionalResidents({

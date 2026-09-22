@@ -14,6 +14,7 @@ export function soundMix({
   view = 'scenic',
   trainDistance = 0,
   riverDistance = Infinity,
+  riverIntensity = 1, // scene-context.js: 1 for rivers, lower for still lakes and marsh
   peopleDistance = Infinity,
   walkingDistance = Infinity,
   forest = 1,
@@ -40,7 +41,7 @@ export function soundMix({
     brake: train * clamp(brake) * Math.min(1, Math.abs(speed) / 2) * 0.038,
     wind: exterior * (0.012 + clamp(wind / 15) * 0.035 + motion * 0.012),
     forest: exterior * clamp(forest) * (winter ? 0.007 : 0.018) * (0.25 + clamp(wind / 10) * 1.5),
-    river: exterior * Math.exp(-Math.max(0, riverDistance) / 60) * 0.26,
+    river: exterior * clamp(riverIntensity) * Math.exp(-Math.max(0, riverDistance) / 60) * 0.26,
     rain: exterior * (weather === 'rain' ? 0.23 : 0),
     roofRain: cab && weather === 'rain' && !inTunnel ? 0.065 : 0,
     snow: exterior * (weather === 'snow' ? 0.075 : 0),

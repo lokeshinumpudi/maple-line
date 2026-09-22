@@ -1695,6 +1695,83 @@ body:not(.playing) #places-picker #create-world {
     flex-wrap: wrap;
   }
 }
+#mobile-landing-meta {
+  display: none;
+  margin: 0;
+}
+@media (max-width: 700px) {
+  body:not(.playing) .simple-header-actions,
+  body:not(.playing) .intro > .eyebrow,
+  body:not(.playing) .intro > h2,
+  body:not(.playing) .intro > p,
+  body:not(.playing) .welcome-note,
+  body:not(.playing) .game-credit,
+  body:not(.playing) .welcome-sound,
+  body:not(.playing) .runbook-link,
+  body:not(.playing) #welcome-create-world {
+    display: none;
+  }
+  body:not(.playing) header {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+    inset: max(16px, env(safe-area-inset-top)) 20px auto 20px;
+  }
+  body:not(.playing) .brand h1 {
+    font-size: 22px;
+  }
+  #mobile-landing-meta {
+    display: none;
+  }
+  body:not(.playing) #mobile-landing-meta:not([hidden]) {
+    display: flex;
+    gap: 8px;
+    margin: 0;
+    color: #e7ecdf;
+    font-size: 11px;
+    letter-spacing: 0.04em;
+    text-shadow: 0 2px 12px #102523;
+  }
+  body:not(.playing) #mobile-landing-meta span + span::before {
+    content: '·';
+    margin-right: 8px;
+    color: var(--accent);
+  }
+  body:not(.playing) .vignette {
+    background: linear-gradient(180deg, #10252340, transparent 14%);
+  }
+  body:not(.playing) .intro {
+    left: 0;
+    right: 0;
+    bottom: max(16px, env(safe-area-inset-bottom));
+    width: auto;
+    max-height: none;
+    overflow: visible;
+    padding: 0 20px;
+    display: flex;
+    justify-content: center;
+  }
+  body:not(.playing) .welcome-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    align-items: stretch;
+    width: min(420px, 100%);
+    gap: 8px;
+  }
+  body:not(.playing) .welcome-actions :is(#start, #start-story) {
+    width: 100%;
+    min-width: 0;
+    min-height: 48px;
+    margin: 0;
+    justify-content: center;
+    text-align: center;
+    border-radius: 24px;
+    gap: 8px;
+    white-space: nowrap;
+    font-size: 13px;
+  }
+}
 @media (prefers-reduced-motion: reduce) {
   .place-card {
     transition: none;
@@ -1737,4 +1814,9 @@ body:not(.playing) #places-picker #create-world {
 .game-credits a {
   color: inherit;
   text-underline-offset: 3px;
+}
+
+/* Runbook embeds expose their controls in the parent page. */
+body.embedded-game > :not(canvas):not(script):not(style) {
+  display: none !important;
 }

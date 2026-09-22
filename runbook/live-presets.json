@@ -1,0 +1,904 @@
+[
+  {
+    "title": "Compare viewpoints",
+    "hint": "The same world stays in place while the camera changes.",
+    "options": [
+      {
+        "label": "Look around",
+        "config": {
+          "camera": "scenic"
+        }
+      },
+      {
+        "label": "Driver seat",
+        "config": {
+          "camera": "cab"
+        }
+      },
+      {
+        "label": "Passenger seat",
+        "config": {
+          "camera": "passenger"
+        }
+      }
+    ]
+  },
+  {
+    "title": "Reveal the triangles",
+    "hint": "Wireframe exposes the geometry; the shaded view restores its materials.",
+    "options": [
+      {
+        "label": "Plain shapes",
+        "config": {
+          "surface": "clay"
+        }
+      },
+      {
+        "label": "Show triangles",
+        "config": {
+          "surface": "wireframe"
+        }
+      },
+      {
+        "label": "Game materials",
+        "config": {
+          "surface": "materials"
+        }
+      }
+    ],
+    "initial": {
+      "focus": "train",
+      "isolation": "subject"
+    }
+  },
+  {
+    "title": "Inspect direction and placement",
+    "hint": "The camera faces the bridge and valley. Remove colors to read the beams and hills, show their triangles, or color each surface by the direction it faces. Drag to inspect another angle.",
+    "options": [
+      {
+        "label": "Plain bridge and hills",
+        "config": {
+          "surface": "clay"
+        }
+      },
+      {
+        "label": "Structure triangles",
+        "config": {
+          "surface": "wireframe"
+        }
+      },
+      {
+        "label": "Surface directions",
+        "config": {
+          "surface": "normals"
+        }
+      },
+      {
+        "label": "Game materials",
+        "config": {
+          "surface": "materials"
+        }
+      }
+    ],
+    "initial": {
+      "focus": "bridge",
+      "location": "bridge",
+      "isolation": "subject",
+      "surface": "clay",
+      "fogDensity": 0
+    }
+  },
+  {
+    "title": "Watch the grouped train move",
+    "hint": "Play the train, then orbit around it to see the carriage parts travel together.",
+    "options": [
+      {
+        "label": "Moving train",
+        "config": {
+          "paused": false
+        }
+      },
+      {
+        "label": "Pause and inspect",
+        "config": {
+          "paused": true
+        }
+      }
+    ],
+    "initial": {
+      "focus": "train"
+    }
+  },
+  {
+    "title": "Read the terrain grid",
+    "hint": "Only terrain remains visible. Plain shading reveals the hill shapes; triangles expose the mesh; direction colors show which way each slope faces.",
+    "options": [
+      {
+        "label": "Plain hillside",
+        "config": {
+          "surface": "clay"
+        }
+      },
+      {
+        "label": "Terrain triangles",
+        "config": {
+          "surface": "wireframe"
+        }
+      },
+      {
+        "label": "Slope directions",
+        "config": {
+          "surface": "normals"
+        }
+      },
+      {
+        "label": "Game materials",
+        "config": {
+          "surface": "materials"
+        }
+      }
+    ],
+    "initial": {
+      "focus": "terrain",
+      "location": "bridge",
+      "isolation": "subject",
+      "fogDensity": 0
+    }
+  },
+  {
+    "title": "Compare train surface roughness",
+    "hint": "These presets change the roughness of opaque train materials under the same light.",
+    "options": [
+      {
+        "label": "Smooth paint",
+        "config": {
+          "roughness": 0.08
+        }
+      },
+      {
+        "label": "Rough paint",
+        "config": {
+          "roughness": 0.9
+        }
+      },
+      {
+        "label": "Game materials",
+        "config": {
+          "roughness": null
+        }
+      }
+    ],
+    "initial": {
+      "focus": "train"
+    }
+  },
+  {
+    "title": "Compare generated ground, rock and wood textures",
+    "hint": "Switch the original valley\u2019s generated ground, rock and tree-trunk color detail off and on. These textures use world position. UV coordinates and normal maps are explained separately in the diagram.",
+    "options": [
+      {
+        "label": "Plain surface colors",
+        "config": {
+          "textureDetail": false
+        }
+      },
+      {
+        "label": "Generated texture detail",
+        "config": {
+          "textureDetail": true
+        }
+      }
+    ],
+    "initial": {
+      "focus": "forest",
+      "location": "terraces",
+      "textureDetail": true,
+      "windStrength": 0
+    }
+  },
+  {
+    "title": "Compare cast shadows",
+    "hint": "Switch the real shadow renderer on and off while keeping the scene unchanged.",
+    "options": [
+      {
+        "label": "With shadows",
+        "config": {
+          "shadows": true
+        }
+      },
+      {
+        "label": "Without shadows",
+        "config": {
+          "shadows": false
+        }
+      }
+    ],
+    "initial": {
+      "focus": "bridge",
+      "location": "bridge",
+      "fogDensity": 0
+    }
+  },
+  {
+    "title": "Try a different lens",
+    "hint": "Field of view changes how much of the world fits into the same camera position.",
+    "options": [
+      {
+        "label": "Narrow view",
+        "config": {
+          "fov": 35
+        }
+      },
+      {
+        "label": "Wide view",
+        "config": {
+          "fov": 90
+        }
+      },
+      {
+        "label": "Default lens",
+        "config": {
+          "fov": null
+        }
+      }
+    ],
+    "initial": {
+      "focus": "train"
+    }
+  },
+  {
+    "title": "Follow the bend",
+    "hint": "Watch the carriages follow the route, then stop to inspect their different headings.",
+    "options": [
+      {
+        "label": "Ride the curve",
+        "config": {
+          "paused": false,
+          "camera": "scenic"
+        }
+      },
+      {
+        "label": "Stop here",
+        "config": {
+          "paused": true
+        }
+      }
+    ],
+    "initial": {
+      "focus": "train"
+    }
+  },
+  {
+    "title": "Observe time-based movement",
+    "hint": "Play and pause the actual train. This does not artificially change the browser frame rate.",
+    "options": [
+      {
+        "label": "Play movement",
+        "config": {
+          "paused": false
+        }
+      },
+      {
+        "label": "Pause movement",
+        "config": {
+          "paused": true
+        }
+      }
+    ]
+  },
+  {
+    "title": "Inspect repeated scenery",
+    "hint": "Visit repeated vegetation, then reveal its triangles. This does not turn instancing off.",
+    "options": [
+      {
+        "label": "Forest surfaces",
+        "config": {
+          "location": "terraces",
+          "wireframe": false
+        }
+      },
+      {
+        "label": "Repeated triangles",
+        "config": {
+          "wireframe": true
+        }
+      }
+    ],
+    "initial": {
+      "focus": "forest",
+      "location": "terraces"
+    }
+  },
+  {
+    "title": "Watch the tree shader bend branches",
+    "hint": "These settings change the wind strength used by the actual tree vertex shader. The train stays still while the leaves and branches move.",
+    "options": [
+      {
+        "label": "Still branches",
+        "config": {
+          "windStrength": 0
+        }
+      },
+      {
+        "label": "Gentle wind",
+        "config": {
+          "windStrength": 0.7
+        }
+      },
+      {
+        "label": "Stronger wind",
+        "config": {
+          "windStrength": 3
+        }
+      }
+    ],
+    "initial": {
+      "focus": "forest",
+      "location": "terraces",
+      "windStrength": 0.7
+    }
+  },
+  {
+    "title": "Build the water picture one layer at a time",
+    "hint": "The camera looks directly at the river. Each button changes the actual water shader: depth colors the riverbed, reflections add the surroundings, and ripples bend the reflected light. Drag or zoom to inspect the surface.",
+    "options": [
+      {
+        "label": "Riverbed",
+        "config": {
+          "waterReflection": 0,
+          "waterDepth": 0,
+          "waterRipples": 0,
+          "waterFoam": 0
+        }
+      },
+      {
+        "label": "Depth color",
+        "config": {
+          "waterReflection": 0,
+          "waterDepth": 1,
+          "waterRipples": 0,
+          "waterFoam": 0
+        }
+      },
+      {
+        "label": "Add reflections",
+        "config": {
+          "waterReflection": 1,
+          "waterDepth": 1,
+          "waterRipples": 0,
+          "waterFoam": 0
+        }
+      },
+      {
+        "label": "Full water",
+        "config": {
+          "waterReflection": 1,
+          "waterDepth": 1,
+          "waterRipples": 1,
+          "waterFoam": 1
+        }
+      },
+      {
+        "label": "Stronger ripples",
+        "config": {
+          "waterReflection": 1,
+          "waterDepth": 1,
+          "waterRipples": 2.5,
+          "waterFoam": 1
+        }
+      }
+    ],
+    "initial": {
+      "focus": "water",
+      "location": "gorge",
+      "camera": "scenic",
+      "waterSpeed": 1,
+      "waterReflection": 1,
+      "waterDepth": 1,
+      "waterRipples": 1,
+      "waterFoam": 1
+    }
+  },
+  {
+    "title": "Change the weather",
+    "hint": "These controls change the game atmosphere and precipitation.",
+    "options": [
+      {
+        "label": "Clear",
+        "config": {
+          "weather": "clear"
+        }
+      },
+      {
+        "label": "Rain",
+        "config": {
+          "weather": "rain"
+        }
+      },
+      {
+        "label": "Snow",
+        "config": {
+          "weather": "snow"
+        }
+      }
+    ]
+  },
+  {
+    "title": "Aim a ray at the scene",
+    "hint": "Drag the scene until an object sits under the crosshair. Inspect crosshair casts a real ray from the camera and reports the nearest visible mesh, its hit point and its distance. Instanced objects also report a copy number.",
+    "options": [
+      {
+        "label": "Orbit scene",
+        "config": {
+          "camera": "scenic"
+        }
+      },
+      {
+        "label": "Look from cab",
+        "config": {
+          "camera": "cab"
+        }
+      }
+    ],
+    "initial": {
+      "focus": "train",
+      "location": "gorge"
+    }
+  },
+  {
+    "title": "Change how far scenery batches are drawn",
+    "hint": "This changes the distance cutoff for the original valley\u2019s repeated scenery. Read live scene state to compare visible batches. The extended route has its own chunk loader; this does not change it.",
+    "options": [
+      {
+        "label": "Nearby: 120 m",
+        "config": {
+          "sceneryDistance": 120
+        }
+      },
+      {
+        "label": "Game range: 720 m",
+        "config": {
+          "sceneryDistance": 720
+        }
+      },
+      {
+        "label": "Farther: 1,200 m",
+        "config": {
+          "sceneryDistance": 1200
+        }
+      }
+    ],
+    "initial": {
+      "focus": "forest",
+      "location": "terraces",
+      "fogDensity": 0,
+      "sceneryDistance": 720
+    }
+  },
+  {
+    "title": "Visit separated route sections",
+    "hint": "Move between existing sections to observe the loaded scenery. This does not expose a chunk scheduler control.",
+    "options": [
+      {
+        "label": "Gorge",
+        "config": {
+          "location": "gorge"
+        }
+      },
+      {
+        "label": "Bridge",
+        "config": {
+          "location": "bridge"
+        }
+      },
+      {
+        "label": "Tokyo",
+        "config": {
+          "location": "tokyo"
+        }
+      }
+    ]
+  },
+  {
+    "title": "Change exposure",
+    "hint": "Adjust the renderer exposure while keeping the materials and viewpoint unchanged.",
+    "options": [
+      {
+        "label": "Darker",
+        "config": {
+          "exposure": 0.6
+        }
+      },
+      {
+        "label": "Brighter",
+        "config": {
+          "exposure": 1.6
+        }
+      },
+      {
+        "label": "Game exposure",
+        "config": {
+          "exposure": null
+        }
+      }
+    ]
+  },
+  {
+    "title": "Inspect overlapping surfaces",
+    "hint": "Orbit around the train and reveal its triangles. This view does not introduce an artificial depth conflict.",
+    "options": [
+      {
+        "label": "Surface view",
+        "config": {
+          "wireframe": false
+        }
+      },
+      {
+        "label": "Geometry view",
+        "config": {
+          "wireframe": true
+        }
+      }
+    ],
+    "initial": {
+      "focus": "train"
+    }
+  },
+  {
+    "title": "See state become motion",
+    "hint": "Play updates the simulation; pause holds the train at its current route distance.",
+    "options": [
+      {
+        "label": "Run simulation",
+        "config": {
+          "paused": false
+        }
+      },
+      {
+        "label": "Pause simulation",
+        "config": {
+          "paused": true
+        }
+      }
+    ]
+  },
+  {
+    "title": "Compare chapter settings",
+    "hint": "Use a quiet station or a busy city as a scene reference for creative direction.",
+    "options": [
+      {
+        "label": "Station",
+        "config": {
+          "location": "station",
+          "timeOfDay": "daylight"
+        }
+      },
+      {
+        "label": "City at dusk",
+        "config": {
+          "location": "tokyo",
+          "timeOfDay": "dusk"
+        }
+      }
+    ]
+  },
+  {
+    "title": "Compare framing",
+    "hint": "A narrow or wide view changes how the train and background share the picture.",
+    "options": [
+      {
+        "label": "Narrow framing",
+        "config": {
+          "fov": 35
+        }
+      },
+      {
+        "label": "Wide framing",
+        "config": {
+          "fov": 80
+        }
+      }
+    ],
+    "initial": {
+      "focus": "train",
+      "location": "gorge"
+    }
+  },
+  {
+    "title": "Inspect the main asset",
+    "hint": "Compare the train silhouette with its wireframe. These presets do not add bevel geometry.",
+    "options": [
+      {
+        "label": "Train surfaces",
+        "config": {
+          "wireframe": false
+        }
+      },
+      {
+        "label": "Train triangles",
+        "config": {
+          "wireframe": true
+        }
+      }
+    ],
+    "initial": {
+      "focus": "train"
+    }
+  },
+  {
+    "title": "Compare the same materials",
+    "hint": "Keep the subject in place while changing the scene lighting.",
+    "options": [
+      {
+        "label": "Daylight",
+        "config": {
+          "timeOfDay": "daylight"
+        }
+      },
+      {
+        "label": "Dusk",
+        "config": {
+          "timeOfDay": "dusk"
+        }
+      },
+      {
+        "label": "Rain",
+        "config": {
+          "weather": "rain"
+        }
+      }
+    ],
+    "initial": {
+      "focus": "train"
+    }
+  },
+  {
+    "title": "Check quality in motion",
+    "hint": "Use the moving forest view to look for shimmering edges, then pause. No temporal filter is switched here.",
+    "options": [
+      {
+        "label": "Travel through trees",
+        "config": {
+          "location": "terraces",
+          "paused": false
+        }
+      },
+      {
+        "label": "Hold this view",
+        "config": {
+          "paused": true
+        }
+      }
+    ]
+  },
+  {
+    "title": "Inspect distant shapes",
+    "hint": "Zoom with the mouse wheel or pinch to compare near and distant objects. This does not add the proposed LOD system.",
+    "options": [
+      {
+        "label": "Forest view",
+        "config": {
+          "location": "terraces",
+          "camera": "scenic"
+        }
+      },
+      {
+        "label": "Reveal triangles",
+        "config": {
+          "wireframe": true
+        }
+      },
+      {
+        "label": "Restore surfaces",
+        "config": {
+          "wireframe": false
+        }
+      }
+    ],
+    "initial": {
+      "focus": "forest",
+      "location": "terraces"
+    }
+  },
+  {
+    "title": "Explore loaded regions",
+    "hint": "Compare separated route sections. Work scheduling is explained by the diagram; these controls use the current loader.",
+    "options": [
+      {
+        "label": "Valley",
+        "config": {
+          "location": "gorge"
+        }
+      },
+      {
+        "label": "Mountain",
+        "config": {
+          "location": "summit"
+        }
+      },
+      {
+        "label": "City",
+        "config": {
+          "location": "tokyo"
+        }
+      }
+    ]
+  },
+  {
+    "title": "Hand control to another view",
+    "hint": "Choose which existing camera rig owns the view. Story camera shots are not triggered here.",
+    "options": [
+      {
+        "label": "Look around",
+        "config": {
+          "camera": "scenic"
+        }
+      },
+      {
+        "label": "Driver",
+        "config": {
+          "camera": "cab"
+        }
+      },
+      {
+        "label": "Passenger",
+        "config": {
+          "camera": "passenger"
+        }
+      }
+    ]
+  },
+  {
+    "title": "Inspect the station setting",
+    "hint": "Use the station as a visual reference. Haru\u2019s authored acting and story interactions remain in the full game.",
+    "options": [
+      {
+        "label": "Station outside",
+        "config": {
+          "location": "station",
+          "camera": "scenic"
+        }
+      },
+      {
+        "label": "Passenger view",
+        "config": {
+          "camera": "passenger"
+        }
+      }
+    ]
+  },
+  {
+    "title": "Try response and feedback",
+    "hint": "Play and pause the train to compare an accepted action with its visible result. Station-duty actions remain in the full game.",
+    "options": [
+      {
+        "label": "Play train",
+        "config": {
+          "paused": false
+        }
+      },
+      {
+        "label": "Pause train",
+        "config": {
+          "paused": true
+        }
+      }
+    ]
+  },
+  {
+    "title": "Compare listening locations visually",
+    "hint": "This embed is silent. Use the exterior and interior as scene references; the diagram explains sound priorities.",
+    "options": [
+      {
+        "label": "Exterior",
+        "config": {
+          "camera": "scenic"
+        }
+      },
+      {
+        "label": "Interior",
+        "config": {
+          "camera": "passenger"
+        }
+      }
+    ]
+  },
+  {
+    "title": "Visit story locations",
+    "hint": "The embed shows location context without recording choices or completing story tasks.",
+    "options": [
+      {
+        "label": "Station",
+        "config": {
+          "location": "station"
+        }
+      },
+      {
+        "label": "Gorge",
+        "config": {
+          "location": "gorge"
+        }
+      }
+    ]
+  },
+  {
+    "title": "Compare drawing conditions",
+    "hint": "Shadow and wireframe settings change drawing conditions. Use the development measurement tool for timed performance evidence.",
+    "options": [
+      {
+        "label": "Shadows on",
+        "config": {
+          "shadows": true
+        }
+      },
+      {
+        "label": "Shadows off",
+        "config": {
+          "shadows": false
+        }
+      },
+      {
+        "label": "Triangles",
+        "config": {
+          "wireframe": true
+        }
+      }
+    ]
+  },
+  {
+    "title": "Choose comfortable motion",
+    "hint": "The train starts paused. Try a fixed driver view or a mouse-controlled exterior; use the same controls with the keyboard.",
+    "options": [
+      {
+        "label": "Still exterior",
+        "config": {
+          "camera": "scenic",
+          "paused": true
+        }
+      },
+      {
+        "label": "Still driver view",
+        "config": {
+          "camera": "cab",
+          "paused": true
+        }
+      }
+    ]
+  },
+  {
+    "title": "Explore without saving",
+    "hint": "This embedded session does not read or write story saves. The migration sequence is explained in the diagram.",
+    "options": [
+      {
+        "label": "Station reference",
+        "config": {
+          "location": "station"
+        }
+      },
+      {
+        "label": "Scenic reference",
+        "config": {
+          "location": "gorge"
+        }
+      }
+    ]
+  },
+  {
+    "title": "Inspect the live embed state",
+    "hint": "Read the bridge snapshot below. These are actual game values; the development MCP tools provide deeper inspection and timed measurements.",
+    "options": [
+      {
+        "label": "Gorge context",
+        "config": {
+          "location": "gorge"
+        }
+      },
+      {
+        "label": "City context",
+        "config": {
+          "location": "tokyo"
+        }
+      }
+    ]
+  }
+]

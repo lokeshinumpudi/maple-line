@@ -18,3 +18,5 @@ artifacts/
 assets/audio-library/
 .vercel/
 .vercel
+
+dist-embed/

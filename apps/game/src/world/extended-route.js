@@ -676,7 +676,21 @@ export function createExtendedWorld({ THREE, scene, railPoint, center = routeCen
           sbox(m.yellow, 21, 0.405, z, 0.8, 0.04, 6);
         }
       }
-      residents.push(createRegionalResidents({ THREE, parent: group, stop, local, yaw }));
+      residents.push(
+        createRegionalResidents({
+          THREE,
+          parent: group,
+          stop,
+          local,
+          yaw,
+          place: (lateral, along) => {
+            const z = stop.z + along;
+            const rail = railPoint(z);
+            const x = rail.x + lateral;
+            return new THREE.Vector3(x, scenicTerrain(x, z) + 0.62, z);
+          },
+        }),
+      );
       // A village street links the station forecourt to both rows of homes.
       if (!urban) {
         for (let dz = -145; dz < 145; dz += 6) {
@@ -694,6 +708,21 @@ export function createExtendedWorld({ THREE, scene, railPoint, center = routeCen
           const x = p.x + lateral,
             y = scenicTerrain(x, stop.z) + 0.1;
           box(m.stone, x, y, stop.z, 2.05, 0.15, 2.8);
+        }
+        // Garden lane in front of the inner row, plus door spurs onto both house rows.
+        for (let dz = -120; dz <= 120; dz += 6) {
+          const z = stop.z + dz,
+            x = railPoint(z).x + 21,
+            y = scenicTerrain(x, z) + 0.08;
+          box(m.stone, x, y, z, 1.7, 0.12, 6.05);
+        }
+        for (const along of [-112, -78, 78, 112]) {
+          const z = stop.z + along;
+          for (const lateral of [21, 23, 25, 27, 29, 46, 48, 50, 52, 54, 56, 58]) {
+            const x = railPoint(z).x + lateral,
+              y = scenicTerrain(x, z) + 0.08;
+            box(m.stone, x, y, z, 2.15, 0.12, 1.6);
+          }
         }
       }
       for (const lot of villageLots.filter((lot) => lot.stopId === stop.id)) {
@@ -979,7 +1008,7 @@ export function createExtendedWorld({ THREE, scene, railPoint, center = routeCen
         chunk.group.visible = Math.abs((chunk.start + chunk.end) / 2 - z) < 1650;
         for (const lake of chunk.lakeScenes) lake.update(dt);
         chunk.tokyo?.update(dt, { dusk, weather, activityTime });
-        for (const resident of chunk.residents) resident.update(activityTime);
+        for (const resident of chunk.residents) resident.update(activityTime, { weather });
       }
     },
     foliageHeight(x, z) {

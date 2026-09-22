@@ -12,6 +12,7 @@ export function createWindField({ THREE }) {
   const ownedMaterials = new Set();
   const bindings = new Map();
   let weather = 'clear';
+  let strengthOverride = null;
   const declarations = `
 uniform float mapleWindTime;
 uniform float mapleWindStrength;
@@ -158,11 +159,18 @@ transformed += vec3(
         }
       return true;
     },
+    setStrength(value = null) {
+      if (value !== null && (!Number.isFinite(value) || value < 0 || value > 3))
+        throw new RangeError('Wind strength must be null or 0–3.');
+      strengthOverride = value;
+      if (value !== null) strength.value = value;
+    },
     update(dt, context = {}) {
       if (!Number.isFinite(dt) || dt < 0)
         throw new TypeError('Wind dt must be finite and nonnegative.');
       weather = context.weather ?? weather;
-      const target = weather === 'rain' ? 1.65 : weather === 'snow' ? 1.1 : 0.7;
+      const target =
+        strengthOverride ?? (weather === 'rain' ? 1.65 : weather === 'snow' ? 1.1 : 0.7);
       time.value += dt;
       strength.value += (target - strength.value) * (1 - Math.exp(-dt * 0.8));
     },

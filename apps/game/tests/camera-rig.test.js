@@ -215,3 +215,21 @@ test('canopy cell changes steer the scenic height gradually instead of snapping 
   assert.ok(camera.position.distanceTo(before) < 2);
   assert.ok(camera.position.y > before.y);
 });
+
+test('inspection camera follows its subject without resetting the user offset, then releases to cab', () => {
+  const { rig, camera } = fixture();
+  const focusPose = { key: 'water', eye: [30, 20, 40], target: [0, 0, 0] };
+  rig.update({ dt: 0, distance: 100, direction: 1, view: 'scenic', focusPose });
+  assert.deepEqual(camera.position.toArray(), focusPose.eye);
+  camera.position.x += 5;
+  rig.update({
+    dt: 0.1,
+    distance: 100,
+    direction: 1,
+    view: 'scenic',
+    focusPose: { ...focusPose, target: [10, 0, 0] },
+  });
+  assert.equal(camera.position.x, 45);
+  rig.update({ dt: 0, distance: 100, direction: 1, view: 'cab' });
+  assert.ok(camera.position.distanceTo(cabPose(track, 100, trackLength, 1).eye) < 1e-8);
+});

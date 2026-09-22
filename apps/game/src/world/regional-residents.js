@@ -1,4 +1,9 @@
-/** Station-local residents: stable casting and routines, with two instanced batches. */
+/**
+ * Station residents in two instanced batches.
+ * Platform roles stay in station-local metres. Village errands use the street frame:
+ * x is metres east of the rail, z is metres along the route from the stop.
+ * That frame matches the paved lane, garden path and house lots.
+ */
 const COATS = [
   '#a3614b',
   '#46687a',
@@ -53,8 +58,122 @@ export function stationResidents(stop) {
   });
 }
 
-export function residentPose(resident, elapsed) {
+const LANE_ERRAND = [
+  { x: 58, z: -78 },
+  { x: 48, z: -78 },
+  { x: 48, z: 0 },
+  { x: 19, z: 0 },
+  { x: 10, z: 8 },
+];
+const GARDEN_ERRAND = [
+  { x: 28, z: 78 },
+  { x: 21, z: 78 },
+  { x: 21, z: 0 },
+  { x: 19, z: 0 },
+  { x: 10, z: -4 },
+];
+const LANE_EAVES = [
+  { x: 58, z: -78 },
+  { x: 55, z: -78 },
+];
+const GARDEN_EAVES = [
+  { x: 28, z: 78 },
+  { x: 28, z: 74 },
+];
+
+function polylineLength(points) {
+  let total = 0;
+  for (let i = 1; i < points.length; i++)
+    total += Math.hypot(points[i].x - points[i - 1].x, points[i].z - points[i - 1].z);
+  return total;
+}
+
+function pointAlong(points, distance) {
+  let remain = Math.max(0, distance);
+  for (let i = 1; i < points.length; i++) {
+    const dx = points[i].x - points[i - 1].x;
+    const dz = points[i].z - points[i - 1].z;
+    const len = Math.hypot(dx, dz);
+    if (remain <= len || i === points.length - 1) {
+      const t = len === 0 ? 1 : Math.min(1, remain / len);
+      return {
+        x: points[i - 1].x + dx * t,
+        z: points[i - 1].z + dz * t,
+        yaw: Math.atan2(dx, dz),
+      };
+    }
+    remain -= len;
+  }
+  const last = points[points.length - 1];
+  return { x: last.x, z: last.z, yaw: 0 };
+}
+
+/** Doorway to the paved lane or garden path, then the station forecourt. Rain and snow stay under the eaves. */
+function errandPose(resident, time, weather) {
+  const sheltered = weather === 'rain' || weather === 'snow';
+  const lane = resident.role === 'vendor';
+  const points = sheltered
+    ? lane
+      ? LANE_EAVES
+      : GARDEN_EAVES
+    : lane
+      ? LANE_ERRAND
+      : GARDEN_ERRAND;
+  const speed = 1.15;
+  const dwell = sheltered ? 6 : 16;
+  const travel = polylineLength(points) / speed;
+  const period = travel * 2 + dwell * 2;
+  let phase = (time + resident.index * 83) % period;
+  let distance = 0;
+  let walking = false;
+  let outbound = true;
+  if (phase < dwell) distance = 0;
+  else if (phase < dwell + travel) {
+    distance = (phase - dwell) * speed;
+    walking = true;
+  } else if (phase < dwell * 2 + travel) {
+    distance = polylineLength(points);
+    outbound = false;
+  } else {
+    distance = polylineLength(points) - (phase - dwell * 2 - travel) * speed;
+    walking = true;
+    outbound = false;
+  }
+  const pose = pointAlong(points, distance);
+  if (!outbound) pose.yaw += Math.PI;
+  const atDoor = pose.x > 26 && Math.abs(Math.abs(pose.z) - 78) < 6;
+  const onLane = pose.x > 40 && Math.abs(pose.z) > 12;
+  const onPath = Math.abs(pose.z) < 6 && pose.x > 16;
+  return {
+    frame: 'street',
+    x: pose.x,
+    z: pose.z,
+    yaw: pose.yaw,
+    seated: false,
+    walking,
+    gesture: walking ? 0 : Math.max(0, Math.sin(time * 0.5)) * 0.2,
+    activity: sheltered
+      ? walking
+        ? 'pacing under the eaves'
+        : 'sheltering at the doorway'
+      : !walking && pose.x < 16
+        ? 'waiting at the station forecourt'
+        : !walking && atDoor
+          ? 'standing at the doorway'
+          : onLane
+            ? 'walking the village lane'
+            : onPath
+              ? 'walking the station path'
+              : 'walking the garden lane',
+  };
+}
+
+export function residentPose(resident, elapsed, context = {}) {
   const time = Math.max(0, Number.isFinite(elapsed) ? elapsed : 0);
+  const theme = context.theme;
+  const village = theme && theme !== 'city';
+  if (village && (resident.role === 'vendor' || resident.index === 2))
+    return errandPose(resident, time, context.weather ?? 'clear');
   const cycle = (time + resident.offset) % 132;
   const pose = {
     x: 5.2,
@@ -117,7 +236,25 @@ export function residentPose(resident, elapsed) {
   return pose;
 }
 
-export function createRegionalResidents({ THREE, parent, stop, local, yaw = 0 }) {
+function followStreet(prev, next, dt) {
+  if (!prev || next.frame !== 'street' || prev.frame !== 'street') return next;
+  const dx = next.x - prev.x;
+  const dz = next.z - prev.z;
+  const dist = Math.hypot(dx, dz);
+  const allowance = 1.45 * Math.max(dt, 1 / 24);
+  if (dist <= allowance + 1e-6) return next;
+  const scale = allowance / dist;
+  return {
+    ...next,
+    x: prev.x + dx * scale,
+    z: prev.z + dz * scale,
+    walking: true,
+    yaw: Math.atan2(dx, dz),
+    activity: 'walking toward shelter',
+  };
+}
+
+export function createRegionalResidents({ THREE, parent, stop, local, yaw = 0, place }) {
   const residents = stationResidents(stop);
   const group = new THREE.Group();
   group.name = `${stop.name} / regional residents`;
@@ -144,6 +281,8 @@ export function createRegionalResidents({ THREE, parent, stop, local, yaw = 0 })
     roundCount = 0,
     lastTime = -Infinity,
     disposed = false;
+  const shown = new Map();
+  const contextFor = (weather) => ({ theme: stop.theme, weather: weather ?? 'clear' });
   function part(mesh, x, y, z, sx, sy, sz, tint, pitch = 0) {
     const index = mesh === boxes ? boxCount++ : roundCount++;
     dummy.position.set(x, y, z);
@@ -156,15 +295,23 @@ export function createRegionalResidents({ THREE, parent, stop, local, yaw = 0 })
   }
   const cube = (...args) => part(boxes, ...args);
   const round = (...args) => part(rounds, ...args);
-  function update(elapsed = 0) {
+  function update(elapsed = 0, context = {}) {
     if (disposed || Math.abs(elapsed - lastTime) < 1 / 24) return;
+    const dt = lastTime === -Infinity ? 0 : Math.max(0, elapsed - lastTime);
     lastTime = elapsed;
     boxCount = 0;
     roundCount = 0;
     for (const resident of residents) {
-      const pose = residentPose(resident, elapsed);
-      body.position.copy(local(pose.x, 0.62, pose.z));
-      body.rotation.set(0, yaw + pose.yaw, 0);
+      const logical = residentPose(resident, elapsed, contextFor(context.weather));
+      const pose = followStreet(shown.get(resident.id), logical, dt || 1 / 24);
+      shown.set(resident.id, pose);
+      if (pose.frame === 'street' && place) {
+        body.position.copy(place(pose.x, pose.z));
+        body.rotation.set(0, pose.yaw, 0);
+      } else {
+        body.position.copy(local(pose.x, 0.62, pose.z));
+        body.rotation.set(0, yaw + pose.yaw, 0);
+      }
       body.scale.set(resident.width, resident.height / 1.7, 1);
       body.updateMatrix();
       const hip = pose.seated ? 0.58 : 0.95;
@@ -238,7 +385,8 @@ export function createRegionalResidents({ THREE, parent, stop, local, yaw = 0 })
       station: stop.id,
       residents: residents.map((resident) => ({
         ...resident,
-        ...residentPose(resident, Math.max(0, lastTime)),
+        ...(shown.get(resident.id) ??
+          residentPose(resident, Math.max(0, lastTime), contextFor('clear'))),
       })),
       drawBatches: 2,
     }),

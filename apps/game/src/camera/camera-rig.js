@@ -74,6 +74,8 @@ export function createCameraRig({
   domElement?.addEventListener('pointermove', pointerMove);
   domElement?.addEventListener('pointerup', pointerUp);
   domElement?.addEventListener('pointercancel', pointerUp);
+  let focusKey = null;
+  const previousFocus = new THREE.Vector3();
   let manualOrbit = false;
   controls?.addEventListener('start', () => {
     manualOrbit = true;
@@ -235,6 +237,7 @@ export function createCameraRig({
       time,
       snap = false,
       inTunnel = false,
+      focusPose = null,
     }) {
       if (!Number.isFinite(dt) || dt < 0 || !Number.isFinite(distance))
         throw new TypeError('Camera dt and route distance must be finite; dt must be nonnegative.');
@@ -273,6 +276,44 @@ export function createCameraRig({
         camera.updateProjectionMatrix();
       }
       if (controls) controls.enabled = mode === 'scenic';
+      if (mode === 'scenic' && focusPose) {
+        const focus = new THREE.Vector3(...focusPose.target);
+        if (focusKey !== focusPose.key || snap || !initialized) {
+          camera.position.set(...focusPose.eye);
+          if (controls) controls.target.copy(focus);
+          else camera.lookAt(focus);
+        } else {
+          const delta = focus.clone().sub(previousFocus);
+          camera.position.add(delta);
+          controls?.target.add(delta);
+        }
+        if (controls) {
+          controls.enablePan = true;
+          controls.minDistance = focusPose.minDistance ?? 3;
+          controls.maxDistance = focusPose.maxDistance ?? 600;
+          controls.update(dt);
+          look.copy(controls.target);
+        } else look.copy(focus);
+        camera.lookAt(look);
+        camera.updateMatrixWorld(true);
+        previousFocus.copy(focus);
+        focusKey = focusPose.key;
+        baseEye.copy(camera.position);
+        baseRotation.copy(camera.quaternion);
+        initialized = true;
+        manualOrbit = true;
+        lastView = mode;
+        lastDirection = direction;
+        return api.state();
+      }
+      if (focusKey !== null) {
+        focusKey = null;
+        if (controls) {
+          controls.enablePan = false;
+          controls.minDistance = 18;
+          controls.maxDistance = 125;
+        }
+      }
       if (mode === 'cab' || mode === 'passenger') {
         const pose =
           mode === 'cab' && insideYaw === 0 && insidePitch === -0.12

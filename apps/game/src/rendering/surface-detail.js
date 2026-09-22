@@ -1,4 +1,10 @@
 import * as THREE from 'three';
+import {
+  SURFACE_FAMILIES,
+  createWetnessTracker,
+  wetnessDarkenGlsl,
+  wetnessRoughnessGlsl,
+} from '../train/weather-materials.js';
 
 // Packed, repeatable detail at three scales. No image downloads or extra render passes.
 export function createSurfaceDetail() {
@@ -39,20 +45,26 @@ export function createSurfaceDetail() {
   texture.generateMipmaps = true;
   texture.anisotropy = 4;
   texture.needsUpdate = true;
-  const wetness = { value: 0 };
+  // Rain darkens within seconds; drying is several times slower. Shared by every applied kind.
+  const tracker = createWetnessTracker({ wetTime: 7, dryTime: 40 });
+  const wetness = tracker.uniform;
+  const strength = { value: 1 };
   const kinds = { terrain: 0, stone: 1, roof: 2, timber: 3, plaster: 4, ballast: 5 };
   return {
     wetness,
+    strength,
     texture,
     apply(material, kind = 'stone') {
       const old = material.onBeforeCompile;
       const oldKey = material.customProgramCacheKey();
       const mode = kinds[kind];
       if (mode === undefined) throw new TypeError(`Unknown surface ${kind}`);
+      const family = SURFACE_FAMILIES[kind];
       material.onBeforeCompile = function (shader, renderer) {
         old.call(this, shader, renderer);
         shader.uniforms.surfaceDetail = { value: texture };
         shader.uniforms.surfaceWetness = wetness;
+        shader.uniforms.surfaceDetailStrength = strength;
         shader.vertexShader =
           'varying vec3 vSurfacePosition;\n' +
           shader.vertexShader.replace(
@@ -66,6 +78,7 @@ export function createSurfaceDetail() {
           );
         shader.fragmentShader =
           `uniform sampler2D surfaceDetail;
+          uniform float surfaceDetailStrength;
           uniform float surfaceWetness; varying vec3 vSurfacePosition;\n` + shader.fragmentShader;
         shader.fragmentShader = shader.fragmentShader.replace(
           '#include <color_fragment>',
@@ -85,7 +98,7 @@ export function createSurfaceDetail() {
               ? `
             float patches = texture2D(surfaceDetail,vSurfacePosition.xz * .007).b;
             detailShade *= mix(.74,1.14,patches);
-            diffuseColor.rgb *= mix(vec3(.82,.87,.65),vec3(1.06,1.02,.88),patches);
+            diffuseColor.rgb *= mix(vec3(1.0),mix(vec3(.82,.87,.65),vec3(1.06,1.02,.88),patches),surfaceDetailStrength);
           `
               : ''
           }
@@ -112,29 +125,26 @@ export function createSurfaceDetail() {
               : ''
           }
           ${kind === 'plaster' ? 'detailShade = mix(.93,1.04,detail.r);' : ''}
-          diffuseColor.rgb *= detailShade * (1.0-surfaceWetness*${kind === 'roof' ? '.22' : '.12'});
+          diffuseColor.rgb *= mix(1.0,detailShade,surfaceDetailStrength);
+          ${wetnessDarkenGlsl(family, { weight: 'surfaceWeights.y' })}
         `,
         );
         shader.fragmentShader = shader.fragmentShader.replace(
           '#include <roughnessmap_fragment>',
           `
           #include <roughnessmap_fragment>
-          float wetPatch=surfaceWetness * surfaceWeights.y * smoothstep(.3,.7,detail.g);
-          roughnessFactor = clamp(mix(roughnessFactor,.24,wetPatch),.24,1.0);
+          float wetPatch = surfaceWeights.y * smoothstep(.3,.7,detail.g);
+          ${wetnessRoughnessGlsl(family, { weight: 'wetPatch' })}
         `,
         );
         material.userData.surfaceKind = kind;
       };
-      material.customProgramCacheKey = () => `${oldKey}:surface-v1:${mode}`;
+      material.customProgramCacheKey = () => `${oldKey}:surface-v2:${mode}`;
       material.needsUpdate = true;
       return material;
     },
     update(dt, weather) {
-      wetness.value = THREE.MathUtils.lerp(
-        wetness.value,
-        weather === 'rain' ? 1 : 0,
-        1 - Math.exp(-Math.max(0, dt) * 1.3),
-      );
+      tracker.advance(dt, weather);
     },
     dispose() {
       texture.dispose();

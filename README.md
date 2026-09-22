@@ -2,7 +2,7 @@
 
 A Three.js railway game set in fictional Japanese countryside. Drive a five-car train along about 24.9 km of track with 15 stops, from an autumn gorge through villages, forests, a 152.4 m (500 ft) valley bridge, a mountain tunnel, snow country, terraces and a harbour skyline. The terrain, train, buildings, plants, people, and water textures are generated in code.
 
-The workspace lives at `/Users/lokeshinumpudi/Desktop/maple-line`. It uses pnpm workspaces and Turborepo, with the browser game in `apps/game` and the optional Jev director in `apps/director`. The optional Signal Ship build uses a site-scoped world-generation function and database; local development uses the Jev director.
+The workspace lives at `/Users/lokeshinumpudi/Desktop/maple-line`. It uses pnpm workspaces and Turborepo, with the browser game in `apps/game` and the optional Jev director in `apps/director`. The Signal Ship build calls `signal.evaluate` from the browser with `typesafe-ai/jev`; local development uses the Jev director. Both use the same typed scenery questions and validate the returned settings.
 
 ## Run locally
 
@@ -108,7 +108,7 @@ The train has transparent windows with open frames, sliding doors, rotating whee
 
 Aonuma has a stepped waterfall, cedar islands and reed banks. Hoshimi has twin alpine cascades and snow-capped rocks. Both have animated water, impact ripples, coves and timber landings; Minato has a shaped tidal inlet. Lakes share their shoreline field with the terrain and load and release with the existing regional chunks. Water motion is a visual shader effect, not a fluid simulation.
 
-Village residents follow local errand routes. Commuters approach the station, wait, and board through aligned open train doors; arriving passengers alight. Door interlocks prevent traction with doors open. The active camera rig supports all five camera modes; older Orbit agent requests select Scenic. This is a small local population simulation, not a city-wide transport model.
+Village residents follow local errand routes. Commuters approach the station, wait, and board through aligned open train doors; arriving passengers alight. At each regional stop except Harumi, the station vendor and one neighbour walk the paved lane and garden path between their doorways and the forecourt. Rain and snow keep those two at the doorway instead of the open lane. Door interlocks prevent traction with doors open. The active camera rig supports all five camera modes; older Orbit agent requests select Scenic. This is a small local population simulation, not a city-wide transport model.
 
 **AI life** requests a bounded Jev decision about sightseeing pace and station activity every 20 seconds while enabled and playing. It can change the autopilot target, shelter behavior, and leisure dwell times. Decisions expire after 60 seconds; the director does not control manual driving or bypass braking and door rules. A live Jev request has returned a validated cautious/shelter decision for a rainy station scene.
 
@@ -210,4 +210,12 @@ A separate 700 m rural railway between route z1550–2250 carries an alternating
 
 The [hosting guide](docs/HOSTING.md) covers the separate Vercel client and Jev server and the Signal Ship build. The standalone backend source is published at [maple-line-server](https://github.com/lokeshinumpudi/maple-line-server). Local development still runs both apps from this workspace.
 
-The [illustrated runbook](https://signal-ship.internal.loophealth.com/s/maple-line-runbook/) covers 36 concepts with interactive diagrams and copyable agent skills. It loads separately from the game.
+The [illustrated runbook](https://signal-ship.internal.loophealth.com/s/maple-line-runbook/) covers 37 concepts with live game inspections, interactive diagrams and copyable agent skills. Its [embed SDK](docs/EMBED-SDK.md) provides same-origin scene configuration, focused cameras, reversible rendering controls and read-only ray inspection. The runbook defaults to the embedded game and shares one container with the diagram. Saved level authoring remains separate.
+
+## Material and weather detailing
+
+Exterior train paint gains rain sheen while cabin fittings and paper stay dry. Porous timber, ballast and plaster darken without sharing the paint's gloss; drying takes longer than wetting. These finishes use the existing sky environments, not reflections of nearby objects. Rain impacts remain fixed on sampled terrain and align to its slope; roof interception, puddles and drainage are still absent.
+
+The five-car service has two furnished cabs and passenger activities including newspapers, books and looking through windows. Regional building sides have windows, sills and eave supports within existing lot bounds. Directional shadows use light-space texel snapping at the existing resolution and refresh rate.
+
+Audio now locates the authored regional lakes, marsh and gorge river, with quieter water levels for still water and a gradual forest-to-city mix. It reuses existing recordings; this does not establish distinct lake or harbour recordings. The next art goals and verification requirements are in [art direction](docs/ART-DIRECTION.md).

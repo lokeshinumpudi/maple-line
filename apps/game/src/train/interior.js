@@ -1,3 +1,25 @@
+import { CAR_COUNT } from './consist.js';
+import { DRIVE_LIMITS } from '../simulation/physics.js';
+
+/** Named riders from the population simulation, three boarding slots per car from the front. */
+const NAMED_RIDERS = [
+  'returning-1',
+  'returning-2',
+  'returning-3',
+  'commuter-1',
+  'commuter-2',
+  'commuter-3',
+  'commuter-4',
+  'commuter-5',
+  'commuter-6',
+];
+const NAMED_PER_CAR = 3;
+/** Deterministic seated activities; the pattern is offset per car so neighbours differ. */
+const ACTIVITIES = ['newspaper', 'window', 'book', 'bag', 'window', 'newspaper', 'bag'];
+export const CAB_CARS = [0, CAR_COUNT - 1];
+const DIAL_REST = -2.3;
+const DIAL_SWEEP = 4.6;
+
 /** Car-local furnishings and passengers; shared instance batches keep each coat one draw. */
 export function createCarInterior({
   THREE,
@@ -62,7 +84,8 @@ export function createCarInterior({
       box(paints.bright, side * 0.72, 2.98, -2.8 + i * 1.12, 0.022, 0.39, 0.024, false);
 
   const needles = [];
-  if (index !== 1) {
+  const isCab = CAB_CARS.includes(index);
+  if (isCab) {
     const end = index === 0 ? 1 : -1;
     // Desk leaves the standing driver's sight line through the actual windscreen.
     box(dark, -0.76, 1.61, end * 5.75, 1.26, 1.02, 0.62);
@@ -86,13 +109,17 @@ export function createCarInterior({
           false,
         );
       }
+      // The pivot reads zero at rest; the inner group parks the needle on the first tick.
       const needle = new THREE.Mesh(boxGeometry, paints.red);
       needle.name = `Cab / live ${kind} gauge`;
       const pivot = new THREE.Group();
       pivot.position.set(x, 2.256, end * 5.67);
+      const rest = new THREE.Group();
+      rest.rotation.y = DIAL_REST;
       needle.position.z = 0.065;
       needle.scale.set(0.014, 0.012, 0.13);
-      pivot.add(needle);
+      rest.add(needle);
+      pivot.add(rest);
       car.add(pivot);
       needles.push({ pivot, kind });
     }
@@ -112,25 +139,15 @@ export function createCarInterior({
     box(paints.seat, -0.78, 1.9, end * 4.45, 0.57, 0.64, 0.09);
   }
   // Through passengers stay aboard; named local riders follow the population simulation.
+  // Rear cars carry through passengers only; a slot without a real rider is never created.
   const slots = Array.from({ length: 7 }, (_, i) => ({
     side: i % 2 ? 1 : -1,
     z: -2.65 + Math.floor(i / 2) * 1.67,
-    id:
-      i < 4
-        ? `through-${index}-${i}`
-        : [
-            'returning-1',
-            'returning-2',
-            'returning-3',
-            'commuter-1',
-            'commuter-2',
-            'commuter-3',
-            'commuter-4',
-            'commuter-5',
-            'commuter-6',
-          ][index * 3 + i - 4],
+    id: i < 4 ? `through-${index}-${i}` : NAMED_RIDERS[index * NAMED_PER_CAR + i - 4],
+    through: i < 4,
+    activity: ACTIVITIES[(i + index * 2) % ACTIVITIES.length],
     visible: i < 4,
-  }));
+  })).filter((slot) => slot.id !== undefined);
   const batches = new Map();
   const dummy = new THREE.Object3D();
   function instance(geo, mat, x, y, z, sx, sy, sz, rotation = 0) {
@@ -162,54 +179,102 @@ export function createCarInterior({
     for (let i = 0; i < slots.length; i++) {
       const p = slots[i];
       p.visible =
-        i < 4 || passengers.some((person) => person.id === p.id && person.state === 'riding');
+        p.through || passengers.some((person) => person.id === p.id && person.state === 'riding');
       if (!p.visible) continue;
       const sway = Math.sin(time * 2.2 + i) * Math.min(Math.abs(speed) * 0.001, 0.015);
       const x = p.side * 1.01,
         z = p.z,
-        inward = -p.side;
-      instance(boxGeometry, coats[i % 3], x, 1.92, z + sway, 0.31, 0.62, 0.4);
-      instance(headGeo, face, x + inward * 0.025, 2.4, z + sway, 0.145, 0.185, 0.145);
-      instance(headGeo, hair, x - inward * 0.015, 2.51, z + sway, 0.146, 0.095, 0.148);
-      instance(headGeo, face, x + inward * 0.158, 2.4, z + sway, 0.035, 0.041, 0.04);
+        inward = -p.side,
+        coat = coats[i % 3],
+        reading = p.activity === 'book' || p.activity === 'newspaper',
+        // Window watchers turn toward the glass; readers bow a little over their laps.
+        headYaw = p.activity === 'window' ? -inward * 2.55 : reading ? inward * 0.08 : 0,
+        headLean = reading ? 0.05 : 0,
+        headOut = p.activity === 'window' ? -inward * 0.03 : 0,
+        headX = x + inward * (0.025 + headLean) + headOut,
+        headY = 2.4 - headLean;
+      // Torso, shoulders and collar read as one seated body against the bench.
+      instance(boxGeometry, coat, x, 1.9, z + sway, 0.31, 0.58, 0.4);
+      instance(boxGeometry, coat, x + inward * 0.02, 2.16, z + sway, 0.27, 0.09, 0.5);
+      instance(boxGeometry, paints.interior, x + inward * 0.09, 2.2, z + sway, 0.12, 0.05, 0.16);
+      instance(headGeo, face, headX, headY, z + sway, 0.145, 0.185, 0.145, headYaw);
+      instance(headGeo, hair, headX - inward * 0.04, headY + 0.11, z + sway, 0.146, 0.095, 0.148);
+      // Nose follows the head turn so the facing direction is legible from the aisle.
+      instance(
+        headGeo,
+        face,
+        headX + inward * 0.133 * Math.cos(headYaw),
+        headY,
+        z + sway - inward * Math.sin(headYaw) * 0.133,
+        0.035,
+        0.041,
+        0.04,
+      );
       for (const side of [-1, 1]) {
         instance(
           headGeo,
           hair,
-          x + inward * 0.139,
-          2.43,
-          z + side * 0.062 + sway,
+          headX + inward * 0.114 * Math.cos(headYaw) - side * 0.062 * Math.sin(headYaw) * inward,
+          headY + 0.03,
+          z + sway + side * 0.062 * Math.cos(headYaw) - inward * Math.sin(headYaw) * 0.114,
           0.012,
           0.014,
           0.014,
+          headYaw,
         );
+        // Thighs, shins and shoes; the window watcher draws both feet together toward the glass.
+        const knee = p.activity === 'window' ? 0.07 : 0.12;
         instance(boxGeometry, dark, x + inward * 0.14, 1.63, z + side * 0.12, 0.46, 0.15, 0.14);
-        instance(boxGeometry, dark, x + inward * 0.34, 1.38, z + side * 0.12, 0.14, 0.47, 0.15);
-        instance(boxGeometry, hair, x + inward * 0.39, 1.16, z + side * 0.12, 0.25, 0.1, 0.17);
+        instance(boxGeometry, dark, x + inward * 0.34, 1.38, z + side * knee, 0.14, 0.47, 0.15);
+        instance(boxGeometry, hair, x + inward * 0.39, 1.16, z + side * knee, 0.25, 0.1, 0.17);
+        // Arms hang for idle riders and lift forward for anyone holding paper.
+        if (reading) {
+          const elbowY = p.activity === 'newspaper' ? 2.02 : 1.76;
+          instance(
+            boxGeometry,
+            coat,
+            x + inward * 0.04,
+            (2.18 + elbowY) / 2,
+            z + side * 0.24 + sway,
+            0.13,
+            2.18 - elbowY + 0.08,
+            0.13,
+          );
+        }
         instance(
           boxGeometry,
-          coats[i % 3],
-          x + inward * 0.07,
-          1.92,
+          coat,
+          x + inward * (reading ? 0.12 : 0.07),
+          p.activity === 'newspaper' ? 2.02 : reading ? 1.76 : 1.92,
           z + side * 0.24 + sway,
-          0.15,
-          0.45,
+          reading ? 0.28 : 0.15,
+          reading ? 0.13 : 0.45,
           0.13,
         );
         instance(
           headGeo,
           face,
-          x + inward * 0.17,
-          1.72,
-          z + side * 0.24 + sway,
+          x + inward * (reading ? 0.27 : 0.17),
+          p.activity === 'newspaper' ? 2.02 : reading ? 1.76 : 1.72,
+          z + side * (p.activity === 'newspaper' ? 0.2 : 0.24) + sway,
           0.085,
           0.06,
           0.065,
         );
       }
-      if (i % 2 === 0)
-        instance(boxGeometry, wood, x + inward * 0.21, 1.73, z, 0.26, 0.055, 0.3); // book on lap
-      else instance(boxGeometry, wood, x, 1.27, z + 0.4, 0.3, 0.33, 0.24); // bag beneath bench
+      if (p.activity === 'book') {
+        instance(boxGeometry, wood, x + inward * 0.25, 1.78, z, 0.22, 0.04, 0.28); // book cover
+        instance(boxGeometry, paints.cream, x + inward * 0.25, 1.805, z, 0.2, 0.012, 0.26); // pages
+      } else if (p.activity === 'newspaper') {
+        // Broadsheet held up in both hands, with a dark column line down the fold.
+        instance(boxGeometry, paints.cream, x + inward * 0.3, 2.08, z + sway, 0.02, 0.4, 0.5);
+        instance(boxGeometry, dark, x + inward * 0.312, 2.08, z + sway, 0.006, 0.28, 0.02);
+      } else if (p.activity === 'bag') {
+        instance(boxGeometry, wood, x + inward * 0.2, 1.78, z, 0.3, 0.16, 0.34); // bag on lap
+        instance(boxGeometry, hair, x + inward * 0.2, 1.88, z, 0.05, 0.05, 0.36); // handle
+      } else {
+        instance(boxGeometry, wood, x, 1.27, z + 0.4, 0.3, 0.33, 0.24); // bag beneath bench
+      }
     }
     for (const { mesh, count } of batches.values()) {
       mesh.count = count;
@@ -232,18 +297,20 @@ export function createCarInterior({
     for (const { pivot, kind } of needles)
       pivot.rotation.y =
         kind === 'speed'
-          ? -2.3 + Math.min((Math.abs(speed) * 3.6) / 120, 1) * 4.6
+          ? Math.min(Math.abs(speed) / DRIVE_LIMITS.maxSpeed, 1) * DIAL_SWEEP
           : kind === 'power'
-            ? -2.3 + power * 4.6
-            : brake * 1.5;
+            ? Math.min(Math.max(power, 0), 1) * DIAL_SWEEP
+            : Math.min(Math.max(brake, 0), 1) * 1.5;
   }
   update({});
   return {
     update,
     state: () => ({
       carIndex: index,
+      cab: isCab,
       seated: slots.filter((p) => p.visible).length,
       passengerIds: slots.filter((p) => p.visible).map((p) => p.id),
+      activities: slots.filter((p) => p.visible).map((p) => ({ id: p.id, activity: p.activity })),
       gauges: needles.map(({ kind, pivot }) => ({ kind, angle: pivot.rotation.y })),
     }),
   };

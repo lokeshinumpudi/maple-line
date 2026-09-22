@@ -1,0 +1,407 @@
+[
+  {
+    "title": "From a world to a picture",
+    "explanation": "The scene is the list of things in the world. The camera chooses what we look at. The renderer draws that view on the screen.",
+    "analogy": "Think of a web page: the scene is its content, the camera is the visible window, and the renderer turns that content into a picture.",
+    "watch": "Watch the steps build from objects to the final picture.",
+    "howItWorks": "The scene keeps track of objects, lights and their relationships. It does not become a picture until the camera supplies a viewpoint and the renderer draws it. Each frame repeats that process using the latest positions. Moving the camera changes the picture without moving the railway itself.",
+    "inScene": "In the train scene, the carriage bodies, river and hills belong to the world. The chosen camera decides which of them fit in the picture. The experiment separates these responsibilities so you can follow how stored objects become visible pixels.",
+    "takeaway": "If something is missing, check whether it exists, whether the camera can see it, and whether its surface can be drawn. These are different problems, even when all three produce an empty part of the screen."
+  },
+  {
+    "title": "Build a shape and give it a surface",
+    "explanation": "Geometry is the shape. A material says what its surface looks like. A mesh combines the two into something the game can draw.",
+    "analogy": "Like a component and its styles: the same shape can look like painted metal, glass or wood.",
+    "watch": "Watch the train separate into body, roof and wheels.",
+    "howItWorks": "Geometry stores the points and triangles that define a shape. A material supplies rules for its color, reflections and transparency. A mesh connects one shape to one or more materials, then gives that object a place in the world. Several meshes can reuse the same geometry without occupying the same position.",
+    "inScene": "Look at the train's body, roof and wheel area. Boxes suit the long body panels, cylinders suit the wheels, and extending a curved outline along the carriage makes the roof. Different materials help those separate parts read as paint, metal or glazing.",
+    "takeaway": "Changing a material can make a roof look shinier, but cannot make its outline rounder. Change geometry when the silhouette is wrong; change the material when the shape is right but its surface looks wrong."
+  },
+  {
+    "title": "Move, turn and resize things",
+    "explanation": "Position tells an object where to go. Rotation turns it. Scale makes it bigger or smaller. These three settings place each part of the world.",
+    "analogy": "These are the 3D versions of moving, rotating and scaling an element with CSS transforms.",
+    "watch": "Watch how the same object changes without rebuilding its shape.",
+    "howItWorks": "A transform is the combined instruction for an object's position, rotation and scale. Position uses three coordinates: left or right, up or down, and forward or backward. Rotation changes which way the object faces. Scale changes its dimensions along those directions. These values act around a local origin, the object's own reference point.",
+    "inScene": "A diagonal bridge beam illustrates why all three matter. Put its center halfway between two endpoints, stretch it to their distance, then rotate it to point from one endpoint to the other. The quaternion in the code stores that orientation; you can read it as a way of recording a 3D turn.",
+    "takeaway": "Changing the order of operations can change the result. Rotating a beam around its center keeps it in place; rotating it around a distant parent origin makes it swing through space."
+  },
+  {
+    "title": "Keep moving parts together",
+    "explanation": "Objects can belong to a parent group. When the parent moves, its children move with it. A child can still move inside that group, like a door sliding on a moving train.",
+    "analogy": "Think of nested elements: a child has a position inside its parent, and the parent has a position in the page.",
+    "watch": "Watch which parts follow the parent and which move on their own.",
+    "howItWorks": "The scene graph is a tree of parents and children. A child's local position is measured relative to its parent. Its world position includes the transforms of every parent above it. This lets a collection move together while individual parts retain their own motion.",
+    "inScene": "Each carriage groups its body, fittings and moving parts. A door can slide relative to the carriage while the carriage travels along the track. Different carriages still need their own track positions and headings, because a long train bends around a curve instead of behaving like one rigid box.",
+    "takeaway": "When a part moves twice as far as expected, check whether both the parent and the child received the same movement. Usually the parent handles travel through the world, while the child handles motion within that parent."
+  },
+  {
+    "title": "Make hills from points",
+    "explanation": "A surface is built from points joined into triangles. Raising and lowering those points makes hills and valleys. Procedural terrain means code creates those heights instead of an artist placing every point.",
+    "analogy": "It is like generating a chart from an array of values, except the values become a walkable surface.",
+    "watch": "Watch changes in point heights turn a flat grid into terrain.",
+    "howItWorks": "A terrain grid is a table of points spread across the ground. Code assigns each point a height, then joins neighboring points into triangles. BufferGeometry is Three.js's container for these arrays. Surface directions, called normals, help the lights shade the triangles so slopes become readable.",
+    "inScene": "The valley scene makes those height differences visible. High points form walls and ridges; low points leave space under the bridge. The river and its banks also need compatible height rules, or the water may appear to climb a hillside or leave a gap at the shore.",
+    "takeaway": "Adding more points can make the outline smoother, but increases the work and memory needed. Start by checking the height rules and bank alignment. A denser grid will not fix a valley that has been placed incorrectly."
+  },
+  {
+    "title": "Make surfaces shiny or dull",
+    "explanation": "Roughness controls how spread out a reflection looks. A smooth surface has a small, sharp highlight; a rough surface has a wider, softer one. Metalness tells the lighting system whether the surface behaves like metal.",
+    "analogy": "Compare a polished spoon with a chalkboard under the same lamp.",
+    "watch": "Watch the highlight spread while the shape and light stay the same.",
+    "howItWorks": "A bright highlight is a reflection of a light or the surroundings. Roughness spreads that reflection across the surface: low roughness produces a tighter highlight, while high roughness spreads it out. Metalness changes how the material handles reflected light and its base color. These controls describe different properties, so shininess alone does not make a surface metallic.",
+    "inScene": "Compare the carriage paint, roof fittings and windows under the same sky. Their shared lighting makes the differences between their materials easier to see. The experiment holds the subject steady so you can concentrate on how the highlight changes.",
+    "takeaway": "A low-roughness surface still needs something to reflect. If it looks flat, inspect the lights and environment before increasing metalness. Painted metal usually needs to describe the visible paint layer rather than the metal hidden beneath it."
+  },
+  {
+    "title": "Wrap detail around a shape",
+    "explanation": "A texture is an image used on a surface. UV coordinates tell the game where each part of that image goes. A normal map changes how light appears to hit tiny bumps, without adding those bumps to the shape.",
+    "analogy": "Imagine wrapping a printed label around a bottle. The label adds detail without changing the bottle's outline.",
+    "watch": "Watch how surface coordinates map image detail onto an object.",
+    "howItWorks": "Texture coordinates are a second address system attached to a shape. Usually called U and V, they say which part of an image each surface point should read. A color texture supplies visible markings. A normal map supplies small changes to the surface direction used by lighting, creating the appearance of fine bumps.",
+    "inScene": "The live view focuses on a wooded hillside. Turn generated texture detail off to see the base colors of the ground, rocks and tree trunks, then restore their markings. These textures use world-position projection rather than a separate UV layout. Station lettering is another texture example: an image on a flat sign. The diagram explains UV coordinates and normal maps; those are separate techniques, not settings changed by this button.",
+    "takeaway": "A normal map cannot change an object's outside edge or make a hand collide with a bump. Use actual geometry when the detail must affect the silhouette, cast its own distinct shadow, or take part in physical contact."
+  },
+  {
+    "title": "Show light and shadow",
+    "explanation": "Lights make surfaces look bright or dark. A shadow map is a picture of which objects the light can see. The game uses it to work out what is hidden from that light.",
+    "analogy": "Imagine looking through a flashlight: anything blocked from its view falls into shadow.",
+    "watch": "Watch which objects receive light and which are blocked.",
+    "howItWorks": "A shadow map stores the nearest visible surface from the light's viewpoint. When drawing the final image, the renderer compares a surface's distance from the light with that stored distance. If another surface is closer, it blocks the direct light. The object casting the shadow and the surface receiving it both need the appropriate settings.",
+    "inScene": "The bridge truss creates a recognizable shadow pattern on the valley wall. Follow the relationship between the steel members, the sun direction and that darker area. The roof also catches direct light, while light from the sky helps keep shaded areas visible.",
+    "takeaway": "Shadow detail is shared across the area covered by the shadow camera. Covering too much terrain with a fixed-size map reduces detail. Adjusting its coverage can matter as much as increasing the image resolution."
+  },
+  {
+    "title": "Choose how the player sees the world",
+    "explanation": "A perspective camera makes nearby things look bigger than distant ones. Its field of view controls how wide the view feels. A camera rig is the code that positions and moves that camera.",
+    "analogy": "It is like choosing a phone camera lens, then deciding whether to hold it still or follow a moving subject.",
+    "watch": "Watch how changing the view affects the apparent size of the scene.",
+    "howItWorks": "A perspective camera describes a viewing position, a direction and an angle of view. Nearby objects cover more of the screen than equally sized distant objects. The near and far clipping planes define the range of distances it can draw. A camera rig adds rules for following the train or staying inside a carriage.",
+    "inScene": "From the driver's view, nearby sleepers look large and distant rails appear to converge. A wider field of view includes more surroundings, but makes distant details look smaller. Moving the camera closer changes the spatial relationship between objects; changing the field of view changes the framing from the same location.",
+    "takeaway": "If the camera is inside a carriage, its movement must stay attached to that carriage. Smoothing its world position independently can make it lag behind and pass through the cab's walls."
+  },
+  {
+    "title": "Keep the train on a curved track",
+    "explanation": "A curve gives the train a path. Distance along that path determines where a carriage sits. The tangent is the direction the path points at that spot, so the carriage faces the right way.",
+    "analogy": "Think of moving a marker along a drawn line, then rotating its arrow to follow the bend.",
+    "watch": "Watch each carriage use its own position and direction along the track.",
+    "howItWorks": "A curve is a continuous path that can be sampled at different positions. Its parameter is an address along the curve, but equal parameter steps do not always represent equal physical distances. Arc length measures distance along the path. A tangent gives the direction of travel at a particular point.",
+    "inScene": "Each carriage samples a different distance along the railway. Its position comes from that sample and its heading comes from the tangent. This is why the cars can point in slightly different directions while keeping their spacing through a bend.",
+    "takeaway": "Placing every carriage by subtracting a straight offset from the leading car breaks down on curves. Measure spacing along the route instead. Also check the travel direction, because a train reversing on the same path needs its orientation handled consistently."
+  },
+  {
+    "title": "Keep movement steady on every screen",
+    "explanation": "The game updates many times a second. Delta time means the time since the last update. Moving according to elapsed time keeps the speed consistent when one device draws more frames than another.",
+    "analogy": "A timer should count real seconds, not how often a callback happens to run.",
+    "watch": "Watch how the update step affects movement.",
+    "howItWorks": "An animation loop asks the browser for another update before the next picture. The delay between updates varies with the device and the work being done. Delta time records that delay in seconds. For steady movement, multiply speed by elapsed time instead of adding a fixed distance on every callback.",
+    "inScene": "At 10 meters per second, a 0.02-second update moves an object 0.2 meters. Two 0.01-second updates should cover the same total distance. In the train, wheel rotation follows distance traveled, while doors move gradually through their opening and closing positions.",
+    "takeaway": "A long pause can produce a very large time step when the page resumes. Simulation code needs a policy for that case, such as limiting a step or dividing it into smaller updates. Otherwise objects may jump past important checks."
+  },
+  {
+    "title": "Draw many copies with less repeated work",
+    "explanation": "Instancing lets the graphics processor draw many copies of one shape together. Each copy can have its own position, size and color. A draw call is one instruction asking the graphics processor to draw something.",
+    "analogy": "It is like batching database writes instead of making a separate request for every row.",
+    "watch": "Watch the difference between object count and the number of drawing instructions.",
+    "howItWorks": "The CPU prepares drawing commands and the GPU turns them into pixels. Instancing groups copies that share geometry and material into fewer commands. Each copy still has its own transform, and supported per-copy data can vary its color. This is useful when a hillside contains many related trees or rocks.",
+    "inScene": "The forest contains repeated crowns and conifer tiers. Rotation, size and color vary between copies. Read live scene state to compare the number of visible scenery batches with the latest drawing count. The triangle view reveals their geometry; it does not switch instancing off. The simplified diagram compares separate drawing requests with a shared batch.",
+    "takeaway": "Instancing reduces repeated submission work, but the GPU still draws the triangles and pixels. Dense leaves, overlapping transparent surfaces and shadows can remain expensive. Fewer draw calls are useful evidence about one cost, not proof that the whole frame is fast."
+  },
+  {
+    "title": "Let the graphics processor add motion",
+    "explanation": "A shader is a small program that runs on the graphics processor. It can move points or choose pixel colors. Attributes supply values for individual points; uniforms supply shared settings such as the current time.",
+    "analogy": "Think of a function applied to many items at once, with per-item data and shared arguments.",
+    "watch": "Watch shared wind settings move the canopy while the trunk stays anchored.",
+    "howItWorks": "A vertex shader works on the points of a shape, while a fragment shader calculates color for pieces of visible surfaces. A uniform is a shared input, such as time or wind strength. An attribute supplies input that varies between points. Together these let one short program produce many slightly different results.",
+    "inScene": "The forest wind code gives the canopy more movement than the trunk base. It combines shared time with location and height, so the whole tree does not slide sideways as one block. The experiment makes this anchoring easier to notice than a still photograph can.",
+    "takeaway": "Movement performed only by a shader does not automatically update the CPU's model of the shape. Selection bounds and shadows may need matching treatment if the movement is large enough to make the two representations disagree."
+  },
+  {
+    "title": "Make water reflect its surroundings",
+    "explanation": "The game can draw an extra picture into memory instead of onto the screen. Water uses these saved views to suggest reflections and things beneath the surface. An offscreen render target is the place that holds an extra picture.",
+    "analogy": "It is like drawing into a hidden canvas, then using that result as an image inside the visible page.",
+    "watch": "Watch the extra drawing passes that feed the water surface.",
+    "howItWorks": "An offscreen render target holds an image in graphics memory. Drawing into one creates an extra view that another material can sample later. A reflection capture provides a view of the surroundings; a refraction capture helps show what lies beneath the water. Surface-direction changes distort those views to suggest small waves.",
+    "inScene": "The live camera faces the original valley river. Start with Riverbed, then add Depth color, reflections and Full water. Each step changes the actual water shader. Stronger ripples exaggerates surface-direction changes so their effect is easier to see. Pause ripples freezes the water while you inspect it; drag to compare another angle. The diagram shows the extra drawing passes that supply those layers.",
+    "takeaway": "Every extra capture costs drawing work. Updating it less often can save work but make reflected movement less current. This river technique creates a water appearance; it does not calculate flowing water volume or physically simulated waves."
+  },
+  {
+    "title": "Make weather change the whole scene",
+    "explanation": "Rain and snow use many small moving shapes called particles. Fog makes distant things fade toward the sky color. A weather transition changes these settings together so the scene changes gradually.",
+    "analogy": "Think of a theme change that updates several related styles over time. Driving rules still need their own weather settings.",
+    "watch": "Watch visibility and particles change as the weather grows stronger.",
+    "howItWorks": "Weather is a collection of settings that change together. Particles provide visible drops or flakes. Fog reduces distant contrast. Sky color, light strength and surface appearance help the whole scene agree with those effects. A transition blends from the previous settings to the new ones instead of changing everything in one frame.",
+    "inScene": "In the railway scene, heavier weather changes how far along the route you can see. Wetness and snow coverage affect selected surfaces, while the driving simulation separately accounts for reduced braking grip. Visual rain and braking behavior need to read the same weather choice without becoming the same system.",
+    "takeaway": "Adding more particles alone can make rain busier without making the scene convincing. Check the sky, distance visibility and surfaces together. A static screenshot can show those relationships, but cannot establish that a transition is smooth."
+  },
+  {
+    "title": "Find what the player points at",
+    "explanation": "Raycasting sends an imaginary line from the camera through a screen position. The game checks what that line hits. That lets a click select a carriage, tree or other object.",
+    "analogy": "It answers the 3D version of a click event's target: which object is under this pointer?",
+    "watch": "Watch the line from the camera reach an object.",
+    "howItWorks": "A screen click gives two coordinates on a flat display. Raycasting converts that position into a line extending from the camera through the 3D world. The game tests eligible objects against that line and usually chooses the nearest valid intersection. The hit can include an object identity and the point where the line touched it.",
+    "inScene": "Aim the live view until an object sits under the crosshair, then choose Inspect crosshair. The game casts a ray through the center of the camera and reports the nearest visible mesh, its world position and distance. A hit on an instanced object includes its copy number. The diagram shows the otherwise invisible line between camera and surface.",
+    "takeaway": "A geometric hit is only the start of an interaction. Game rules must still decide whether that object can be used. Decorative objects, transparent surfaces and repeated instances may also need explicit selection rules so the result matches what the player sees."
+  },
+  {
+    "title": "Skip things the player cannot see",
+    "explanation": "Culling means skipping objects that do not need to be drawn, such as things far away or outside the view. A rendering budget limits the work spent on each picture. Hidden objects can still occupy memory.",
+    "analogy": "Think of a virtualized list: draw the rows the user can see instead of every row in the dataset.",
+    "watch": "Watch which objects remain visible as the drawing limit changes.",
+    "howItWorks": "The camera's visible region forms a volume called a frustum. Objects entirely outside it can be skipped. Distance rules can also hide details that would contribute little to the picture. Culling changes what gets drawn; it does not necessarily destroy objects, stop their simulation or release their memory.",
+    "inScene": "Use the live drawing-distance buttons to change how far the original valley scenery batches remain visible. Read live scene state to compare visible and total batches. This changes visibility, not object storage or the extended route loader. The diagram gives a smaller example of the same distance rule.",
+    "takeaway": "If an object disappears too early, inspect its bounds and visibility rules. Bounds are a simplified enclosure used to decide whether the object might be visible. Incorrect bounds can hide something the player should still see, especially when an animation moves beyond its original shape."
+  },
+  {
+    "title": "Load nearby places as you travel",
+    "explanation": "The world can be split into sections called chunks. The game loads nearby sections and releases ones that are no longer needed. Shared resources must stay alive while any visible section still uses them.",
+    "analogy": "It is like loading the next page of results, while keeping shared data cached until its last user is done.",
+    "watch": "Watch sections enter and leave the active area around the train.",
+    "howItWorks": "A chunk is a manageable section of the route. As the train travels, the game keeps nearby sections available and releases distant ones. Loading ahead provides time to prepare the next view. Releasing behind limits memory growth. This system needs to handle direction changes as well as steady forward travel.",
+    "inScene": "Visit the gorge, bridge and Tokyo in the live view, then read live scene state. The regionalWorld entry lists the extended-route chunk IDs currently loaded and the total number built during this session. The original gorge uses its own scenery batches. The diagram shows the moving active window; repeated trips are needed to check whether resource use settles back down.",
+    "takeaway": "Some textures, materials and shapes are shared by several chunks. Removing one chunk must not dispose of a shared resource that another still uses. Keep ownership explicit so releasing scenery does not cause missing surfaces elsewhere on the route."
+  },
+  {
+    "title": "Fit bright game light onto a screen",
+    "explanation": "A game can calculate light brighter than a screen can display. Exposure adjusts the overall brightness. Tone mapping compresses that brightness into the screen's range; color space defines how stored color numbers should be interpreted.",
+    "analogy": "Like processing a camera photo: brighten it without turning every bright detail into plain white.",
+    "watch": "Watch bright and dark areas as exposure changes.",
+    "howItWorks": "Lighting calculations use a working range that can contain values brighter than a display can show. Exposure multiplies that brightness. Tone mapping then compresses the range while trying to retain differences in bright areas. Color-space conversion prepares those results for display; it is a separate operation from making the scene brighter.",
+    "inScene": "The dusk scene contains a bright sky, darker terrain and a train that still needs to remain readable. Watch whether bright areas retain color and shape as exposure changes. If the sky turns uniformly white, increasing exposure further will not recover its lost visible detail.",
+    "takeaway": "Compare materials with the same exposure and output settings. Otherwise you may mistake an overall image change for a material improvement. Applying color conversion twice can also distort the image, so each stage needs one clear responsibility."
+  },
+  {
+    "title": "Stop overlapping surfaces from flickering",
+    "explanation": "The depth buffer records how far each visible surface is from the camera. When two surfaces are almost in the same place, the game may struggle to decide which is in front. That flicker is called z-fighting.",
+    "analogy": "It is like two layers competing for the same position, with rounding errors changing which one wins.",
+    "watch": "Watch what happens when the surfaces overlap or move apart.",
+    "howItWorks": "For each visible pixel, the depth buffer stores information used to decide which surface is closest to the camera. Its precision is finite. Two nearly coincident surfaces can round to values that are difficult to distinguish, making different parts win from one frame to the next. This produces the flicker called z-fighting.",
+    "inScene": "Train panels and roof surfaces are useful places to inspect this problem. A decorative plate laid exactly over another face can look acceptable from one angle and flicker from another. The experiment separates the surfaces so you can see why their relative position matters.",
+    "takeaway": "First remove unintended overlapping faces or give the layers real separation. Increasing light strength does not fix a depth conflict. Camera clipping distances also affect depth precision, so an unnecessarily broad near-to-far range can make close overlaps harder to resolve."
+  },
+  {
+    "title": "Keep the rules separate from the picture",
+    "explanation": "Game state stores facts such as speed, door status and the next stop. Simulation updates those facts. Rendering turns them into a visible train and world. Moving a picture alone does not update the rules.",
+    "analogy": "Treat state as your application model and the 3D scene as a view of that model.",
+    "watch": "Watch how a change in stored distance becomes a change in train position.",
+    "howItWorks": "State records facts that the game rules can use, such as speed, distance and door status. Simulation updates those facts according to inputs and elapsed time. Rendering reads the result and places the visible objects. This separation makes it possible to test a braking rule without needing to draw a train.",
+    "inScene": "Play the live train, pause it, then read live scene state. Its speed and route position are actual game values used to place the carriages. The simplified diagram makes the sequence from stored state to visible position explicit. Door and departure rules remain in the full game; this embed does not provide their controls.",
+    "takeaway": "Moving a carriage mesh directly is not equivalent to driving the train. It can leave the stored distance, stopping logic and story location unchanged. Lasting interactions should go through the state and rule methods that keep those facts consistent.",
+    "sections": [
+      {
+        "heading": "From a description to a playable valley",
+        "body": "In the Signal edition, Create a world sends the description directly from the browser to signal.evaluate with the typesafe-ai/jev model. Six typed questions choose season, forest density, settlement, weather, time of day and whether the request fits the builder. The local director uses the same questions. This avoids starting an agent and a separate server runtime for each world.\n\nFor example, a snowy evergreen village at dusk can produce winter, dense forest, rural rooftops, snow and dusk. The game checks every answer against its allowed settings and derives a repeatable seed from the description before building the scene. Partial requests need player review; unsupported requests leave the current world intact. A model answer is data, never executable scene code.\n\nThe browser uses the signed-in Signal session; no provider key is shipped. A request can wait up to 45 seconds. Cancel ends the local wait and prevents a late answer from replacing the world, although the current SDK may still finish the provider request. New generated worlds are active for the current session and are not saved to the Signal database. If live generation is unavailable, saved presets are labelled as saved worlds."
+      }
+    ]
+  },
+  {
+    "title": "Decide what a finished chapter should feel like",
+    "explanation": "Choose what the player should do and feel in one chapter. Then define checks that show whether it works. Creative direction gives the team a shared target for choices about art, sound and interaction.",
+    "analogy": "It is like writing a product brief and acceptance criteria before building more features.",
+    "watch": "Watch how different priorities change the chapter's focus.",
+    "howItWorks": "Creative direction turns a broad intention into decisions that can be checked. A quiet station chapter might prioritize readable conversation, clear duties and enough time to observe the surroundings. Those priorities guide how many moving elements, sounds and prompts belong in the scene. They also provide reasons to leave some things simple.",
+    "inScene": "Use Haru's story as the context: decide what the player needs to understand at a stop before adding another visual effect. A notebook interaction, a line of dialogue and the departure conditions should support the same chapter purpose. The experiment illustrates how priorities change the result you aim for.",
+    "takeaway": "This is a planning method, not an automatic scoring system for art. Write observable checks, such as whether a new player can identify the task and understand when it is complete. Treat proposed chapter improvements as work to verify in play."
+  },
+  {
+    "title": "Make the important part easy to notice",
+    "explanation": "Composition means arranging the scene. Value hierarchy means making some areas lighter or darker so the important subject stands out. Quiet space gives the eye a break from competing detail.",
+    "analogy": "Use the same thinking as a page layout: a clear heading is easier to find when everything else is not shouting.",
+    "watch": "Watch which subject draws your attention as the contrast changes.",
+    "howItWorks": "Composition arranges shapes so the eye can follow the scene. Value means how light or dark an area appears, independent of its color. A value hierarchy gives the main subject a clear difference from its background. Large simple areas can help that subject stand out more than adding detail everywhere.",
+    "inScene": "In the railway view, compare the train's outline with the terrain behind it. If both have similar brightness and many small details, the train becomes harder to find. The diagram varies emphasis so you can notice what attracts attention first and what becomes background.",
+    "takeaway": "Quiet space still needs a purpose. It can frame a character or show the scale of a valley, but too much empty framing can hide the subject being explained. Judge the composition at the actual screen size where people will read and play."
+  },
+  {
+    "title": "Spend detail where people will look",
+    "explanation": "A hero asset is an object players see closely or often. Bevels soften sharp edges so they catch light. Normals describe the direction a surface faces, and UVs place images on it.",
+    "analogy": "Treat a close-up train like a key screen in an app: its details deserve more attention than a rarely seen background element.",
+    "watch": "Watch how small edge changes make the main object easier to read.",
+    "howItWorks": "A hero asset deserves detail because people repeatedly see it at close range. Its silhouette is the outside shape that remains visible even without surface color. A bevel adds a small angled or curved edge, giving light somewhere to form a highlight. Surface normals then control how smoothly neighboring faces appear to meet.",
+    "inScene": "The train's roof, ends, window spacing and undercarriage establish its identity before tiny markings do. Compare those large forms first. A small bevel may help a close panel read as solid metal, while the same bevel on a distant building may occupy less than one visible pixel.",
+    "takeaway": "Choose detail by viewing distance and purpose. Extra triangles that never become visible still need processing and storage. The chapter's proposed refinements should be judged in the driving and passenger views, as well as in a close inspection image."
+  },
+  {
+    "title": "Make materials and lighting agree",
+    "explanation": "Look development means testing how shapes, surfaces and lights work together. Consistent lighting helps objects feel as though they belong in the same place. Compare changes using the same scene and camera.",
+    "analogy": "It is like checking components under one design system instead of styling each in isolation.",
+    "watch": "Watch the same subject under different lighting settings.",
+    "howItWorks": "Look development is the process of adjusting materials and lighting together until their relationships make sense. A test scene holds the camera, subject and lighting conditions steady while one setting changes. Environment lighting supplies information about surrounding light that helps reflective surfaces belong to the same place.",
+    "inScene": "At dusk, the sky, carriage paint, windows, river and hills should relate to one another. A material that looks right at noon may become unreadable under darker light. Maple Line already changes its sky environment with weather and dusk; a fixed comparison scene would make further tuning easier to judge.",
+    "takeaway": "Avoid correcting every lighting problem by changing each object's base color. That can make one view work while breaking another. Compare clear, rainy and dusk conditions before deciding whether the material or the shared lighting needs adjustment."
+  },
+  {
+    "title": "Keep the picture stable while moving",
+    "explanation": "Temporal stability means the picture stays steady from one frame to the next. Shimmering edges, jumping shadows and sudden changes in detail can look fine in a screenshot but distracting in motion.",
+    "analogy": "A page can look right in one screenshot and still jump around while loading. Games need that same check while the camera moves.",
+    "watch": "Watch for changes that flicker or jump between updates.",
+    "howItWorks": "Temporal means across time. A scene has good temporal stability when small camera movements produce small, understandable image changes. Thin geometry, fine leaf edges and shadow boundaries can change abruptly as they move across pixels. Captures that update less often than the main image can introduce another visible rhythm.",
+    "inScene": "The forest is a useful subject because it contains many tiny edges against the sky. Watch it while traveling, then compare with a still image. A sharp screenshot cannot reveal whether leaves shimmer, shadows jump or a reflection appears to lag during motion.",
+    "takeaway": "Smoothing techniques have tradeoffs. Reusing previous frames can reduce flicker but may leave trails when objects move. Test the same moving route before and after a change, and describe the remaining artifacts instead of treating higher screenshot detail as proof of steadier motion."
+  },
+  {
+    "title": "Use simpler shapes farther away",
+    "explanation": "Level of detail, or LOD, replaces a complex object with a simpler version when it looks small on screen. Hysteresis uses different thresholds for switching in and out, preventing repeated swaps near the boundary.",
+    "analogy": "It is like a control with separate turn-on and turn-off thresholds, so tiny changes do not make it chatter.",
+    "watch": "Watch where detail changes and whether it keeps switching at the boundary.",
+    "howItWorks": "Level of detail changes the representation of an object as its visible size changes. A nearby tree may need branches and leaf groups; a distant one may only need its overall outline and color. Hysteresis creates a gap between switching thresholds so tiny camera movements do not repeatedly swap versions.",
+    "inScene": "The repeated forest provides the example. Maple Line already batches scenery and limits visibility by distance. Replacing distant trees with simpler representations is a separate proposed improvement. The experiment demonstrates switching behavior, rather than proving that every tree in the game already has multiple detail levels.",
+    "takeaway": "A useful teaching example is to switch to a simpler version beyond 100 meters but restore the detailed version only inside 90 meters. The numbers are illustrative. Choose actual thresholds from screen size, visible differences and measured cost."
+  },
+  {
+    "title": "Spread loading work across frames",
+    "explanation": "Building a section of the world can take enough time to interrupt movement. Scheduling divides that work into smaller pieces. Ownership records which section must release each resource when it is finished.",
+    "analogy": "It is like splitting a long task into small jobs so it does not block the browser's main thread.",
+    "watch": "Watch how much work lands in a single update.",
+    "howItWorks": "Scheduling controls when construction work runs. A task that takes too long on the browser's main thread can delay input and the next picture. Breaking construction into bounded jobs leaves room for other work between them. Some numeric preparation can run in a worker, a separate execution context that exchanges data with the main thread.",
+    "inScene": "The extended route currently builds missing chunks synchronously. The diagram shows how spreading that work could reduce a single large interruption. Measure the boundary first: a pause caused by graphics uploads needs different treatment from time spent generating arrays of positions.",
+    "takeaway": "Delayed jobs may finish after the player has moved away or started another world. Give each request an identity and check that it is still wanted before attaching its result. Resource ownership must also cover canceled and outdated jobs."
+  },
+  {
+    "title": "Let one system control the camera at a time",
+    "explanation": "The player, a follow camera and a story scene may all want to move the camera. Give one of them control at a time, and define how control returns. Otherwise their updates can fight and make the view jump.",
+    "analogy": "Treat camera control like a shared resource with an explicit owner and handoff.",
+    "watch": "Watch what happens when control moves between camera systems.",
+    "howItWorks": "Camera ownership means deciding which system has the final say about the view. A driving rig, mouse controls and a story shot may all calculate valid positions, yet produce a jump if they overwrite one another in an unclear order. A handoff defines how control starts, ends and responds to interruption.",
+    "inScene": "The cab view needs to follow its carriage rigidly, while a conversation can frame Haru and Emi from another angle. Maple Line uses a story overlay alongside the normal camera rig. Restoring the base view and then applying the active story framing in the intended order keeps those responsibilities understandable.",
+    "takeaway": "Try ending a conversation, changing view and entering a tunnel. Each case should return to an appropriate owner. Reduced motion also needs a deliberate transition rule, because a long animated camera move may be unwanted even when its destination is correct."
+  },
+  {
+    "title": "Make characters feel attached to the ground",
+    "explanation": "A rig is a set of connected controls used to pose a character. Acting adds readable gestures and timing. Contact keeps feet and hands aligned with the things they touch instead of sliding through them.",
+    "analogy": "Imagine an articulated puppet whose joints move together, with clear rules for which foot is planted.",
+    "watch": "Watch whether planted feet stay still as the character moves.",
+    "howItWorks": "A rig defines connected parts and the points around which they move. A pivot at the shoulder makes an arm swing from the shoulder; a pivot at the mesh center makes it rotate differently. Acting combines these poses with timing, eye direction and pauses so another person can understand the character's attention.",
+    "inScene": "Haru's notebook and Emi's recorder make contact easy to inspect. Their hands should remain near the props while head and breathing motion add life. The current cast uses procedural parts and small motions; the lesson's richer poses and prop interactions are proposed refinements.",
+    "takeaway": "Start with a readable still pose before adding motion. Check feet against the ground and hands against props throughout the movement. More animation can make a contact error more distracting if the underlying pivots and positions are wrong."
+  },
+  {
+    "title": "Make actions easy to understand",
+    "explanation": "Game feel is how an action responds to the player's input. Timing, movement, sound and feedback help explain what happened. A successful action and a blocked action should give different, readable responses.",
+    "analogy": "Like a form button: people need to see whether it was pressed, accepted, waiting or rejected.",
+    "watch": "Watch the delay and feedback between an action and its result.",
+    "howItWorks": "An interaction has several stages: the player expresses an intention, the game checks its rules, an action takes effect, and feedback explains the result. These stages can take different amounts of time. Immediate acknowledgement helps even when the physical result, such as slowing a train, cannot happen instantly.",
+    "inScene": "At the station, requesting power while doors remain open must not move the train. The interface should explain the refusal so the player understands what to do next. Once doors finish closing, applied power and speed can respond according to the simulation rather than jumping to the requested value.",
+    "takeaway": "Do not add a success sound or animation before the rule check accepts the action. Tune feedback against actual state transitions, including blocked actions, so a pleasing response never tells a different story from the train's behavior."
+  },
+  {
+    "title": "Let the important sound be heard",
+    "explanation": "Audio mixing sets how loud each sound is relative to the others. A mix hierarchy gives priority to speech or an important signal. Spatial sound changes with direction and distance.",
+    "analogy": "It is like visual emphasis for your ears: reduce competing sounds so the important one is easy to follow.",
+    "watch": "Watch the balance between speech and background sound.",
+    "howItWorks": "An audio bus groups related sounds so their volume can be controlled together. Gain is a volume multiplier. Ducking temporarily reduces competing sounds while an important sound plays. Spatial audio adds direction and distance cues, while filtering can make a sound feel muffled through a wall or inside a carriage.",
+    "inScene": "The river, wheels, motor and narration have different roles. During a spoken line, background sound should leave enough room for the words. Inside the train, the balance can differ from an exterior view. The visual experiment explains these relationships; it is not an audition of the actual game mix.",
+    "takeaway": "Louder is not always clearer. Too many equally loud layers can hide useful cues and become tiring. Listen through each transition, including when speech ends, and provide readable alternatives for information players need when sound is muted."
+  },
+  {
+    "title": "Make choices change what happens next",
+    "explanation": "Level design arranges places, goals and obstacles. Agency means players can make choices that affect the result. Lasting consequences mean the game remembers those choices later.",
+    "analogy": "Think of an application workflow where a decision updates saved state and changes later options.",
+    "watch": "Watch how a choice leads to a different state or outcome.",
+    "howItWorks": "A choice creates agency when it changes something the player can recognize. That change might be a saved fact, an available action, a route or a later response. Level design places the cue, decision and consequence where the player can connect them. Clear cause and effect matters more than the number of choices.",
+    "inScene": "At a station, Haru's dialogue, the task object and departure conditions should agree about what happened. Maple Line records story choices and task facts, while some route notes are session-only. The experiment follows a decision into a resulting state so the connection is visible.",
+    "takeaway": "A button click should not record completion before the required task has happened. Check interrupted conversations and reloads as well as the normal path. Explain which consequences persist, especially when a permission or route activity must be earned again."
+  },
+  {
+    "title": "Measure whether movement stays smooth",
+    "explanation": "A frame budget is the time available to prepare each picture. At 60 frames per second that is about 16.7 milliseconds. Profiling measures where time goes; repeatable checks compare the same conditions.",
+    "analogy": "Treat it like a request-time budget: average time matters, but occasional slow responses matter too.",
+    "watch": "Watch how the work fits into the available time per frame.",
+    "howItWorks": "Frame time measures how long a picture takes to arrive. A target of 60 pictures per second leaves about 16.7 milliseconds between them. Averages can hide occasional long delays, so percentiles help describe the slower frames. The 95th percentile marks a time at or below which roughly 95 percent of measured frames fall.",
+    "inScene": "Read live scene state to inspect the game’s current frame-timing summary and latest drawing counts. Compare shadows under the same camera and weather. These readings are observations from this browser session, not a controlled benchmark or GPU timing. The simplified diagram illustrates how a frame budget is divided; the development measurement tool provides bounded timed samples.",
+    "takeaway": "Compare the same camera, weather, viewport and route segment. Record how long the sample ran and whether resolution changed. Otherwise a lower frame time might come from drawing fewer pixels instead of improving the underlying work."
+  },
+  {
+    "title": "Explain the game in more than one way",
+    "explanation": "Accessibility helps people understand and operate the game with different needs. Pair color with text or shape, support keyboard controls, and offer reduced motion. Information design makes the next action clear.",
+    "analogy": "Apply the same accessible form and navigation principles you would use on a website.",
+    "watch": "Watch whether the message remains clear when one cue is unavailable.",
+    "howItWorks": "Accessibility gives people more than one way to perceive information and operate controls. A red indicator can also carry a word or symbol. A clickable control needs a keyboard path and visible focus. Reduced motion changes animation behavior without removing the information the animation was meant to explain.",
+    "inScene": "A station refusal message should say why departure is blocked and what action will resolve it. Dialogue text supports players who cannot hear narration, while camera settings affect comfort during story scenes. Existing controls are a starting point; completing an entire task is the better check of whether the flow works.",
+    "takeaway": "Try the scene with sound off, a keyboard, enlarged text and reduced motion. Look for missing instructions, hidden focus and controls pushed offscreen. A feature being present in settings does not prove that every interaction respects it."
+  },
+  {
+    "title": "Update saved progress without losing it",
+    "explanation": "A save migration converts old saved data into the format a new version expects. Validate the result before replacing the original, and keep a recovery copy. Release checks test both new games and existing progress.",
+    "analogy": "It is a data-schema migration with a user who expects their progress to survive the update.",
+    "watch": "Watch the path from an old save to a checked, usable new save.",
+    "howItWorks": "A save schema defines the fields stored for progress and what each field means. A version number identifies the expected format. Migration converts a supported older format into a newer one, while validation checks that the result obeys the current rules. Keeping the original allows recovery if conversion or writing fails.",
+    "inScene": "Haru's notebook represents accumulated choices, but the saved data also includes task facts and duty state. Maple Line validates save identity and version; an explicit migration path is separate proposed work. The diagram explains the desired sequence without claiming that all older versions can already be converted.",
+    "takeaway": "Never replace the only usable save before checking the candidate. Test an unfinished task, a completed task and interrupted writing. Restoring progress also needs to respect live conditions: a previous signal clearance is not proof that the track is clear now."
+  },
+  {
+    "title": "Give agents tools to inspect the game",
+    "explanation": "An agent cannot learn every fact about a game from a screenshot. Give it named tools that read current state, find objects and measure performance. Each tool should answer one clear question and return data the agent can check.",
+    "analogy": "Think of a small debugging API: a tool name is an endpoint, its input schema is the request contract, and its result is a compact response from the running application.",
+    "watch": "Follow a request from the agent through validation, the game reader and the returned result. The example plays automatically and does not call a live tool.",
+    "howItWorks": "MCP means Model Context Protocol. It lets an agent application discover and call tools supplied by another program. WebMCP exposes tools through a browser interface. These share the idea of named functions with documented inputs, but registering a page tool does not create a remote MCP server. Maple Line registers its tools in the development game and also offers a page-local invocation fallback when native browser support is unavailable.",
+    "inScene": "Start with a question about this train scene: where is the train, what is the camera looking at, or why did motion slow down? A world snapshot gives current facts. Object search narrows the scene to relevant objects. Inspection explains a selected object. A timed measurement answers a different question about behavior across several frames. The photograph provides visual context, while the tools supply evidence that cannot be read from pixels alone.",
+    "takeaway": "Keep inspection separate from change. Reading a carriage material should not alter it, and measuring performance should not quietly change the weather. A read-only annotation is a description, not enforcement. Validate inputs inside the executor, expose only intended state, and route changes through the same checked actions as the player controls. Object names are returned data, even when their text looks like an instruction.",
+    "sections": [
+      {
+        "heading": "Read a compact world snapshot",
+        "body": "get_world_state takes an empty object and returns game state, the active camera, renderer counters, scene counts and available actions. Use it to establish context before investigating a defect. Return selected fields instead of serializing the complete Three.js scene: that graph contains large arrays, shared references and details the agent does not need. State is current only when sampled, so read it again after an action that could change the answer."
+      },
+      {
+        "heading": "Build a world explorer from small tools",
+        "body": "find_objects accepts a query such as train and returns a bounded set of matches. Choose a returned UUID or a unique exact name for inspect_object, which reports transforms, bounds and material details. pick_world selects through a point in the camera view using coordinates from −1 to +1. For authored scenery, inspect_level supports offsets and limits: pagination means asking for the next small page of results. sample_route answers questions about track and ground placement."
+      },
+      {
+        "heading": "Measure performance with context",
+        "body": "First call get_runtime_profile to describe the browser, display and available device information. Missing values are null, not zero capacity. Then call measure_game_performance with durationSeconds between 1 and 10. The result includes the sample count, observed frames per second, frame-time percentiles, CPU times, drawing work and scene context. A three-second sample describes that observation only. Keep camera, route, weather and resolution comparable; CPU timing and JavaScript heap size are not GPU timing or GPU memory."
+      },
+      {
+        "heading": "Define and enforce the tool contract",
+        "body": "Build each tool around a name, a description, an input schema and a handler. The schema states allowed fields, types and limits; additionalProperties: false rejects unexpected fields. The executor must perform those checks too. For example, reject a negative duration, a string where a number is required, or an unknown option before collecting a performance sample. Return a recognizable error result instead of a success-shaped payload with invented measurements."
+      },
+      {
+        "heading": "Connect tools to existing application readers",
+        "body": "Maple Line passes its inspector, state reader and control callbacks into the registry. That keeps tool wiring separate from the simulation. A world tool calls the existing snapshot function; a measurement tool calls the existing frame collector. The page-local examples under Show code invoke those handlers without creating a new network endpoint. A separate remote MCP service would need an explicit connection to the live game, access controls and a policy for disconnected or stale sessions; it is not provided by these browser registrations."
+      },
+      {
+        "heading": "Check the result before drawing a conclusion",
+        "body": "The Maple Line tool wrapper returns content containing a JSON text payload and marks failures with isError. Parse the payload, check that the expected data exists, and preserve its origin and measurement context. An empty object search means no matching object was found; it does not prove the renderer is broken. A slow frame sample suggests something to investigate. Combine it with the visible scene and another controlled measurement before claiming a cause."
+      },
+      {
+        "heading": "Test the tool boundary",
+        "body": "Test valid requests, unknown fields, out-of-range values, ambiguous names and tool calls after disposal. For asynchronous work, define deadlines and cancellation through every layer; checking cancellation only before a handler starts does not interrupt work already underway. Test read-only handlers for unintended state changes. Finally verify native discovery in the actual browser separately from fallback invocation: a working page helper does not establish that a browser agent can discover the tool."
+      }
+    ],
+    "references": [
+      {
+        "label": "MCP architecture",
+        "url": "https://modelcontextprotocol.io/docs/learn/architecture"
+      },
+      {
+        "label": "Chrome WebMCP tool registration",
+        "url": "https://developer.chrome.com/docs/ai/webmcp/imperative-api"
+      }
+    ],
+    "workflows": [
+      {
+        "title": "Find why a scene feels slow",
+        "question": "“The train stutters near the bridge. What should we investigate first?”",
+        "calls": "get_world_state({})\nget_runtime_profile({})\nmeasure_game_performance({ durationSeconds: 3 })",
+        "evidence": "Read the sample count, frameMs.p95, cpuMs.p95, averageDrawCalls and the camera, route and resolution context. The p95 value describes the slower end of this sample. A screenshot alone cannot provide this timing history.",
+        "decision": "The agent compares the timing with the scene conditions, then inspects the relevant update or rendering code. High drawing counts suggest a rendering-cost investigation; they do not prove the GPU is the bottleneck. A long CPU time points toward CPU-side work worth profiling.",
+        "verify": "Make one scoped change, run the relevant tests, and repeat the sample at the same location, camera, weather and resolution. Report the measured difference and remaining uncertainty."
+      },
+      {
+        "title": "Find what blocks the driver’s view",
+        "question": "“The camera looks inside a wall. Which object is in the way?”",
+        "calls": "get_world_state({})\npick_world({ x: 0, y: 0 })\n// Use the UUID returned by the selected hit:\ninspect_object({ query: hitUuid })",
+        "evidence": "The snapshot identifies the active camera. Picking finds objects along the center of its view. Inspection returns the chosen object’s transform, bounds and materials. Names and UUIDs connect the visible problem to a concrete object.",
+        "decision": "The agent checks whether the camera sits behind a carriage panel, whether the wrong mesh is visible, or whether the camera rig has fallen behind the moving train. It confirms the diagnosis with a screenshot rather than treating a coarse bounding box as proof.",
+        "verify": "Fix the responsible camera or geometry source, then check the cab while stopped, moving, reversing and entering the tunnel. Picking a different object after a camera move is expected; it is not automatically a regression."
+      },
+      {
+        "title": "Test a material change before editing source",
+        "question": "“Would a rougher surface make this object easier to read?”",
+        "calls": "find_objects({ query: 'train' })\n// Choose an exact returned UUID, then inspect it.\ninspect_object({ query: objectUuid })\npatch_world_object({\n  query: objectUuid,\n  patch: { material: { roughness: 0.8 } }\n})\n// Restore the last temporary object patch:\nundo_world_patch({})",
+        "evidence": "Inspection identifies the current surface settings. A temporary patch lets the agent compare the same object under the same camera and lighting. An animated system may overwrite the patch, so the agent must verify that the intended value remains active.",
+        "decision": "Within an authorized visual-edit task, the agent tries a bounded change, observes the result, and undoes it if it fails the intended comparison. The tool does not write source files, and undo applies to object patches rather than every game action.",
+        "verify": "If the comparison supports the change, edit the owning material source and reload. Verify the saved implementation in more than one lighting condition. A temporary improvement that disappears after reload is not a completed fix."
+      }
+    ]
+  }
+]

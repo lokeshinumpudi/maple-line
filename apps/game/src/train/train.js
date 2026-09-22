@@ -1,6 +1,7 @@
 import { CAR_COUNT, CAR_SPACING } from './consist.js';
 import { createCarInterior } from './interior.js';
 import { trainSystems } from './systems.js';
+import { TRAIN_FAMILIES, applyWeatherFinish, createWetnessTracker } from './weather-materials.js';
 /** Five articulated EMU carriages. The caller owns carriage positions along the route. */
 export function createTrain({ THREE, scene, wireHeight = 12.1 }) {
   const cars = [],
@@ -82,6 +83,20 @@ export function createTrain({ THREE, scene, wireHeight = 12.1 }) {
       roughness: 0.25,
     }),
   };
+  // Exterior finishes wet and dry with the weather. Glass, rubber, lamps, seats and lining do not.
+  // Cabin fittings share dry copies; painted exteriors may become wet without wetting paper or gauges.
+  const interiorPaints = { ...paints };
+  for (const key of ['red', 'cream', 'gold', 'roof', 'steel', 'bright', 'insulator']) {
+    interiorPaints[key] = paints[key].clone();
+    interiorPaints[key].name = `Interior dry / ${key}`;
+    materials.add(interiorPaints[key]);
+  }
+  const exteriorWetness = createWetnessTracker({ wetTime: 6, dryTime: 35 });
+  for (const key of ['red', 'cream', 'gold', 'insulator'])
+    applyWeatherFinish(paints[key], TRAIN_FAMILIES.paint, exteriorWetness.uniform);
+  applyWeatherFinish(paints.roof, TRAIN_FAMILIES.roofPaint, exteriorWetness.uniform);
+  for (const key of ['steel', 'bright'])
+    applyWeatherFinish(paints[key], TRAIN_FAMILIES.steel, exteriorWetness.uniform);
   const geometry = (g, name) => {
     g.name = name;
     geometries.add(g);
@@ -119,11 +134,12 @@ export function createTrain({ THREE, scene, wireHeight = 12.1 }) {
     systemsState = trainSystems();
   function createCar(index) {
     const car = new THREE.Group();
-    car.name = [
-      'Momiji EMU / driving motor car',
-      'Momiji EMU / middle motor car',
-      'Momiji EMU / rear driving car',
-    ][index];
+    car.name =
+      index === 0
+        ? 'Momiji EMU / driving motor car'
+        : index === CAR_COUNT - 1
+          ? 'Momiji EMU / rear driving car'
+          : `Momiji EMU / middle motor car ${index}`;
     car.userData = {
       role: 'railway-carriage',
       carIndex: index,
@@ -561,7 +577,7 @@ export function createTrain({ THREE, scene, wireHeight = 12.1 }) {
         THREE,
         car,
         index,
-        paints,
+        paints: interiorPaints,
         material,
         geometry,
         boxGeometry,
@@ -658,6 +674,7 @@ export function createTrain({ THREE, scene, wireHeight = 12.1 }) {
       mesh.instanceMatrix.needsUpdate = true;
     }
     systemsTime += Math.max(0, dt);
+    exteriorWetness.advance(dt, weather);
     systemsState = trainSystems({
       weather,
       dusk,
@@ -718,6 +735,7 @@ export function createTrain({ THREE, scene, wireHeight = 12.1 }) {
     getSystemsState: () => ({
       ...systemsState,
       wheelAngle,
+      exteriorWetness: exteriorWetness.value,
       interiors: interiors.map((interior) => interior.state()),
       wiperAngles: wiperAnimations.map(({ pivot }) => pivot.rotation.z),
     }),

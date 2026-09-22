@@ -1,3 +1,7 @@
+import { createEmbedVisuals } from './embed/visuals.js';
+import { installEmbedBridge } from './embed/bridge.js';
+import { createStableSunShadow } from './rendering/stable-sun-shadow.js';
+import { sceneSoundContext } from './audio/scene-context.js';
 import { createRegionalRailTraffic } from './world/regional-rail-traffic.js';
 import { TOKYO_PASSAGE } from './world/tokyo-passage.js';
 import { drivingAction } from './ui/driving-input.js';
@@ -139,6 +143,7 @@ Object.assign(sun.shadow.camera, {
 sun.shadow.bias = -0.001;
 sun.shadow.normalBias = 0.4;
 scene.add(sun, sun.target);
+const stableSunShadow = createStableSunShadow();
 let seed = 431;
 function random() {
   seed = (seed * 1664525 + 1013904223) >>> 0;
@@ -704,8 +709,15 @@ function weatherAt(position) {
 function isTunnel(z) {
   return z >= landmarks.tunnelStartZ && z <= landmarks.tunnelEndZ;
 }
+const embedded = import.meta.env.MODE.endsWith('-embed');
+let embedSuspended = false;
+let embedVisuals;
+let embedLocation = null;
 const gameStore = createGameStore(startT * trackLength);
-const preferenceStorage = attachPreferenceStorage({ gameStore });
+const preferenceStorage = attachPreferenceStorage({
+  gameStore,
+  storage: embedded ? null : undefined,
+});
 let state = gameStore.getState().drive;
 let { mode, view, dusk, sound, weather } = gameStore.getState().preferences;
 let audioCtx,
@@ -1082,6 +1094,7 @@ function updateCamera(dt, snap = false) {
     direction: state.direction,
     view,
     snap,
+    focusPose: embedded ? embedVisuals?.focusPose() : null,
     inTunnel: isTunnel(
       track.getPointAt(THREE.MathUtils.clamp(state.distance / trackLength, 0, 1)).z,
     ),
@@ -1089,9 +1102,7 @@ function updateCamera(dt, snap = false) {
   const position = track.getPointAt(
     THREE.MathUtils.clamp(state.distance / trackLength, 0.001, 0.995),
   );
-  sun.position.copy(position).add(new THREE.Vector3(-90, 160, -65));
-  sun.target.position.copy(position);
-  sun.target.updateMatrixWorld();
+  stableSunShadow.apply(sun, position, renderer.shadowMap);
 }
 function finish(success) {
   setDrive(0, 1);
@@ -1271,7 +1282,7 @@ const nextPaint = () =>
 const worldBuilder = createWorldBuilder({
   offline: document.documentElement.dataset.hosting === 'static',
   fetcher: document.documentElement.dataset.hosting === 'signal' ? fetchShipWorld : fetchDirector,
-  timeoutMs: document.documentElement.dataset.hosting === 'signal' ? 180000 : 20000,
+  timeoutMs: document.documentElement.dataset.hosting === 'signal' ? 45000 : 20000,
   onBuildError: (error) => {
     if (import.meta.env.DEV) console.error('World build failed:', error);
   },
@@ -1387,6 +1398,10 @@ let shadowElapsed = 1,
   reflectionElapsed = 1;
 function frame(now) {
   requestAnimationFrame(frame);
+  if (embedded && (embedSuspended || document.hidden)) {
+    last = now;
+    return;
+  }
   const cpuStart = performance.now();
   const intervalMs = now - last;
   renderer.info.reset();
@@ -1598,7 +1613,9 @@ function frame(now) {
     inTunnel: isTunnel(routePosition.z),
   });
   artDirection?.apply();
-  wind.update(state.paused ? 0 : dt, { weather: localWeather });
+  wind.update(state.paused && !(embedded && embedVisuals?.focus() === 'forest') ? 0 : dt, {
+    weather: localWeather,
+  });
   windCues.update(state.paused ? 0 : dt, {
     cameraPosition: camera.position,
     weather: localWeather,
@@ -1684,13 +1701,18 @@ function frame(now) {
     audioElapsed = 0;
     const listener = camera.position;
     const right = { x: camera.matrixWorld.elements[0], z: camera.matrixWorld.elements[2] };
-    const waterZ = THREE.MathUtils.clamp(listener.z, -900, 1350);
-    const river = riverProfile(waterZ);
-    const riverX = center(waterZ) + river.offset;
+    const activePlan = gameStore.getState().worldBuilder.active?.plan;
+    const sceneSound = sceneSoundContext({
+      listener,
+      z: routePosition.z,
+      season: activePlan?.season ?? 'autumn',
+      forest: activePlan?.forest,
+      weather: localWeather,
+    });
     const riverSource = {
-      x: THREE.MathUtils.clamp(listener.x, riverX - river.halfWidth, riverX + river.halfWidth),
-      y: -0.4,
-      z: waterZ,
+      x: sceneSound.riverSource[0],
+      y: sceneSound.riverSource[1],
+      z: sceneSound.riverSource[2],
     };
     const separation = (point) =>
       Math.hypot(listener.x - point.x, listener.y - point.y, listener.z - point.z);
@@ -1719,7 +1741,6 @@ function frame(now) {
         considerPerson({ x: point.x + 7, y: point.y + 1.6, z: point.z });
       }
     }
-    const activePlan = gameStore.getState().worldBuilder.active?.plan;
     const activeStoryBeat = storyHost?.engine.getState().activeBeat;
     const storyActive = Boolean(activeStoryBeat);
     soundscape.update({
@@ -1744,26 +1765,25 @@ function frame(now) {
       weather: localWeather,
       dusk,
       view: view === 'passenger' ? 'cab' : view,
-      season: activePlan?.season ?? 'autumn',
+      season: sceneSound.forest.season,
       inTunnel: isTunnel(routePosition.z),
       onBridge: Math.abs(routePosition.z - landmarks.bridgeZ) < landmarks.bridgeSpan / 2,
       trainDistance: separation(train[0].position),
       trainPan: sourcePan(listener, right, train[0].position),
-      riverDistance: separation(riverSource),
+      riverDistance: sceneSound.riverDistance,
+      riverIntensity: sceneSound.riverIntensity,
       riverPan: sourcePan(listener, right, riverSource),
       peopleDistance,
       walkingDistance,
       peoplePan: peopleSource ? sourcePan(listener, right, peopleSource) : 0,
-      forest:
-        routePosition.z > 21000
-          ? 0.15
-          : ({ sparse: 0.4, balanced: 0.75, dense: 1 }[activePlan?.forest] ?? 0.8),
+      forest: sceneSound.forest.density,
       wind: wind.getState().speedMps,
     });
   }
   for (const chunk of sceneryChunks) {
     chunk.mesh.visible =
-      !(generatedWorld && chunk.forest) && Math.abs(chunk.z - camera.position.z) < 720;
+      !(generatedWorld && chunk.forest) &&
+      Math.abs(chunk.z - camera.position.z) < (embedVisuals?.sceneryDistance() ?? 720);
     chunk.mesh.castShadow = chunk.casts && Math.abs(chunk.z - train[0].position.z) < 180;
   }
   for (const chunk of railChunks) chunk.mesh.visible = Math.abs(chunk.z - camera.position.z) < 1200;
@@ -1774,6 +1794,7 @@ function frame(now) {
     shadowElapsed = 0;
   }
   riverDetails.update(state.paused ? 0 : dt);
+  embedVisuals?.apply(dt);
   riverWater.mesh.visible = camera.position.z < 1400;
   if (riverWater.mesh.visible) {
     riverWater.capture({ refreshReflection: reflectionElapsed >= 0.05 });
@@ -1861,6 +1882,7 @@ const storyEngine = createStoryEngine({
   campaign,
   encounters: wildlifeEncounters,
   wildlifeBroadcast,
+  storage: embedded ? null : undefined,
 });
 const storySession = connectStorySession({ engine: storyEngine, duties: stationDuties });
 const storyWildlife = createStoryWildlife({
@@ -2337,6 +2359,113 @@ window.addEventListener('resize', () => {
   renderer.setSize(innerWidth, innerHeight);
   riverWater.resize();
 });
+if (embedded) {
+  embedVisuals = createEmbedVisuals({
+    THREE,
+    scene,
+    camera,
+    renderer,
+    train,
+    riverWater,
+    center,
+    riverProfile,
+    railPoint,
+    terrain,
+    station,
+    wind,
+    surfaceDetail,
+    forestSource: trunks,
+  });
+  document.body.classList.add('embedded-game');
+  gameStore.setPreferences({ sound: false, narrationEnabled: false, hudVisible: false });
+  gameStore.updateDirector({ enabled: false });
+  director.setEnabled(false);
+  $('start-with-sound').checked = false;
+  start();
+  changeDrive((drive) => {
+    drive.paused = true;
+  });
+  const locations = {
+    gorge: -520,
+    terraces: -380,
+    station: 490,
+    bridge: landmarks.bridgeZ,
+    summit: landmarks.summitZ,
+    tokyo: landmarks.tokyoZ,
+  };
+  const inspectionRay = new THREE.Raycaster();
+  const disposeEmbed = installEmbedBridge({
+    inspect(x, y) {
+      inspectionRay.setFromCamera(new THREE.Vector2(x, y), camera);
+      const hit = inspectionRay.intersectObjects(scene.children, true).find(({ object }) => {
+        for (let parent = object; parent; parent = parent.parent) if (!parent.visible) return false;
+        return object.isMesh;
+      });
+      if (!hit) return { hit: false };
+      return {
+        hit: true,
+        name: hit.object.name || hit.object.type,
+        instanceId: hit.instanceId ?? null,
+        distanceMetres: Math.round(hit.distance * 100) / 100,
+        point: hit.point.toArray().map((v) => Math.round(v * 100) / 100),
+      };
+    },
+    configure(config) {
+      const paused = config.paused ?? state.paused;
+      embedVisuals.configure(config);
+      if (config.location !== undefined) {
+        jumpTo(locations[config.location]);
+        embedLocation = config.location;
+      }
+      if (config.camera !== undefined) selectCamera(config.camera);
+      if (config.weather !== undefined) {
+        $('weather').value = config.weather;
+        $('weather').dispatchEvent(new Event('change'));
+      }
+      if (config.timeOfDay !== undefined && (config.timeOfDay === 'dusk') !== dusk)
+        daylight.click();
+      changeDrive((drive) => {
+        drive.paused = paused;
+      });
+      updateCamera(
+        0,
+        ['focus', 'camera', 'location'].some((key) => Object.hasOwn(config, key)),
+      );
+    },
+    snapshot: () => ({
+      camera: view,
+      visual: embedVisuals.snapshot(),
+      inspection: {
+        visibleSceneryBatches: sceneryChunks.filter((chunk) => chunk.mesh.visible).length,
+        totalSceneryBatches: sceneryChunks.length,
+        regionalWorld: (() => {
+          const world = extendedWorld.getState();
+          return {
+            loadedChunks: world.loadedChunks,
+            totalChunks: world.totalChunks,
+            totalBuilt: world.totalBuilt,
+            positionZ: world.positionZ,
+          };
+        })(),
+        frameTiming: frameBudget.getState(),
+      },
+      location: embedLocation,
+      cameraPosition: camera.position.toArray().map((value) => Math.round(value * 100) / 100),
+      weather,
+      timeOfDay: dusk ? 'dusk' : 'daylight',
+      paused: state.paused,
+      speedKmh: Math.round(state.speed * 3.6),
+      routeZ: Math.round(train[0].position.z),
+      drawCalls: renderer.info.render.calls,
+      triangles: renderer.info.render.triangles,
+      note: 'Latest rendered frame counts; not a performance benchmark.',
+    }),
+    suspend(value) {
+      embedSuspended = value;
+    },
+  });
+  window.addEventListener('pagehide', disposeEmbed, { once: true });
+}
 updateCamera(1, true);
 $('loading').hidden = true;
 requestAnimationFrame(frame);

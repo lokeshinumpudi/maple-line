@@ -13,6 +13,21 @@ export function installMobileHUD({ store }) {
   entry.setAttribute('aria-controls', 'speedometer mobile-ride-controls');
   document.querySelector('.ride-controls').id = 'mobile-ride-controls';
   document.body.append(entry);
+  const landingMeta = document.createElement('p');
+  landingMeta.id = 'mobile-landing-meta';
+  const landingWhen = document.createElement('span');
+  const landingWhere = document.createElement('span');
+  landingMeta.append(landingWhen, landingWhere);
+  document.querySelector('header')?.append(landingMeta);
+  const syncLandingMeta = () => {
+    landingWhen.textContent = document.querySelector('.tag')?.textContent?.trim() ?? '';
+    landingWhere.textContent = document.querySelector('.journey h2')?.textContent?.trim() ?? '';
+    landingMeta.hidden = !media.matches || store.getState().drive.started;
+  };
+  const landingWatch = new MutationObserver(syncLandingMeta);
+  for (const node of [document.querySelector('.tag'), document.querySelector('.journey h2')]) {
+    if (node) landingWatch.observe(node, { childList: true, characterData: true, subtree: true });
+  }
 
   const shortcuts = document.createElement('div');
   shortcuts.className = 'mobile-hud-shortcuts';
@@ -53,6 +68,7 @@ export function installMobileHUD({ store }) {
     entry.textContent = hidden ? 'Controls' : 'Hide';
     entry.setAttribute('aria-label', hidden ? 'Show controls' : 'Hide controls');
     entry.setAttribute('aria-expanded', String(!hidden));
+    syncLandingMeta();
     for (const button of shortcuts.children) {
       const target = document.querySelector(button.dataset.target);
       if (target && button.dataset.target !== '.ml-story-launch')
@@ -89,9 +105,8 @@ export function installMobileHUD({ store }) {
   on(
     document,
     'pointerdown',
-    (event) => {
+    () => {
       held = true;
-      if (event.target !== entry) reveal();
     },
     { passive: true },
   );
@@ -146,6 +161,8 @@ export function installMobileHUD({ store }) {
     clearTimeout(timer);
     abort.abort();
     unsubscribe();
+    landingWatch.disconnect();
+    landingMeta.remove();
     entry.remove();
     shortcuts.remove();
     document.body.classList.remove('mobile-hud-resting');

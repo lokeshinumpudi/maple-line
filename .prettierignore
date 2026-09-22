@@ -11,3 +11,5 @@ artifacts/screenshots/
 **/.turbo/
 artifacts/legacy-dist/
 pnpm-lock.yaml
+
+**/dist-embed/

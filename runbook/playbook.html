@@ -69,7 +69,7 @@
   <pre><code id="maple-code"></code></pre>
   <div class="source-row text-small"><span id="maple-source" class="source-label"></span><a id="maple-doc" target="_blank" rel="noopener noreferrer">Three.js reference ↗</a></div>
   <p id="maple-exercise" class="exercise"></p>
-  <div class="text-small text-muted">Archived gameplay captures include earlier UI, story text, and scenery. Studio source excerpts inspected 21 September 2026. Improvement sketches and acceptance targets are proposals; the diagrams are schematic. These controls do not modify the game.</div>
+  <div class="text-small text-muted">Game captures refreshed 22 September 2026 at 2560 × 1440 pixels. Source excerpts are an earlier teaching snapshot, inspected 21 September 2026. Improvement sketches and acceptance targets are proposals; the diagrams are schematic. These controls do not modify the game.</div>
 </div>
 <script>
 (() => {
@@ -458,6 +458,15 @@ box(cream, x, 2.755, z, thickness, 1.21, length);
         const step=stateIndex(v,l), left=28, right=w-28;
         text(cx,25,l.values[step]);
         switch(l.visual) {
+          case 'agentTools': {
+            const names=['Agent request','Check input','Read game','Return evidence'];
+            names.forEach((label,i)=>{
+              const y=58+i*51;
+              node(cx,y,Math.min(w-40,300),label,i===step);
+              if(i<3)arrow(cx,y+20,cx,y+31,C.edge);
+            });
+            break;
+          }
           case 'direction': case 'causality': {
             const names=l.visual==='direction'?['Notice','Act','Remember']:['Clue','Action','Change'];
             names.forEach((s,i)=>{const x=w*(i+.5)/3;circle(x,108,22,i===step?C.accent:C.shade);text(x,113,String(i+1));text(x,163,s);if(i<2)arrow(x+29,108,w*(i+1.5)/3-29,108,C.edge);});
@@ -540,7 +549,7 @@ box(cream, x, 2.755, z, thickness, 1.21, length);
             text(cx,208,'Preserve a recovery copy before committing changes');break;
           }
         }
-        for(let i=0;i<3;i++){circle(cx-24+i*24,253,i===step?5:3,i===step?C.accent:C.edge);}
+        for(let i=0;i<l.values.length;i++){circle(cx-(l.values.length-1)*12+i*24,253,i===step?5:3,i===step?C.accent:C.edge);}
         status=l.steps[step]+' · schematic proposal';
         break;
       }
@@ -683,9 +692,10 @@ box(cream, x, 2.755, z, thickness, 1.21, length);
     focusIndex=Math.min(Math.max(0,focusIndex),r.spots.length-1);
     el('game-reference').hidden=false;el('mechanism').hidden=false;
     el('show-game').setAttribute('aria-pressed',String(isGame));el('show-diagram').setAttribute('aria-pressed',String(!isGame));
-    el('photo').src=referenceAssets[r.asset];el('photo').alt='Recorded Maple Line gameplay: '+r.caption;
-    el('photo-caption').textContent=r.caption+' · recorded game view';
-    const p=r.spots[focusIndex];const [left,top,width,height]=p.box;
+    const p=r.spots[focusIndex];
+    el('photo').src=referenceAssets[p.asset || r.asset];el('photo').alt='Maple Line gameplay: '+(p.caption || r.caption);
+    el('photo-caption').textContent=(p.caption || r.caption)+' · 2560 × 1440 game capture';
+    const [left,top,width,height]=p.box;
     Object.assign(el('highlight').style,{left:left+'%',top:top+'%',width:width+'%',height:height+'%'});
     el('marker').textContent=focusIndex+1;el('observation').textContent=p.observation;
     el('hotspots').replaceChildren();r.spots.forEach((s,i)=>{const b=document.createElement('button');b.className='btn';b.type='button';b.textContent=`${i+1} · ${s.label}`;b.setAttribute('aria-pressed',String(i===focusIndex));b.addEventListener('click',()=>{focusIndex=i;showReference();save();});el('hotspots').append(b);});

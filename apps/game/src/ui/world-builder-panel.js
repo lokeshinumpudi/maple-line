@@ -83,7 +83,7 @@ export function installWorldBuilderPanel({ store, builder, onExplore }) {
         : proposal?.source === 'signal'
           ? state.proposal
             ? 'PROPOSED WORLD SETTINGS'
-            : 'ACTIVE WORLD · SAVED ON SIGNAL'
+            : 'ACTIVE WORLD · CHOSEN BY SIGNAL'
           : state.proposal
             ? 'JEV’S PROPOSED SETTINGS'
             : 'ACTIVE WORLD · CHOSEN BY JEV';
