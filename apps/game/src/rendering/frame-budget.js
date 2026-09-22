@@ -1,5 +1,10 @@
 /** Frame timing and a bounded physical-pixel budget for high-DPI displays. */
-export function createFrameBudget({ renderer, devicePixelRatio = 1, pixelBudget = 2000000 }) {
+export function createFrameBudget({
+  renderer,
+  devicePixelRatio = 1,
+  pixelBudget = 2000000,
+  maxPixelRatio = 1.5,
+}) {
   let width = 1,
     height = 1,
     quality = 1,
@@ -16,7 +21,9 @@ export function createFrameBudget({ renderer, devicePixelRatio = 1, pixelBudget 
     return sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * p))];
   };
   function ratio() {
-    return Math.min(devicePixelRatio, 1.5, Math.sqrt(pixelBudget / (width * height))) * quality;
+    return (
+      Math.min(devicePixelRatio, maxPixelRatio, Math.sqrt(pixelBudget / (width * height))) * quality
+    );
   }
   function apply() {
     const value = ratio();

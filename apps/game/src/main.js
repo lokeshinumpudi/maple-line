@@ -92,25 +92,31 @@ const scene = new THREE.Scene();
 scene.name = 'Maple Line world';
 scene.background = new THREE.Color('#abc9cd');
 scene.fog = new THREE.FogExp2('#abc9cd', 0.0028);
+const mobilePlay =
+  matchMedia('(pointer: coarse)').matches && Math.min(innerWidth, innerHeight) < 820;
 let renderer;
 try {
   renderer = new THREE.WebGLRenderer({
     canvas: $('world'),
-    antialias: true,
-    powerPreference: 'high-performance',
+    antialias: !mobilePlay,
+    powerPreference: mobilePlay ? 'low-power' : 'high-performance',
   });
 } catch {
   $('loading').textContent = 'This valley needs a browser with WebGL enabled.';
   throw new Error('WebGL unavailable');
 }
-const frameBudget = createFrameBudget({ renderer, devicePixelRatio });
+const frameBudget = createFrameBudget({
+  renderer,
+  devicePixelRatio,
+  ...(mobilePlay ? { pixelBudget: 700000, maxPixelRatio: 1 } : {}),
+});
 frameBudget.resize(innerWidth, innerHeight);
 renderer.setSize(innerWidth, innerHeight);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.autoUpdate = false;
 renderer.shadowMap.needsUpdate = true;
 renderer.info.autoReset = false;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.shadowMap.type = mobilePlay ? THREE.PCFShadowMap : THREE.PCFSoftShadowMap;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.22;
@@ -133,7 +139,7 @@ scene.add(hemi);
 const sun = new THREE.DirectionalLight('#ffddb0', 3.1);
 sun.position.set(-120, 170, -80);
 sun.castShadow = true;
-sun.shadow.mapSize.set(2048, 2048);
+sun.shadow.mapSize.set(mobilePlay ? 1024 : 2048, mobilePlay ? 1024 : 2048);
 Object.assign(sun.shadow.camera, {
   left: -110,
   right: 110,
