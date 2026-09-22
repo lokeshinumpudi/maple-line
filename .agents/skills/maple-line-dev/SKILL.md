@@ -5,7 +5,7 @@ description: Develop and inspect the Maple Line Three.js railway game, including
 
 # Maple Line development
 
-Resolve the workspace root three directories above this skill folder. Read its `README.md` for the implemented game and current limitations. The game is a finite scenic Japanese countryside service with optional station-stop scoring, not an infinite world or a city life simulator.
+Resolve the workspace root three directories above this skill folder. Read `docs/GAME.md` for the implemented game and current limitations. `README.md` is the short public introduction. The game is a finite scenic Japanese countryside service with optional station-stop scoring, not an infinite world or a city life simulator.
 
 ## Locate the change
 
