@@ -11,6 +11,24 @@ function setup() {
   };
   return createFrameBudget({ renderer, devicePixelRatio: 2 });
 }
+test('a coarse phone starts at one pixel per CSS pixel', () => {
+  let ratio = 1;
+  const renderer = {
+    getPixelRatio: () => ratio,
+    setPixelRatio: (value) => {
+      ratio = value;
+    },
+  };
+  const budget = createFrameBudget({
+    renderer,
+    devicePixelRatio: 3,
+    pixelBudget: 700000,
+    maxPixelRatio: 1,
+  });
+  budget.resize(390, 844);
+  assert.equal(budget.getState().pixelRatio, 1);
+  assert.ok(budget.getState().physicalPixels <= 390 * 844 + 1);
+});
 test('large Retina windows stay within the physical pixel budget', () => {
   const budget = setup();
   budget.resize(3440, 2160);
