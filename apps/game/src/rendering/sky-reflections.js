@@ -1,14 +1,16 @@
+import { SUN_PHASES } from './sun-phases.js';
 import * as THREE from 'three';
 import { ATMOSPHERE_PROFILES, DUSK_COLORS } from './atmosphere-palette.js';
 
-/** Six small environments are prepared once; weather changes never allocate a target. */
+/** Twelve small environments are prepared once; weather changes never allocate a target. */
 export function createSkyReflections(renderer, scene) {
   const targets = new Map();
   const generator = new THREE.PMREMGenerator(renderer);
   const width = 128,
     height = 64;
   for (const [weather, profile] of Object.entries(ATMOSPHERE_PROFILES)) {
-    for (const dusk of [false, true]) {
+    for (const [phaseName, phase] of Object.entries(SUN_PHASES)) {
+      const dusk = phaseName === 'dusk';
       const data = new Float32Array(width * height * 4);
       const sky = new THREE.Color(profile.sky).lerp(
         new THREE.Color(DUSK_COLORS.sky),
@@ -23,8 +25,13 @@ export function createSkyReflections(renderer, scene) {
         new THREE.Color(DUSK_COLORS.sun),
         dusk ? 0.8 : 0,
       );
+      horizon.lerp(
+        new THREE.Color('#ffba80'),
+        phase.warmth * 0.75 * (weather === 'clear' ? 1 : 0.25),
+      );
+      sunlight.lerp(new THREE.Color('#ffb568'), phase.warmth * 0.85);
       const color = new THREE.Color();
-      const direction = new THREE.Vector3(-90, 160, -65).normalize();
+      const direction = new THREE.Vector3(...phase.offset).normalize();
       for (let y = 0; y < height; y++) {
         const theta = (1 - y / (height - 1)) * Math.PI;
         const elevation = Math.cos(theta);
@@ -47,18 +54,19 @@ export function createSkyReflections(renderer, scene) {
       const texture = new THREE.DataTexture(data, width, height, THREE.RGBAFormat, THREE.FloatType);
       texture.mapping = THREE.EquirectangularReflectionMapping;
       texture.needsUpdate = true;
-      targets.set(`${weather}:${dusk}`, generator.fromEquirectangular(texture));
+      targets.set(`${weather}:${phaseName}`, generator.fromEquirectangular(texture));
       texture.dispose();
     }
   }
   generator.dispose();
-  let active = 'clear:false';
+  let active = 'clear:daylight';
   let disposed = false;
   scene.environment = targets.get(active).texture;
   scene.environmentIntensity = 0.35;
   return {
     update(weather, dusk) {
-      const key = `${weather}:${Boolean(dusk)}`;
+      const phase = typeof dusk === 'string' ? dusk : dusk ? 'dusk' : 'daylight';
+      const key = `${weather}:${phase}`;
       if (disposed || key === active || !targets.has(key)) return;
       active = key;
       scene.environment = targets.get(active).texture;

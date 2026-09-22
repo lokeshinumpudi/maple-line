@@ -117,3 +117,19 @@ test('frustum and map size stay 220 m / 2048', () => {
   assert.equal(shadow.frustumSize, 220);
   assert.equal(shadow.texelSize, 220 / 2048);
 });
+
+test('sunrise and sunset rebuild the snap basis to match the actual light direction', () => {
+  const shadow = createStableSunShadow();
+  const light = mockLight();
+  for (const offset of [
+    [175, 38, -60],
+    [-175, 32, 60],
+  ]) {
+    shadow.setOffset(offset);
+    shadow.apply(light, new Vector3(40, 10, 500));
+    const direction = light.position.clone().sub(light.target.position).normalize();
+    assert.ok(direction.distanceTo(shadow.basis.z) < 1e-10);
+    assert.ok(Math.abs(shadow.basis.x.dot(direction)) < 1e-10);
+    assert.ok(Math.abs(shadow.basis.y.dot(direction)) < 1e-10);
+  }
+});

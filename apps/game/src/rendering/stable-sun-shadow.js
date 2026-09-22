@@ -36,6 +36,12 @@ export function createStableSunShadow({
   }
 
   return {
+    setOffset(value) {
+      offsetVec.set(value[0], value[1], value[2]);
+      zCam.copy(offsetVec).normalize();
+      xCam.crossVectors(worldUp, zCam).normalize();
+      yCam.crossVectors(zCam, xCam).normalize();
+    },
     texelSize,
     frustumSize,
     basis: { x: xCam, y: yCam, z: zCam },

@@ -1,9 +1,11 @@
+import { SUN_PHASES } from '../rendering/sun-phases.js';
 import { ATMOSPHERE_PROFILES, DUSK_COLORS } from '../rendering/atmosphere-palette.js';
 
 /** Weather and sky for Maple Line. No assets or extra draw calls per particle. */
 export function createAtmosphere({ THREE, scene, camera, renderer, sun, hemi, waterMat }) {
   let mode = 'clear';
   let isDusk = false;
+  let sunPhase = 'daylight';
   let elapsed = 0;
   const profile = ATMOSPHERE_PROFILES;
   if (!scene.fog || !('density' in scene.fog))
@@ -35,6 +37,7 @@ export function createAtmosphere({ THREE, scene, camera, renderer, sun, hemi, wa
         vec2 uv=d.xz/(max(d.y,.08)+.32)*2.8+vec2(time*.004,time*.001);
         float wisps=fbm(uv*1.35);float clouds=smoothstep(.46-storm*.13,.76-storm*.12,wisps);
         clouds*=smoothstep(-.01,.22,d.y);
+        clouds *= mix(.65,1.,storm);
         c=mix(c,cloudColor,clouds*(.72+storm*.25));
         // Hazy distant ridges sit behind the actual valley geometry.
         float angle=atan(d.x,d.z);float ridge=.036+.06*fbm(vec2(angle*3.,2.))+ .035*fbm(vec2(angle*7.,4.));
@@ -44,7 +47,7 @@ export function createAtmosphere({ THREE, scene, camera, renderer, sun, hemi, wa
         c=mix(c,mix(horizon,zenith,.48),nearer*.36);
         vec3 sunDir=normalize(sunDirection);float disc=dot(d,sunDir);
         c+=vec3(1.,.76,.43)*pow(max(disc,0.),12.)*.19*(1.-storm)*(1.-night*.8);
-        c+=vec3(1.,.91,.71)*smoothstep(.9983,.9993,disc)*.62*(1.-storm)*(1.-night);
+        c+=vec3(1.,.91,.71)*smoothstep(.9983,.9993,disc)*.62*(1.-storm)*(1.-night)*(1.-clouds*.9);
         gl_FragColor=vec4(c,1.);
         #include <tonemapping_fragment>
         #include <colorspace_fragment>
@@ -133,6 +136,10 @@ export function createAtmosphere({ THREE, scene, camera, renderer, sun, hemi, wa
     duskHorizon = new THREE.Color(DUSK_COLORS.horizon);
   const duskSun = new THREE.Color(DUSK_COLORS.sun),
     duskCloud = new THREE.Color(DUSK_COLORS.cloud);
+  const warmFog = new THREE.Color('#deb596'),
+    warmHorizon = new THREE.Color('#ffba80'),
+    warmCloud = new THREE.Color('#f9c2a1'),
+    warmSun = new THREE.Color('#ffb568');
   let rainAmount = 0,
     snowAmount = 0;
 
@@ -147,11 +154,17 @@ export function createAtmosphere({ THREE, scene, camera, renderer, sun, hemi, wa
     rainAmount = THREE.MathUtils.lerp(rainAmount, mode === 'rain' ? 1 : 0, blend);
     snowAmount = THREE.MathUtils.lerp(snowAmount, mode === 'snow' ? 1 : 0, blend);
     const night = isDusk ? 1 : 0;
+    const phase = SUN_PHASES[sunPhase];
+    const warmth = phase.warmth * (mode === 'clear' ? 1 : 0.25);
     fogTarget.set(config.fog).lerp(duskFog, night * 0.65);
     zenithTarget.set(config.sky).lerp(duskSky, night * 0.8);
     horizonTarget.set(config.horizon).lerp(duskHorizon, night * 0.7);
     cloudTarget.set(mode === 'rain' ? '#a2b3b9' : '#fff3db').lerp(duskCloud, night * 0.8);
     sunTarget.set(config.sun).lerp(duskSun, night * 0.8);
+    fogTarget.lerp(warmFog, warmth * 0.42);
+    horizonTarget.lerp(warmHorizon, warmth * 0.75);
+    cloudTarget.lerp(warmCloud, warmth * 0.8);
+    sunTarget.lerp(warmSun, warmth * 0.85);
     scene.fog.color.lerp(fogTarget, blend);
     scene.fog.density = THREE.MathUtils.lerp(scene.fog.density, config.density, blend);
     scene.background.copy(scene.fog.color);
@@ -161,11 +174,7 @@ export function createAtmosphere({ THREE, scene, camera, renderer, sun, hemi, wa
       blend,
     );
     sun.color.lerp(sunTarget, blend);
-    sun.intensity = THREE.MathUtils.lerp(
-      sun.intensity,
-      config.sunPower * (isDusk ? 0.28 : 1),
-      blend,
-    );
+    sun.intensity = THREE.MathUtils.lerp(sun.intensity, config.sunPower * phase.power, blend);
     hemi.color.lerp(zenithTarget, blend);
     hemi.groundColor.lerp(groundTarget.set(config.ground), blend);
     hemi.intensity = THREE.MathUtils.lerp(
@@ -252,6 +261,12 @@ export function createAtmosphere({ THREE, scene, camera, renderer, sun, hemi, wa
     },
     setDusk(value) {
       isDusk = Boolean(value);
+      sunPhase = isDusk ? 'dusk' : 'daylight';
+    },
+    setSunPhase(value) {
+      if (!(value in SUN_PHASES)) throw new RangeError('Unknown sun phase');
+      sunPhase = value;
+      isDusk = value === 'dusk';
     },
     update,
     get weather() {

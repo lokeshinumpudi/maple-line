@@ -360,7 +360,9 @@ export function createExtendedWorld({ THREE, scene, railPoint, center = routeCen
     // Ground cross-sections preserve a railway shelf. Portal strips leave genuine openings.
     const offsets = TERRAIN_LATERAL_SAMPLES;
     const terrainStep = (z) =>
-      (z >= 2560 && z <= 2660) || additionalStops.some((stop) => Math.abs(z - stop.z) < 170) ? 2 : 15;
+      (z >= 2560 && z <= 2660) || additionalStops.some((stop) => Math.abs(z - stop.z) < 170)
+        ? 2
+        : 15;
     const positions = [],
       colors = [];
     function face(a, b, c, snow) {

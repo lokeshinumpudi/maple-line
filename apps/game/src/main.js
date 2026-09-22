@@ -1,3 +1,4 @@
+import { SUN_PHASES } from './rendering/sun-phases.js';
 import { createTrackSnow } from './world/track-snow.js';
 import { TERRAIN_LATERAL_SAMPLES, naturalValleyTerrain } from './world/terrain-surface.js';
 import { createEmbedVisuals } from './embed/visuals.js';
@@ -491,8 +492,15 @@ const openingSequence = createOpeningSequence({
 });
 for (const material of [leaves.material, pines.material, ground.material])
   openingSequence.tintMaterial(material);
-const trackSnow = createTrackSnow({ THREE, scene, railPoint,
-  isCovered: (z) => isTunnel(z) || z < -790 || z > ROUTE_END_Z || Math.abs(z - landmarks.bridgeZ) < landmarks.bridgeSpan / 2,
+const trackSnow = createTrackSnow({
+  THREE,
+  scene,
+  railPoint,
+  isCovered: (z) =>
+    isTunnel(z) ||
+    z < -790 ||
+    z > ROUTE_END_Z ||
+    Math.abs(z - landmarks.bridgeZ) < landmarks.bridgeSpan / 2,
 });
 const extendedWorld = createExtendedWorld({ THREE, scene, railPoint, center, wind });
 const regionalTraffic = createRegionalRailTraffic({
@@ -974,6 +982,24 @@ daylight.onclick = () => {
   document.querySelector('.tag').textContent = dusk ? 'BLUE HOUR · 18:24' : 'AFTERNOON · 16:42';
 };
 document.querySelector('.top-actions').prepend(daylight);
+const sunPhaseControl = document.createElement('select');
+sunPhaseControl.id = 'sun-phase';
+sunPhaseControl.setAttribute('aria-label', 'Time of day');
+for (const [value, phase] of Object.entries(SUN_PHASES)) {
+  const option = document.createElement('option');
+  option.value = value;
+  option.textContent = phase.label;
+  sunPhaseControl.append(option);
+}
+sunPhaseControl.onchange = () => {
+  const value = sunPhaseControl.value;
+  gameStore.setPreferences({
+    dusk: value === 'dusk',
+    sunPhase: value === 'dusk' ? 'daylight' : value,
+  });
+};
+daylight.hidden = true;
+daylight.after(sunPhaseControl);
 $('weather').onchange = () => {
   gameStore.setPreferences({ weather: $('weather').value });
   atmosphere.setWeather(weather);
@@ -1091,6 +1117,9 @@ function updateCamera(dt, snap = false) {
   });
   const position = track.getPointAt(
     THREE.MathUtils.clamp(state.distance / trackLength, 0.001, 0.995),
+  );
+  stableSunShadow.setOffset(
+    SUN_PHASES[dusk ? 'dusk' : gameStore.getState().preferences.sunPhase].offset,
   );
   stableSunShadow.apply(sun, position, renderer.shadowMap);
 }
@@ -1586,8 +1615,12 @@ function frame(now) {
   }
   openingSequence.applyCamera(train[0].position, train[train.length - 1].position);
   trackSnow.update(dt, { z: camera.position.z, weather });
+  const sunPhase = dusk ? 'dusk' : gameStore.getState().preferences.sunPhase;
+  atmosphere.setSunPhase(sunPhase);
+  sunPhaseControl.value = sunPhase;
+  document.querySelector('.tag').textContent = SUN_PHASES[sunPhase].label.toUpperCase();
   atmosphere.update(dt, camera.position);
-  skyReflections.update(localWeather, dusk);
+  skyReflections.update(localWeather, sunPhase);
   eveningMotes.update(dt, {
     position: train[0].position,
     dusk,
@@ -2059,8 +2092,11 @@ if (import.meta.env.DEV) {
       $('weather').dispatchEvent(new Event('change'));
     },
     timeOfDay(value) {
-      choices(value, ['daylight', 'dusk']);
-      if ((value === 'dusk') !== dusk) daylight.click();
+      choices(value, Object.keys(SUN_PHASES));
+      gameStore.setPreferences({
+        dusk: value === 'dusk',
+        sunPhase: value === 'dusk' ? 'daylight' : value,
+      });
     },
     location(value) {
       const locations = {
@@ -2409,8 +2445,11 @@ if (embedded) {
         $('weather').value = config.weather;
         $('weather').dispatchEvent(new Event('change'));
       }
-      if (config.timeOfDay !== undefined && (config.timeOfDay === 'dusk') !== dusk)
-        daylight.click();
+      if (config.timeOfDay !== undefined)
+        gameStore.setPreferences({
+          dusk: config.timeOfDay === 'dusk',
+          sunPhase: config.timeOfDay === 'dusk' ? 'daylight' : config.timeOfDay,
+        });
       changeDrive((drive) => {
         drive.paused = paused;
       });
@@ -2439,7 +2478,7 @@ if (embedded) {
       location: embedLocation,
       cameraPosition: camera.position.toArray().map((value) => Math.round(value * 100) / 100),
       weather,
-      timeOfDay: dusk ? 'dusk' : 'daylight',
+      timeOfDay: dusk ? 'dusk' : gameStore.getState().preferences.sunPhase,
       paused: state.paused,
       speedKmh: Math.round(state.speed * 3.6),
       routeZ: Math.round(train[0].position.z),

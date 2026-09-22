@@ -9,7 +9,7 @@ export function validateEmbedConfig(input) {
     isolation: ['all', 'subject', 'structure'],
     camera: ['scenic', 'follow', 'cab', 'passenger', 'vista'],
     weather: ['clear', 'rain', 'snow'],
-    timeOfDay: ['daylight', 'dusk'],
+    timeOfDay: ['daylight', 'sunrise', 'sunset', 'dusk'],
     location: ['gorge', 'terraces', 'station', 'bridge', 'summit', 'tokyo'],
   };
   for (const [key, value] of Object.entries(input)) {

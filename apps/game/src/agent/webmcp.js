@@ -28,7 +28,7 @@ const triple = (minimum, maximum) => ({
 const controlSchemas = {
   camera: enumSchema(['scenic', 'follow', 'cab', 'passenger', 'vista', 'orbit']),
   weather: enumSchema(['clear', 'rain', 'snow']),
-  timeOfDay: enumSchema(['daylight', 'dusk']),
+  timeOfDay: enumSchema(['daylight', 'sunrise', 'sunset', 'dusk']),
   location: {
     oneOf: [
       enumSchema([

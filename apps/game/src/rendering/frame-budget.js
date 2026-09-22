@@ -138,7 +138,7 @@ export function createFrameBudget({
         adaptiveScale: quality,
         pixelBudget,
         draw: latestDraw,
-        shadowHz: 20,
+        shadowHz: median ? Math.round(1000 / median) : null,
         reflectionHz: 20,
       };
     },

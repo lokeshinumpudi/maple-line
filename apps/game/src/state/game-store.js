@@ -41,6 +41,7 @@ export function createGameStore(startDistance = 0) {
         view: 'scenic',
         weather: 'clear',
         dusk: false,
+        sunPhase: 'daylight',
         sound: true,
         soundVolume: 0.8,
         hudVisible: true,
@@ -121,6 +122,7 @@ export function createGameStore(startDistance = 0) {
         mode: ['explore', 'challenge'],
         view: ['scenic', 'follow', 'cab', 'passenger', 'vista', 'orbit'],
         weather: ['clear', 'rain', 'snow'],
+        sunPhase: ['daylight', 'sunrise', 'sunset'],
         trainLights: ['auto', 'on', 'off'],
         narrationLanguage: [
           'en-IN',

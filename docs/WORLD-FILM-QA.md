@@ -19,3 +19,15 @@ Record the river valley, bridge, wildlife bank, passenger compartment, snow stat
 Unit coverage includes terrain seam agreement, continuous landmark height transitions, camera clearance, building volumes, habitat exclusions, wind shader parity and resource ownership. Full project checks and browser inspection remain required after source changes. A 30 fps capture is not a claim that every device runs the game at that rate.
 
 Capture scripts and review frames are local artifacts under `artifacts/launch-videos/`; they are not shipped with the game. The route remains a fictional, stylized Japanese railway rather than a geographic reconstruction.
+
+## Shadow, snow and daylight follow-up
+
+The moving train and wind now refresh the shadow image every rendered frame. The former 20 Hz refresh left moving casters behind their visible positions. Original-valley foliage no longer switches its shadow casting off at a separate 180 m boundary; the shadow camera handles its visibility.
+
+Station districts use 2 m ground sections to resolve terrace edges. Rural foundations match building footprints and extend below sampled ground, replacing oversized shallow slabs.
+
+Track snow uses a bounded mesh around the camera. Its raised shoulders and centre leave grooves around the steel running heads. Accumulation and melting take time; permanent alpine cover comes from elevation. Tunnels and the main viaduct are excluded. This is a visual snow layer, not a snow physics simulation, and does not yet accumulate on every building or train roof.
+
+The Time of day selector offers afternoon, sunrise, sunset and blue hour. The sky, sun, water and cached environment use matching directions. The embed and agent controls accept the same four values. These are selectable lighting views, not an automatic astronomical day cycle.
+
+Desktop verification: dedicated Chrome Agent, 1920 × 1080 CSS viewport with the normal two-million-pixel cap. Five-second samples at Sakuragawa, 12 m/s, clear weather, matched cab/passenger/follow views compared the former 20 Hz cadence with per-frame shadows. All six samples averaged about 60 fps; this measures this desktop browser only. Raw frame/CPU timings and draw counts are saved in `artifacts/launch-videos/shadow-performance.json`; CPU time is not GPU time. No runtime exceptions were reported during these samples. The updated project passed all 13 check tasks, including 478 game tests.
