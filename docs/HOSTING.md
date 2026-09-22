@@ -1,5 +1,16 @@
 # Hosting Maple Line
 
+## Two publishing destinations
+
+This is a standing user preference: maintain an internal Signal edition and a public personal edition. Both use the personal GitHub source; choosing Signal hosting does not switch GitHub ownership to the work account.
+
+| Target   | Game                                                        | Guide                                                               | Publishing path                                                                                                         |
+| -------- | ----------------------------------------------------------- | ------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| Internal | `https://signal-ship.internal.loophealth.com/s/maple-line/` | `https://signal-ship.internal.loophealth.com/s/maple-line-runbook/` | Signal Ship platform, existing-site file patches                                                                        |
+| Personal | `https://lokeshinumpudi.com/maple-line/`                    | `https://lokeshinumpudi.com/maple-line-runbook/`                    | Personal GitHub `lokeshinumpudi/maple-line` and `lokeshinumpudi/website`, hosted through their existing Vercel projects |
+
+Use `github-personal` for personal repository pushes. Credits and game/guide backlinks follow the build target; external source citations keep their original destinations. Preserve existing Signal assets and site data when publishing updates.
+
 The browser game and Jev server deploy independently. The root Vercel project builds the client with `pnpm build:public`; set `VITE_DIRECTOR_URL` to the server's HTTPS origin. The client uses `/maple-line/` as its base path. The personal website can proxy `/maple-line` and `/maple-line/:path*` to that client without changing its homepage.
 
 `node scripts/export-director.mjs <directory>` exports the server and its two shared packages into a standalone repository. Its Vercel Fluid function serves `/api/director/*`. Set `AI_GATEWAY_API_KEY`, optional `SARVAM_API_KEY`, and comma-separated `ALLOWED_ORIGINS` on the server project. Credentials must never enter `VITE_` variables. The local development server remains bound to loopback.

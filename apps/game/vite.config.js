@@ -21,6 +21,8 @@ export default defineConfig(({ mode }) => ({
           },
           transformIndexHtml(html) {
             return html
+              .replaceAll('https://signal.internal.loophealth.com', mode === 'public' ? 'https://lokeshinumpudi.com' : 'https://signal.internal.loophealth.com')
+              .replaceAll('https://signal-ship.internal.loophealth.com/s/maple-line-runbook/', mode === 'public' ? 'https://lokeshinumpudi.com/maple-line-runbook/' : 'https://signal-ship.internal.loophealth.com/s/maple-line-runbook/')
               .replace(
                 '<html lang="en">',
                 `<html lang="en" data-hosting="${mode === 'ship' ? 'signal' : 'vercel'}" data-director-url="${mode === 'public' ? (process.env.VITE_DIRECTOR_URL ?? '') : ''}">`,
