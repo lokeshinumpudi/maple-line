@@ -13,6 +13,16 @@ export function installMobileHUD({ store }) {
   entry.setAttribute('aria-controls', 'speedometer mobile-ride-controls');
   document.querySelector('.ride-controls').id = 'mobile-ride-controls';
   document.body.append(entry);
+  const place = document.createElement('p');
+  place.id = 'mobile-ride-place';
+  place.hidden = true;
+  document.body.append(place);
+  const placeNode = document.querySelector('.journey h2');
+  const placeWatch = new MutationObserver(() => {
+    place.textContent = placeNode?.textContent?.trim() ?? '';
+  });
+  if (placeNode)
+    placeWatch.observe(placeNode, { childList: true, characterData: true, subtree: true });
   const landingMeta = document.createElement('p');
   landingMeta.id = 'mobile-landing-meta';
   const landingWhen = document.createElement('span');
@@ -68,6 +78,8 @@ export function installMobileHUD({ store }) {
     entry.textContent = hidden ? 'Controls' : 'Hide';
     entry.setAttribute('aria-label', hidden ? 'Show controls' : 'Hide controls');
     entry.setAttribute('aria-expanded', String(!hidden));
+    place.hidden = !active();
+    place.textContent = placeNode?.textContent?.trim() ?? '';
     syncLandingMeta();
     for (const button of shortcuts.children) {
       const target = document.querySelector(button.dataset.target);
@@ -162,6 +174,8 @@ export function installMobileHUD({ store }) {
     abort.abort();
     unsubscribe();
     landingWatch.disconnect();
+    placeWatch.disconnect();
+    place.remove();
     landingMeta.remove();
     entry.remove();
     shortcuts.remove();
