@@ -84,7 +84,9 @@ const villageLots = additionalStops
         };
       }),
     ),
-  );
+  )
+  // Buildings cannot turn the viaduct ravine into isolated, house-height shelves.
+  .filter((lot) => Math.abs(lot.z - landmarks.bridgeZ) > landmarks.bridgeSpan / 2 + 45);
 const farmingAt = (z) =>
   (z > 1350 && z < 1940) || (z > 2820 && z < 3380) || (z > 17700 && z < 19700);
 function farmPlot(z, row) {
