@@ -11,6 +11,7 @@ export function addWildlife({
   riverProfile,
   waterY = -0.4,
   season = 'autumn',
+  isHabitatClear = () => true,
 }) {
   let activeSeason = season,
     cast = wildlifeSeason(season),
@@ -49,6 +50,48 @@ export function addWildlife({
     const p = riverProfile(z);
     return p.offset - p.halfWidth - 10 - extra;
   };
+  const habitats = new Map();
+  function validHabitat(x, z) {
+    const u = x - center(z),
+      y = terrain(u, z);
+    if (!Number.isFinite(y) || y < waterY + 0.6 || u > dryBank(z, 0)) return false;
+    if (!isHabitatClear(x, z, 2)) return false;
+    for (const [dx, dz] of [
+      [1.4, 0],
+      [-1.4, 0],
+      [0, 1.4],
+      [0, -1.4],
+    ]) {
+      const height = terrain(x + dx - center(z + dz), z + dz);
+      if (!Number.isFinite(height) || Math.abs(height - y) > 0.55) return false;
+    }
+    return true;
+  }
+  function habitat(baseZ, extra) {
+    const key = `${baseZ}:${extra}`;
+    if (habitats.has(key)) return habitats.get(key);
+    let found = null;
+    // Stable bounded search: nearest clear bank first; no per-frame scene raycasts.
+    for (let ring = 0; ring <= 18 && !found; ring++) {
+      for (const sign of ring ? [-1, 1] : [0]) {
+        const z = baseZ + sign * ring * 5;
+        for (const offset of [extra, 0, 3, 7, 12, 18]) {
+          const u = dryBank(z, offset),
+            x = center(z) + u;
+          if (validHabitat(x, z)) {
+            found = { x, y: terrain(u, z), z, u, valid: true };
+            break;
+          }
+        }
+        if (found) break;
+      }
+    }
+    const z = baseZ,
+      u = dryBank(z, extra);
+    const result = found ?? { x: center(z) + u, y: terrain(u, z), z, u, valid: false };
+    habitats.set(key, result);
+    return result;
+  }
   function instance(mesh, i, p, scale, rotation = 0) {
     dummy.position.fromArray(p);
     dummy.scale.fromArray(scale);
@@ -58,15 +101,17 @@ export function addWildlife({
   }
   for (let i = 0; i < 12; i++) {
     const z = [-650, -450, -230, -10, 480, 650][Math.floor(i / 2)] + (i % 2) * 7,
-      u = dryBank(z, 4 + (i % 3) * 2);
+      home = habitat(z, 4 + (i % 3) * 2),
+      u = home.u;
     deer.push({
       id: `sika-${i + 1}`,
       species: 'sika-deer',
-      baseZ: z,
+      baseZ: home.z,
       baseU: u,
-      x: center(z) + u,
-      y: terrain(u, z),
-      z,
+      x: home.x,
+      y: home.y,
+      z: home.z,
+      habitatValid: home.valid,
       heading: 0,
       state: 'grazing',
       alert: 0,
@@ -172,8 +217,10 @@ export function addWildlife({
         const dx = center(desiredZ) + u - p.x,
           dz = desiredZ - p.z,
           step = Math.min(1, (dt * 0.48) / Math.max(Math.hypot(dx, dz), 0.001));
-        p.x += dx * step;
-        p.z += dz * step;
+        if (validHabitat(p.x + dx * step, p.z + dz * step)) {
+          p.x += dx * step;
+          p.z += dz * step;
+        }
       }
       const u = Math.min(p.x - center(p.z), dryBank(p.z, 1));
       p.x = center(p.z) + u;
@@ -184,12 +231,13 @@ export function addWildlife({
         p.alert > 0.35 && train
           ? Math.atan2(train.x - p.x, train.z - p.z)
           : Math.sin(cycle * 0.5) * 0.5 + 0.8;
-      draw('sika-deer', {
-        ...p,
-        alert: p.alert > 0.35,
-        walking: walk && p.alert < 0.35,
-        graze: p.state === 'grazing' ? 0.9 : 0,
-      });
+      if (p.habitatValid)
+        draw('sika-deer', {
+          ...p,
+          alert: p.alert > 0.35,
+          walking: walk && p.alert < 0.35,
+          graze: p.state === 'grazing' ? 0.9 : 0,
+        });
     }
     mammals.length = 0;
     reptiles.length = 0;
@@ -208,13 +256,18 @@ export function addWildlife({
         [-650, -450, -230, -10, 480, 650, -200, 60][local] + (species === cast.companion ? 18 : 0);
       const cycle = elapsed * (hare ? 0.9 : turtle ? 0.16 : 0.35) + i * 1.7;
       const shelter = weather !== 'clear',
-        baseX = center(baseZ) + dryBank(baseZ, 5),
+        home = habitat(baseZ, 5),
+        baseX = home.x,
         alert = Boolean(train && Math.hypot(train.x - baseX, train.z - baseZ) < 47);
       const walking = !shelter && !alert && Math.sin(cycle * 0.4) > -0.25;
       if (walking) paths[i] += dt * (hare ? 0.9 : turtle ? 0.13 : 0.35);
-      const z = baseZ + Math.sin(paths[i] * 0.25) * 2,
-        u = dryBank(z, 5 + Math.cos(paths[i] * 0.25)),
-        x = center(z) + u,
+      let z = home.z + Math.sin(paths[i] * 0.25) * 2,
+        x = home.x + Math.cos(paths[i] * 0.25);
+      if (!validHabitat(x, z)) {
+        x = home.x;
+        z = home.z;
+      }
+      const u = x - center(z),
         y = terrain(u, z);
       const heading = alert
         ? Math.atan2(train.x - x, train.z - z)
@@ -239,12 +292,13 @@ export function addWildlife({
                 : 'resting',
       };
       (turtle ? reptiles : mammals).push(p);
-      draw(species, {
-        ...p,
-        walking,
-        alert,
-        hop: hare && walking ? Math.max(0, Math.sin(cycle * 5)) * 0.22 : 0,
-      });
+      if (home.valid)
+        draw(species, {
+          ...p,
+          walking,
+          alert,
+          hop: hare && walking ? Math.max(0, Math.sin(cycle * 5)) * 0.22 : 0,
+        });
     }
     for (let i = 0; i < birdCount; i++) {
       const flock = Math.floor(i / 3),
@@ -306,6 +360,7 @@ export function addWildlife({
   const snapshot = (p) => ({
     id: p.id,
     species: p.species,
+    ...(p.habitatValid !== undefined ? { habitatValid: p.habitatValid } : {}),
     ...(p.state ? { state: p.state } : {}),
     ...(p.school !== undefined ? { school: p.school } : {}),
     ...(p.flock !== undefined ? { flock: p.flock } : {}),

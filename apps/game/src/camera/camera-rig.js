@@ -21,6 +21,7 @@ export function createCameraRig({
   center,
   domElement,
   colliders = [],
+  cameraObstacles = () => [],
   foliageHeight,
   vistaAt,
 }) {
@@ -205,7 +206,28 @@ export function createCameraRig({
     return eye;
   }
   function clearStaticObjects(eye, subject, keepRange = false, includeCanopy = true) {
-    if (!staticColliders.length) return eye;
+    // Instanced regional buildings expose coarse volumes rather than thousands of mesh rays.
+    for (const bounds of cameraObstacles()) {
+      if (
+        eye.x > bounds.min.x - 1 &&
+        eye.x < bounds.max.x + 1 &&
+        eye.z > bounds.min.z - 1 &&
+        eye.z < bounds.max.z + 1 &&
+        eye.y > bounds.min.y - 1 &&
+        eye.y < bounds.max.y + 1
+      ) {
+        const options = [
+          [Math.abs(eye.x - bounds.min.x), 'x', bounds.min.x - 1.2],
+          [Math.abs(eye.x - bounds.max.x), 'x', bounds.max.x + 1.2],
+          [Math.abs(eye.z - bounds.min.z), 'z', bounds.min.z - 1.2],
+          [Math.abs(eye.z - bounds.max.z), 'z', bounds.max.z + 1.2],
+          [Math.abs(eye.y - bounds.max.y), 'y', bounds.max.y + 1.2],
+        ].sort((a, b) => a[0] - b[0]);
+        eye[options[0][1]] = options[0][2];
+      }
+    }
+    if (!staticColliders.length)
+      return keepRange ? clearScenic(eye, subject, includeCanopy).eye : clearTerrain(eye, subject);
     const delta = eye.clone().sub(subject);
     const distance = delta.length();
     ray.set(subject, delta.normalize());
@@ -229,6 +251,11 @@ export function createCameraRig({
     return keepRange ? clearScenic(eye, subject, includeCanopy).eye : clearTerrain(eye, subject);
   }
   const api = {
+    constrainExterior(eye, target) {
+      const subject = target.clone();
+      subject.y = Math.max(subject.y, groundAt(subject) + 2);
+      return clearStaticObjects(clearScenic(eye, subject, false).eye, subject, true, false);
+    },
     update({
       dt = 0,
       distance,
@@ -294,6 +321,22 @@ export function createCameraRig({
           controls.update(dt);
           look.copy(controls.target);
         } else look.copy(focus);
+        // Inspection orbit/pan uses the same ground protection as ordinary exterior views.
+        // A water/terrain target may sit below the ground; do not use that buried point
+        // to demand an unbounded camera lift along the first sightline samples.
+        const clearTarget = look.clone();
+        clearTarget.y = Math.max(clearTarget.y, groundAt(clearTarget) + 2);
+        camera.position.copy(
+          clearStaticObjects(
+            clearScenic(camera.position, clearTarget, false).eye,
+            clearTarget,
+            true,
+            false,
+          ),
+        );
+        lastClearance = camera.position.y - groundAt(camera.position);
+        lastLift = Math.max(0, camera.position.y - focusPose.eye[1]);
+        lastFoliageClearance = null;
         camera.lookAt(look);
         camera.updateMatrixWorld(true);
         previousFocus.copy(focus);

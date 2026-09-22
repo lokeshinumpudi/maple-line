@@ -148,10 +148,31 @@
       visibility 450ms;
   }
   body.playing.mobile-hud-resting
-    :is(header, .ride-dock, #speedometer, main, #scene-inspector, #control-status) {
+    :is(header, .ride-dock, main, #scene-inspector, #control-status) {
     opacity: 0;
     visibility: hidden;
     pointer-events: none;
+  }
+  body.playing #mobile-ride-place:not([hidden]) {
+    position: fixed;
+    z-index: 28;
+    top: max(16px, env(safe-area-inset-top));
+    left: 50%;
+    transform: translateX(-50%);
+    max-width: min(58vw, 240px);
+    margin: 0;
+    padding: 11px 14px;
+    border-radius: 24px;
+    background: #142c29c9;
+    color: var(--paper);
+    font-size: 13px;
+    line-height: 1.2;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    pointer-events: none;
+    backdrop-filter: blur(10px);
   }
   .mobile-hud-shortcuts {
     display: grid;

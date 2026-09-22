@@ -2,9 +2,9 @@
 // Apply after other material hooks (for example snow), then copyToChunk for each
 // scenery chunk. Foliage outlines must receive the same parameters as their tree.
 export const WIND_DIRECTION = Object.freeze({ x: 0.93, y: 0, z: 0.36 });
-const GUST_RATE = 0.25;
-const MAX_AMPLITUDE = 0.2;
-const MAX_FLUTTER = 0.015;
+const GUST_RATE = 0.48;
+const MAX_AMPLITUDE = 0.55;
+const MAX_FLUTTER = 0.08;
 
 export function createWindField({ THREE }) {
   const time = { value: 0 };
@@ -64,8 +64,8 @@ transformed += vec3(
   function inflate(mesh, amplitude) {
     if (mesh.userData.mapleWindBoundAdded) return;
     mesh.computeBoundingSphere?.();
-    if (mesh.boundingSphere) mesh.boundingSphere.radius += amplitude * 3;
-    mesh.userData.mapleWindBoundAdded = amplitude * 3;
+    if (mesh.boundingSphere) mesh.boundingSphere.radius += amplitude * 3 * (1 + MAX_FLUTTER);
+    mesh.userData.mapleWindBoundAdded = amplitude * 3 * (1 + MAX_FLUTTER);
   }
   const api = {
     apply(mesh, { amplitude = 0.1, anchorMin = -1.2, anchorMax = -0.3, flutter = 0.008 } = {}) {
@@ -74,8 +74,7 @@ transformed += vec3(
         if (!Number.isFinite(value)) throw new TypeError('Wind settings must be finite.');
       if (amplitude < 0 || amplitude > 3 || flutter < 0 || flutter > 1 || anchorMin >= anchorMax)
         throw new RangeError('Wind needs amplitude 0–3, flutter 0–1, and anchorMin < anchorMax.');
-      // Bound legacy caller values as well as new defaults: this is a breeze,
-      // not large-amplitude bending of whole trees.
+      // Keep crown motion bounded in world metres; trunk callers retain their smaller amplitude.
       const settings = {
         amplitude: Math.min(amplitude, MAX_AMPLITUDE),
         anchorMin,

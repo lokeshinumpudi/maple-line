@@ -120,11 +120,32 @@ export function createSurfaceDetail() {
             kind === 'timber'
               ? `
             float grain = texture2D(surfaceDetail,vec2(vSurfacePosition.x+vSurfacePosition.z,vSurfacePosition.y*.07)*1.8).r;
-            detailShade *= mix(.67,1.12,grain);
+            float board = vSurfacePosition.y * 5.0;
+            float boardEdge = min(fract(board),1.0-fract(board));
+            float boardAA = max(fwidth(board),.008);
+            float boardSeam = smoothstep(.035-boardAA,.035+boardAA,boardEdge);
+            detailShade *= mix(.67,1.12,grain) * mix(1.0,mix(.68,1.0,boardSeam),1.0-smoothstep(.3,1.0,boardAA));
+            surfaceHeight = grain * .3 + boardSeam * .7;
           `
               : ''
           }
-          ${kind === 'plaster' ? 'detailShade = mix(.93,1.04,detail.r);' : ''}
+          ${
+            kind === 'plaster'
+              ? `
+            vec2 wallUV = mix(vSurfacePosition.xy, vSurfacePosition.zy, surfaceWeights.x);
+            vec2 panels = wallUV * vec2(.42, .5);
+            vec2 panelEdge = min(fract(panels), 1.0 - fract(panels));
+            vec2 panelAA = max(fwidth(panels), vec2(.002));
+            float panelSeam = smoothstep(.007-panelAA.x,.007+panelAA.x,panelEdge.x)
+              * smoothstep(.009-panelAA.y,.009+panelAA.y,panelEdge.y);
+            float panelFade = 1.0-smoothstep(.12,.6,max(panelAA.x,panelAA.y));
+            float stain = texture2D(surfaceDetail, wallUV * vec2(.045,.16)).g;
+            surfaceHeight = detail.r * .22 + mix(1.0,panelSeam,panelFade) * .78;
+            detailShade = mix(.88,1.08,detail.r) * mix(.87,1.04,stain)
+              * mix(1.0,mix(.72,1.0,panelSeam),panelFade);
+          `
+              : ''
+          }
           diffuseColor.rgb *= mix(1.0,detailShade,surfaceDetailStrength);
           ${wetnessDarkenGlsl(family, { weight: 'surfaceWeights.y' })}
         `,
@@ -137,9 +158,23 @@ export function createSurfaceDetail() {
           ${wetnessRoughnessGlsl(family, { weight: 'wetPatch' })}
         `,
         );
+        if (['timber', 'plaster', 'stone', 'roof'].includes(kind)) {
+          shader.fragmentShader = shader.fragmentShader.replace(
+            '#include <normal_fragment_maps>',
+            `#include <normal_fragment_maps>
+            // Screen derivatives express relief in world metres, independent of UV scale.
+            vec3 reliefX = dFdx(-vViewPosition), reliefY = dFdy(-vViewPosition);
+            vec3 reliefR1 = cross(reliefY, normal), reliefR2 = cross(normal, reliefX);
+            float reliefDet = dot(reliefX, reliefR1) * faceDirection;
+            vec2 reliefSlope = vec2(dFdx(surfaceHeight), dFdy(surfaceHeight))
+              * ${kind === 'stone' ? '0.055' : '0.018'} * surfaceDetailStrength;
+            vec3 reliefGradient = sign(reliefDet) * (reliefSlope.x * reliefR1 + reliefSlope.y * reliefR2);
+            normal = normalize(max(abs(reliefDet), .000001) * normal - reliefGradient);`,
+          );
+        }
         material.userData.surfaceKind = kind;
       };
-      material.customProgramCacheKey = () => `${oldKey}:surface-v2:${mode}`;
+      material.customProgramCacheKey = () => `${oldKey}:surface-v3:${mode}`;
       material.needsUpdate = true;
       return material;
     },

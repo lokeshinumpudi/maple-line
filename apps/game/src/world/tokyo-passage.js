@@ -1,3 +1,4 @@
+import { createSurfaceDetail } from '../rendering/surface-detail.js';
 /** Fictional Tokyo-inspired passage. World metres; seed 7319, generation version 3.
  * Fixed 40 m cells belong to the regional chunk containing their centre.
  * Each chunk owns its batches, materials and atlas; no separate streaming system.
@@ -55,6 +56,10 @@ export function createTokyoPassage({ THREE, parent, railPoint, start, end }) {
     roughness: 0.72,
     metalness: 0.2,
   });
+  const surfaceDetail = createSurfaceDetail();
+  const facade = solid.clone();
+  facade.name = 'Tokyo / weathered facade panels';
+  surfaceDetail.apply(facade, 'plaster');
   const road = new THREE.MeshStandardMaterial({
     color: '#252e42',
     roughness: 0.65,
@@ -66,8 +71,9 @@ export function createTokyoPassage({ THREE, parent, railPoint, start, end }) {
     roughness: 0.19,
     metalness: 0.65,
   });
-  const materials = [solid, road, light, glass],
+  const materials = [solid, facade, road, light, glass],
     textures = [];
+  const cameraObstacles = [];
   const batches = new Map(),
     animated = [];
   const dummy = new THREE.Object3D(),
@@ -196,9 +202,41 @@ export function createTokyoPassage({ THREE, parent, railPoint, start, end }) {
         depth = 25 + hash(id * 37) * 7;
       const x = side * (39 + width / 2),
         neon = [cyan, pink, amber][(id + (side > 0 ? 1 : 0)) % 3];
-      block(solid, x, h / 2 - 0.4, z, width, h, depth, ['#655463', '#2e4054', '#565c68'][id % 3]);
+      block(facade, x, h / 2 - 0.4, z, width, h, depth, ['#655463', '#2e4054', '#565c68'][id % 3]);
       block(solid, x, h + 0.4, z, width + 0.8, 1.3, depth + 0.8, '#526077');
       block(solid, x + side * 2, h + 2.2, z + 4, 4, 3, 5, '#38485f');
+      const rail = railPoint(z);
+      cameraObstacles.push(
+        new THREE.Box3(
+          new THREE.Vector3(rail.x + x - width / 2 - 0.8, rail.y - 0.4, z - depth / 2 - 0.8),
+          new THREE.Vector3(rail.x + x + width / 2 + 0.8, rail.y + h + 1.8, z + depth / 2 + 0.8),
+        ),
+      );
+      // Side and rear windows remain visible from elevated and passing-camera views.
+      for (let floor = 3; floor < h - 1; floor += 3.3) {
+        for (const end of [-1, 1]) {
+          for (let col = -width / 2 + 2; col < width / 2 - 1; col += 3.2) {
+            const paneZ = z + end * (depth / 2 + 0.1);
+            block(solid, x + col, floor, paneZ, 1.9, 1.8, 0.16, '#172936');
+            block(
+              hash(id * 91 + floor + col + end) > 0.45 ? light : glass,
+              x + col,
+              floor,
+              paneZ + end * 0.1,
+              1.5,
+              1.35,
+              0.08,
+              hash(id + col) > 0.5 ? '#d2be93' : '#759cac',
+            );
+            block(solid, x + col, floor - 0.95, paneZ + end * 0.16, 2.1, 0.14, 0.38, '#87939a');
+          }
+        }
+        for (let col = -depth / 2 + 2; col < depth / 2 - 1; col += 4) {
+          const rearX = x + side * (width / 2 + 0.1);
+          block(solid, rearX, floor, z + col, 0.16, 1.8, 1.9, '#172936');
+          block(glass, rearX + side * 0.1, floor, z + col, 0.08, 1.35, 1.5, '#9bb0ad');
+        }
+      }
       // Retrofit details are grouped at the service edge, leaving the sign readable.
       block(solid, side * 38.45, h * 0.48, z + depth / 2 - 1.3, 0.32, h * 0.88, 0.32, '#819097');
       for (let floor = 7; floor < h - 2; floor += 8) {
@@ -416,7 +454,9 @@ export function createTokyoPassage({ THREE, parent, railPoint, start, end }) {
   });
   const wrap = (v, length) => ((v % length) + length) % length;
   const api = {
+    cameraObstacles,
     update(dt, { dusk = false, weather = 'clear', activityTime } = {}) {
+      surfaceDetail.update(dt, weather);
       if (disposed) return;
       elapsed = Number.isFinite(activityTime)
         ? activityTime
@@ -564,6 +604,7 @@ export function createTokyoPassage({ THREE, parent, railPoint, start, end }) {
       for (const geometry of [box, sphere, plane, umbrellaGeo]) geometry.dispose();
       for (const material of materials) material.dispose();
       for (const texture of textures) texture.dispose();
+      surfaceDetail.dispose();
     },
   };
   api.update(0);

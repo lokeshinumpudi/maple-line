@@ -65,9 +65,9 @@ test('chunk copies keep wind shadows and gain a culling allowance', () => {
   assert.equal(chunk.material, source.material);
   assert.equal(chunk.customDepthMaterial, source.customDepthMaterial);
   assert.equal(chunk.customDistanceMaterial, source.customDistanceMaterial);
-  assert.ok(chunk.boundingSphere.radius >= radius + 0.449);
+  assert.ok(chunk.boundingSphere.radius >= radius + 0.485);
   wind.copyToChunk(source, chunk);
-  assert.ok(chunk.boundingSphere.radius < radius + 0.451);
+  assert.ok(chunk.boundingSphere.radius < radius + 0.487);
   wind.dispose();
 });
 
@@ -106,16 +106,16 @@ test('chunk eviction releases cloned shaders only after their final shared user'
   assert.equal(wind.remove(chunk), false);
 });
 
-test('clear weather wind is bounded below 15 cm and gusts take about 25 seconds', () => {
+test('crown wind stays below 42 cm in clear weather and takes about 13 seconds per gust', () => {
   const wind = createWindField({ THREE });
   const tree = mesh();
   wind.apply(tree, { amplitude: 0.85, flutter: 0.08 });
   const shader = compile(tree.material);
-  assert.equal(shader.uniforms.mapleWindAmplitude.value, 0.2);
-  assert.equal(shader.uniforms.mapleWindFlutter.value, 0.015);
-  assert.ok(wind.getState().maxDisplacementMetres < 0.15);
-  assert.ok(wind.getState().gustPeriodSeconds > 24 && wind.getState().gustPeriodSeconds < 26);
-  assert.ok(shader.vertexShader.includes('mapleWindTime * 0.25'));
+  assert.equal(shader.uniforms.mapleWindAmplitude.value, 0.55);
+  assert.equal(shader.uniforms.mapleWindFlutter.value, 0.08);
+  assert.ok(wind.getState().maxDisplacementMetres < 0.42);
+  assert.ok(wind.getState().gustPeriodSeconds > 13 && wind.getState().gustPeriodSeconds < 14);
+  assert.ok(shader.vertexShader.includes('mapleWindTime * 0.48'));
   wind.dispose();
 });
 

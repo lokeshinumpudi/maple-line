@@ -257,3 +257,25 @@ test('expanded seasonal species are present, buffers are bounded, and waterfowl 
   }
   world.dispose();
 });
+
+test('wildlife searches around blocked groves and keeps walking inside clear habitat', () => {
+  const blocked = (_x, z) =>
+    Math.abs(z + 650) < 14 || Math.abs(z + 450) < 12 || Math.abs(z - 480) < 10;
+  const world = addWildlife({
+    THREE,
+    scene: new THREE.Scene(),
+    center,
+    terrain,
+    riverProfile,
+    isHabitatClear: (x, z) => !blocked(x, z),
+  });
+  for (const season of ['autumn', 'spring', 'summer', 'winter']) {
+    for (let frame = 0; frame < 100; frame++) {
+      world.update(0.1, { season });
+      const state = world.getState();
+      for (const animal of [...state.deer, ...state.mammals, ...state.reptiles])
+        assert.equal(blocked(animal.position[0], animal.position[2]), false, animal.id);
+    }
+  }
+  world.dispose();
+});

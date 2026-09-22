@@ -1,3 +1,4 @@
+import { TERRAIN_LATERAL_SAMPLES, naturalValleyTerrain } from './terrain-surface.js';
 import { scenicAlignmentOffset, SCENIC_BENDS } from '../simulation/scenic-alignment.js';
 import { regionalVariation, regionalMountainHeight } from './region-variation.js';
 import { addRegionalBuilding, createRegionalArchitectureCatalog } from './regional-architecture.js';
@@ -135,10 +136,10 @@ export function scenicTerrain(worldX, z) {
     shoulder * 0.31 +
     Math.sin(z * 0.018 + u * 0.033) * Math.min(shoulder * 0.2, 13) +
     Math.sin(z * 0.004 - u * 0.023) * Math.min(shoulder * 0.22, 18);
-  const landmarkClearance =
-    Math.abs(z - landmarks.bridgeZ) < 250 ||
-    (z > landmarks.tunnelStartZ - 160 && z < landmarks.tunnelEndZ + 160);
-  if (!landmarkClearance) y += regionalMountainHeight(fromRail, z);
+  const bridgeClearance = 1 - smooth((Math.abs(z - landmarks.bridgeZ) - 160) / 180);
+  const tunnelDistance = Math.max(landmarks.tunnelStartZ - z, z - landmarks.tunnelEndZ, 0);
+  const tunnelClearance = 1 - smooth((tunnelDistance - 80) / 180);
+  y += regionalMountainHeight(fromRail, z) * (1 - Math.max(bridgeClearance, tunnelClearance));
   y -= bridgeFactor(z) * 79 * Math.exp(-Math.abs(fromRail) / 430);
   if (z > landmarks.tunnelStartZ - 110 && z < landmarks.tunnelEndZ + 110) {
     const approach = Math.min(
@@ -186,19 +187,7 @@ export function scenicTerrain(worldX, z) {
   }
   // Fade the generated shelf into the existing level railway at the old world boundary.
   if (z < 1000) {
-    const a = Math.abs(u),
-      d = u > 0 ? u - 38 : -u - 20;
-    const old =
-      a < 12
-        ? -3
-        : a < 20
-          ? -3 + (a - 12) * 0.7
-          : u > 20 && u < 38
-            ? 4.1
-            : 4.1 +
-              Math.max(0, d) * 0.85 +
-              Math.sin(z * 0.025 + u * 0.05) * Math.min(d * 0.3, 13) +
-              Math.sin(z * 0.066 + u * 0.13) * Math.min(d * 0.1, 7);
+    const old = naturalValleyTerrain(u, z);
     y = old + (y - old) * smooth((z - ROUTE_START_Z) / 210);
   }
   // The branch shares the base rail elevation; cut its shelf through the hillside.
@@ -285,6 +274,8 @@ export function createExtendedWorld({ THREE, scene, railPoint, center = routeCen
   for (const key of ['roof']) surfaceDetail.apply(m[key], 'roof');
   for (const key of ['timber', 'trunk']) surfaceDetail.apply(m[key], 'timber');
   surfaceDetail.apply(m.stone, 'stone');
+  surfaceDetail.apply(m.cream, 'plaster');
+  surfaceDetail.apply(m.urban, 'plaster');
   surfaceDetail.apply(m.ballast, 'ballast');
   const keep = (g) => (geometries.add(g), g);
   const boxGeo = keep(new THREE.BoxGeometry(1, 1, 1));
@@ -322,7 +313,8 @@ export function createExtendedWorld({ THREE, scene, railPoint, center = routeCen
       batches = new Map(),
       canopy = new Map(),
       residents = [],
-      lakeScenes = [];
+      lakeScenes = [],
+      cameraObstacles = [];
     let seed = (2719 + index * 7919) >>> 0;
     const random = () => {
       seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
@@ -366,20 +358,9 @@ export function createExtendedWorld({ THREE, scene, railPoint, center = routeCen
         }
     }
     // Ground cross-sections preserve a railway shelf. Portal strips leave genuine openings.
-    const offsets = [
-      -430, -320, -230, -160, -110, -75, -45, -25, -14, -10, -7, 0, 7, 10, 14, 25, 45, 75, 110, 160,
-      230, 320, 430,
-    ];
-    // Denser cross-sections only beside water retain the coves in the shared terrain field.
-    if (lakes.some((lake) => lake.z + lake.rz * 1.4 > start && lake.z - lake.rz * 1.4 < end)) {
-      for (let u = -300; u < -20; u += 6) if (!offsets.includes(u)) offsets.push(u);
-      offsets.sort((a, b) => a - b);
-    }
-    if (start < 2652 && end > 2568) {
-      for (let u = -50; u <= -12; u += 2) if (!offsets.includes(u)) offsets.push(u);
-      offsets.sort((a, b) => a - b);
-    }
-    const terrainStep = (z) => (z >= 2560 && z <= 2660 ? 2 : 15);
+    const offsets = TERRAIN_LATERAL_SAMPLES;
+    const terrainStep = (z) =>
+      (z >= 2560 && z <= 2660) || additionalStops.some((stop) => Math.abs(z - stop.z) < 170) ? 2 : 15;
     const positions = [],
       colors = [];
     function face(a, b, c, snow) {
@@ -393,9 +374,10 @@ export function createExtendedWorld({ THREE, scene, railPoint, center = routeCen
         colors.push(tint.r, tint.g, tint.b);
       }
     }
-    for (let z = start; z < end; z += terrainStep(z))
+    const terrainEnd = end === ROUTE_END_Z ? end + 1600 : end;
+    for (let z = start; z < terrainEnd; z += z >= end ? 40 : terrainStep(z))
       for (let i = 0; i < offsets.length - 1; i++) {
-        const z1 = Math.min(end, z + terrainStep(z)),
+        const z1 = Math.min(terrainEnd, z + (z >= end ? 40 : terrainStep(z))),
           u0 = offsets[i],
           u1 = offsets[i + 1];
         const portal =
@@ -745,9 +727,27 @@ export function createExtendedWorld({ THREE, scene, railPoint, center = routeCen
           isAllowed: (bounds) => bounds.minX > railPoint(lot.z).x + 12 && !lakeAt(lot.x, lot.z),
         });
         if (!building) continue;
-        box(m.stone, lot.x, lot.y - 0.28, lot.z, 22, 0.55, 24);
+        // A continuous retaining foundation reaches below the sampled hillside. The
+        // old 22 x 24 m paving slab protruded beyond coarse ground triangles.
+        const width = building.footprint.maxX - building.footprint.minX;
+        const depth = building.footprint.maxZ - building.footprint.minZ;
+        let bottom = lot.y - 0.6;
+        for (const dx of [-width / 2, 0, width / 2])
+          for (const dz of [-depth / 2, 0, depth / 2])
+            bottom = Math.min(bottom, scenicTerrain(lot.x + dx, lot.z + dz) - 0.6);
+        box(m.stone, lot.x, (lot.y + bottom) / 2, lot.z, width, lot.y - bottom, depth);
         group.userData.buildings ??= [];
         group.userData.buildings.push(building);
+        cameraObstacles.push(
+          new THREE.Box3(
+            new THREE.Vector3(building.footprint.minX, lot.y, building.footprint.minZ),
+            new THREE.Vector3(
+              building.footprint.maxX,
+              lot.y + building.height,
+              building.footprint.maxZ,
+            ),
+          ),
+        );
       }
       if (['farmland', 'terraces', 'wetland'].includes(stop.theme)) {
         for (let row = 0; row < 5; row++)
@@ -949,7 +949,7 @@ export function createExtendedWorld({ THREE, scene, railPoint, center = routeCen
           mat === leafyMaterial ||
           (mat === m.snow && geo === coneGeo))
       )
-        wind.apply(mesh, { amplitude: 0.1, anchorMin: -1.2, anchorMax: -0.3, flutter: 0.008 });
+        wind.apply(mesh, { amplitude: 0.48, anchorMin: -1.2, anchorMax: -0.3, flutter: 0.06 });
       if (wind && mat === m.trunk)
         wind.apply(mesh, { amplitude: 0.008, anchorMin: -0.5, anchorMax: 0.5, flutter: 0 });
       group.add(mesh);
@@ -964,6 +964,7 @@ export function createExtendedWorld({ THREE, scene, railPoint, center = routeCen
       canopy,
       residents,
       lakeScenes,
+      cameraObstacles,
       tokyo,
       dispose() {
         tokyo?.dispose();
@@ -1010,6 +1011,12 @@ export function createExtendedWorld({ THREE, scene, railPoint, center = routeCen
         chunk.tokyo?.update(dt, { dusk, weather, activityTime });
         for (const resident of chunk.residents) resident.update(activityTime, { weather });
       }
+    },
+    cameraObstacles() {
+      return [...active.values()].flatMap((chunk) => [
+        ...chunk.cameraObstacles,
+        ...(chunk.tokyo?.cameraObstacles ?? []),
+      ]);
     },
     foliageHeight(x, z) {
       const index = Math.floor((z - ROUTE_START_Z) / chunkSize),

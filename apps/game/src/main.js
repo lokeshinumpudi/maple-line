@@ -1,3 +1,5 @@
+import { createTrackSnow } from './world/track-snow.js';
+import { TERRAIN_LATERAL_SAMPLES, naturalValleyTerrain } from './world/terrain-surface.js';
 import { createEmbedVisuals } from './embed/visuals.js';
 import { installEmbedBridge } from './embed/bridge.js';
 import { createStableSunShadow } from './rendering/stable-sun-shadow.js';
@@ -157,28 +159,10 @@ const center = routeCenter;
 const railU = (z) =>
   z > 130 && z < 430 ? 28 - 85 * Math.sin(((z - 130) / 300) * Math.PI) ** 2 : 28;
 const railPoint = (z) => new THREE.Vector3(center(z) + railU(z), routeElevation(z), z);
-function naturalTerrain(u, z) {
-  const bed = riverBedHeight(u, z);
-  if (bed !== null) return bed;
-  const river = riverProfile(z),
-    left = river.offset - river.halfWidth - 8;
-  if (u >= left && u <= 38) return 4.1;
-  const d = u > 38 ? u - 38 : left - u;
-  let height =
-    4.1 +
-    d * 0.85 +
-    Math.sin(z * 0.025 + u * 0.05) * Math.min(d * 0.3, 13) +
-    Math.sin(z * 0.066 + u * 0.13) * Math.min(d * 0.1, 7);
-  const basin = (a, b) =>
-    THREE.MathUtils.smoothstep(z, a - 45, a) * (1 - THREE.MathUtils.smoothstep(z, b, b + 45));
-  const weight =
-    u > 38 ? Math.max(basin(-270, -80), basin(600, 850)) : u < left ? basin(-465, -265) : 0;
-  return THREE.MathUtils.lerp(height, 4.1 + d * 0.2, weight);
-}
 
 function terrain(u, z) {
   if (z > 790) return scenicTerrain(center(z) + u, z);
-  const height = naturalTerrain(u, z);
+  const height = naturalValleyTerrain(u, z);
   if (z > 145 && z < 415) {
     const separation = Math.abs(u - railU(z));
     return THREE.MathUtils.lerp(
@@ -215,47 +199,15 @@ function box(parent, color, x, y, z, sx, sy, sz) {
 // A continuous valley cross section leaves a level railway shelf above the river.
 const verts = [];
 // Consistent sample count/order: inner right-bank samples never pass the fixed railway shelf.
-function section(z) {
-  const r = riverProfile(z),
-    l = r.offset - r.halfWidth,
-    h = r.offset + r.halfWidth;
-  const bank = Math.min(h + 8, 20);
-  return [-280, -220, -170, -130, -95, -65, -42, -25, -14, -8]
-    .map((d) => l + d)
-    .concat([
-      l - 4,
-      l - 1,
-      l,
-      l + r.halfWidth * 0.18,
-      l + r.halfWidth * 0.52,
-      r.offset,
-      h - r.halfWidth * 0.48,
-      h - r.halfWidth * 0.18,
-      h,
-      h + (bank - h) * 0.35,
-      bank,
-      22,
-      28,
-      33,
-      38,
-      43,
-      50,
-      60,
-      74,
-      90,
-      110,
-      135,
-      165,
-      200,
-      245,
-    ]);
+function section() {
+  return TERRAIN_LATERAL_SAMPLES.map((offset) => offset + 28);
 }
+
 function face(a, b, c) {
   for (const v of [a, b, c]) verts.push(v.x, v.y, v.z);
 }
-for (let j = 0; j < 410; j++) {
-  const z = -850 + j * 4,
-    next = z + 4,
+for (let z = -2050; z < 790;) {
+  const next = Math.min(790, z + (z < -850 ? 40 : 4)),
     us = section(z),
     vs = section(next);
   for (let i = 0; i < us.length - 1; i++) {
@@ -266,6 +218,7 @@ for (let j = 0; j < 410; j++) {
     face(a, c, b);
     face(b, c, d);
   }
+  z = next;
 }
 const groundGeo = new THREE.BufferGeometry();
 groundGeo.setAttribute('position', new THREE.Float32BufferAttribute(verts, 3));
@@ -468,7 +421,34 @@ const flora = addFloraDetail({
   ],
 });
 const atmosphere = createAtmosphere({ THREE, scene, camera, renderer, sun, hemi, waterMat });
-const wildlife = addWildlife({ THREE, scene, center, terrain, riverProfile, waterY: -0.4 });
+const wildlife = addWildlife({
+  THREE,
+  scene,
+  center,
+  terrain,
+  riverProfile,
+  waterY: -0.4,
+  isHabitatClear(x, z, radius) {
+    const u = x - center(z);
+    if (
+      worldClearings.some(
+        (r) =>
+          z + radius >= r.minZ &&
+          z - radius <= r.maxZ &&
+          u + radius >= r.minU &&
+          u - radius <= r.maxU,
+      )
+    )
+      return false;
+    return [
+      [0, 0],
+      [radius, 0],
+      [-radius, 0],
+      [0, radius],
+      [0, -radius],
+    ].every(([dx, dz]) => activeCanopy.heightAt(x + dx, z + dz) === -Infinity);
+  },
+});
 const wind = createWindField({ THREE });
 const windCues = createWindCues({ THREE, scene });
 const snowCoverage = { value: 0 };
@@ -493,8 +473,8 @@ for (const object of [ground, leaves, pines, rocks]) {
 surfaceDetail.apply(ground.material, 'terrain');
 surfaceDetail.apply(rocks.material, 'stone');
 surfaceDetail.apply(trunks.material, 'timber');
-wind.apply(leaves, { amplitude: 0.1 });
-wind.apply(pines, { amplitude: 0.08, anchorMin: -0.5, anchorMax: 0.5, flutter: 0.025 });
+wind.apply(leaves, { amplitude: 0.48, flutter: 0.06 });
+wind.apply(pines, { amplitude: 0.32, anchorMin: -0.5, anchorMax: 0.5, flutter: 0.04 });
 wind.apply(trunks, { amplitude: 0.008, anchorMin: -0.5, anchorMax: 0.5, flutter: 0 });
 const openingSequence = createOpeningSequence({
   THREE,
@@ -505,6 +485,9 @@ const openingSequence = createOpeningSequence({
 });
 for (const material of [leaves.material, pines.material, ground.material])
   openingSequence.tintMaterial(material);
+const trackSnow = createTrackSnow({ THREE, scene, railPoint,
+  isCovered: (z) => isTunnel(z) || z < -790 || z > ROUTE_END_Z || Math.abs(z - landmarks.bridgeZ) < landmarks.bridgeSpan / 2,
+});
 const extendedWorld = createExtendedWorld({ THREE, scene, railPoint, center, wind });
 const regionalTraffic = createRegionalRailTraffic({
   THREE,
@@ -1083,6 +1066,7 @@ const cameraRig = createCameraRig({
   center,
   domElement: renderer.domElement,
   colliders: station.children,
+  cameraObstacles: () => extendedWorld.cameraObstacles(),
   vistaAt: (z) => lakeVista(z, center, routeElevation),
   foliageHeight: (x, z) => Math.max(activeCanopy.heightAt(x, z), extendedWorld.foliageHeight(x, z)),
 });
@@ -1394,8 +1378,7 @@ let last = performance.now(),
 document.addEventListener('visibilitychange', () => {
   last = performance.now();
 });
-let shadowElapsed = 1,
-  reflectionElapsed = 1;
+let reflectionElapsed = 1;
 function frame(now) {
   requestAnimationFrame(frame);
   if (embedded && (embedSuspended || document.hidden)) {
@@ -1596,6 +1579,7 @@ function frame(now) {
     });
   }
   openingSequence.applyCamera(train[0].position, train[train.length - 1].position);
+  trackSnow.update(dt, { z: camera.position.z, weather });
   atmosphere.update(dt, camera.position);
   skyReflections.update(localWeather, dusk);
   eveningMotes.update(dt, {
@@ -1784,15 +1768,12 @@ function frame(now) {
     chunk.mesh.visible =
       !(generatedWorld && chunk.forest) &&
       Math.abs(chunk.z - camera.position.z) < (embedVisuals?.sceneryDistance() ?? 720);
-    chunk.mesh.castShadow = chunk.casts && Math.abs(chunk.z - train[0].position.z) < 180;
+    chunk.mesh.castShadow = chunk.casts;
   }
   for (const chunk of railChunks) chunk.mesh.visible = Math.abs(chunk.z - camera.position.z) < 1200;
-  shadowElapsed += dt;
   reflectionElapsed += dt;
-  if (shadowElapsed >= 0.05) {
-    renderer.shadowMap.needsUpdate = true;
-    shadowElapsed = 0;
-  }
+  // Train, foliage and light transforms must share the shadow image’s frame.
+  renderer.shadowMap.needsUpdate = true;
   riverDetails.update(state.paused ? 0 : dt);
   embedVisuals?.apply(dt);
   riverWater.mesh.visible = camera.position.z < 1400;

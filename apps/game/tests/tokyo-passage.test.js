@@ -34,7 +34,7 @@ test('city cells have exactly one chunk owner, independent of visit order', () =
   assert.deepEqual(matrices(a.parent), matrices(c.parent));
   assert.ok(a.passage.state().cars + b.passage.state().cars >= 100);
   assert.ok(a.passage.state().pedestrians + b.passage.state().pedestrians >= 200);
-  assert.ok(a.passage.state().batches <= 21 && b.passage.state().batches <= 21);
+  assert.ok(a.passage.state().batches <= 22 && b.passage.state().batches <= 22);
   for (const item of [a, b, c]) item.passage.dispose();
 });
 test('city shelf preserves the rail and Harumi station, and blends into the country', () => {

@@ -233,3 +233,51 @@ test('inspection camera follows its subject without resetting the user offset, t
   rig.update({ dt: 0, distance: 100, direction: 1, view: 'cab' });
   assert.ok(camera.position.distanceTo(cabPose(track, 100, trackLength, 1).eye) < 1e-8);
 });
+
+test('inspection orbit lifts a buried camera above the hillside without resetting its bearing', () => {
+  const { rig, camera } = fixture(() => 35);
+  rig.update({
+    dt: 0,
+    distance: 100,
+    view: 'scenic',
+    focusPose: { key: 'terrain', eye: [65, 8, 50], target: [0, 40, 0] },
+  });
+  assert.ok(camera.position.y >= 37);
+  assert.equal(camera.position.x, 65);
+  assert.equal(camera.position.z, 50);
+  assert.ok(rig.state().terrainClearance >= 2);
+  camera.position.y = -10;
+  rig.update({
+    dt: 0.016,
+    distance: 100,
+    view: 'scenic',
+    focusPose: { key: 'terrain', eye: [65, 8, 50], target: [0, 40, 0] },
+  });
+  assert.ok(camera.position.y >= 37);
+});
+
+test('cinematic and inspection eyes cannot occupy loaded building volumes', () => {
+  const block = new THREE.Box3(new THREE.Vector3(40, 0, 30), new THREE.Vector3(60, 45, 55));
+  const camera = new THREE.PerspectiveCamera(48, 16 / 9, 0.5, 1800);
+  const rig = createCameraRig({
+    THREE,
+    camera,
+    track,
+    trackLength,
+    terrain: () => 0,
+    center,
+    cameraObstacles: () => [block],
+  });
+  const corrected = rig.constrainExterior(
+    new THREE.Vector3(42, 20, 42),
+    new THREE.Vector3(0, 3, 0),
+  );
+  assert.equal(block.containsPoint(corrected), false);
+  assert.ok(corrected.y >= 2);
+  rig.update({
+    distance: 100,
+    view: 'scenic',
+    focusPose: { key: 'building', eye: [42, 20, 42], target: [0, 3, 0] },
+  });
+  assert.equal(block.containsPoint(camera.position), false);
+});

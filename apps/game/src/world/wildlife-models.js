@@ -435,7 +435,8 @@ export function createWildlifeModelRenderer(root) {
       'leg',
       cap,
       (b) => {
-        const upper = c.leg * 0.48;
+        const legLength = Math.max(c.leg, c.height - 0.12);
+        const upper = legLength * 0.48;
         b.oval(
           c.coat,
           [0, -upper * 0.5, 0],
@@ -444,18 +445,18 @@ export function createWildlifeModelRenderer(root) {
         b.bone(
           fox ? '#554336' : c.coat,
           [0, -upper, 0],
-          [0, -c.leg, 0.045],
+          [0, -legLength, 0.045],
           deer ? 0.045 : 0.047,
           0.035,
         );
         b.oval(
           deer ? '#35322b' : fox ? '#4a3a2b' : c.coat,
-          [0, -c.leg + 0.025, 0.07],
+          [0, -legLength + 0.025, 0.07],
           [deer ? 0.052 : 0.071, 0.045, hare ? 0.135 : 0.1],
         );
         if (!deer)
           for (let i = 0; i < 3; i++)
-            b.oval('#3b332b', [(i - 1) * 0.03, -c.leg + 0.02, 0.145], [0.009, 0.013, 0.025]);
+            b.oval('#3b332b', [(i - 1) * 0.03, -legLength + 0.02, 0.145], [0.009, 0.013, 0.025]);
       },
       [0, 0, 0],
       4,
@@ -872,7 +873,7 @@ export function createWildlifeModelRenderer(root) {
       for (const [name, p] of Object.entries(parts)) {
         if (name === 'antlers' && !['autumn', 'winter'].includes(season)) continue;
         if (name === 'leg') {
-          const leg = c.leg ?? 0.13;
+          const leg = c.leg ? Math.max(c.leg, c.height - 0.12) : 0.13;
           for (let i = 0; i < 4; i++)
             posePart(
               p,
