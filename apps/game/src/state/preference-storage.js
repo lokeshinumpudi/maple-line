@@ -4,6 +4,7 @@ const MAX_CHARS = 16384;
 const ENUMS = {
   view: ['scenic', 'follow', 'cab', 'passenger', 'vista', 'director', 'orbit'],
   filmLook: ['auto', 'full', 'lite', 'off'],
+  graphics: ['auto', 'high', 'medium', 'low'],
   weather: ['clear', 'rain', 'snow'],
   trainLights: ['auto', 'on', 'off'],
   trainWipers: ['auto', 'on', 'off'],
@@ -21,7 +22,7 @@ const ENUMS = {
     'od-IN',
   ],
 };
-const BOOLEANS = ['dusk', 'hudVisible', 'manualControls', 'powerFlow'];
+const BOOLEANS = ['dusk', 'hudVisible', 'manualControls', 'powerFlow', 'storm'];
 const KEYS = [...Object.keys(ENUMS), ...BOOLEANS, 'soundVolume'];
 const isRecord = (value) => value !== null && typeof value === 'object' && !Array.isArray(value);
 const valid = (key, value) =>

@@ -11,38 +11,68 @@ import { FullScreenQuad } from 'three/addons/postprocessing/Pass.js';
  */
 export const FILM_QUALITIES = Object.freeze(['off', 'lite', 'full']);
 
-// Grades are applied after tone mapping. Values stay close to neutral so the
-// existing palettes still decide the colour of each place.
+// Grades are applied after tone mapping. The default look is warm and muted: lifted,
+// slightly amber blacks, restrained saturation and gentle contrast, like film stock
+// under a low sun. Weather and time of day shift it; the palettes still decide colour.
 export const FILM_GRADES = Object.freeze({
   clear: {
-    lift: [0, 0.002, 0.006],
-    gamma: [1, 1, 1.01],
-    gain: [1.03, 1.01, 0.97],
-    saturation: 1.1,
-    contrast: 1.12,
+    lift: [0.014, 0.01, 0.004],
+    gamma: [0.99, 1, 1.02],
+    gain: [1.04, 1.005, 0.93],
+    saturation: 0.9,
+    contrast: 1.06,
+  },
+  golden: {
+    lift: [0.018, 0.01, 0.002],
+    gamma: [0.98, 1, 1.04],
+    gain: [1.09, 0.99, 0.84],
+    saturation: 0.94,
+    contrast: 1.08,
   },
   rain: {
-    lift: [0.003, 0.006, 0.01],
+    lift: [0.006, 0.009, 0.012],
     gamma: [1.01, 1, 0.98],
-    gain: [0.97, 1, 1.03],
-    saturation: 0.86,
-    contrast: 1.04,
-  },
-  snow: {
-    lift: [0.004, 0.007, 0.012],
-    gamma: [1, 1, 0.99],
-    gain: [0.99, 1, 1.03],
-    saturation: 0.9,
+    gain: [0.96, 0.99, 1.02],
+    saturation: 0.74,
     contrast: 1.03,
   },
-  dusk: {
-    lift: [0.006, 0.004, 0.018],
-    gamma: [0.98, 1, 1.03],
-    gain: [1.08, 1, 0.9],
-    saturation: 1.05,
+  storm: {
+    lift: [0.002, 0.006, 0.012],
+    gamma: [1.03, 1.01, 0.98],
+    gain: [0.86, 0.91, 0.97],
+    saturation: 0.62,
     contrast: 1.1,
   },
+  snow: {
+    lift: [0.006, 0.008, 0.012],
+    gamma: [1, 1, 0.99],
+    gain: [0.99, 1, 1.02],
+    saturation: 0.82,
+    contrast: 1.03,
+  },
+  rainNight: {
+    lift: [0.004, 0.008, 0.016],
+    gamma: [1.02, 1, 0.97],
+    gain: [0.9, 0.95, 1.02],
+    saturation: 0.7,
+    contrast: 1.08,
+  },
+  dusk: {
+    lift: [0.01, 0.007, 0.018],
+    gamma: [0.98, 1, 1.03],
+    gain: [1.06, 0.98, 0.88],
+    saturation: 0.88,
+    contrast: 1.07,
+  },
 });
+
+/** Which grade a frame uses. storm is the 0..1 storm blend, sunPhase the sun preset. */
+export function gradeKey({ weather = 'clear', dusk = false, storm = 0, sunPhase } = {}) {
+  if (storm > 0.5 && weather === 'rain') return 'storm';
+  if (dusk) return weather === 'rain' ? 'rainNight' : 'dusk';
+  if (weather === 'clear' && (sunPhase === 'sunrise' || sunPhase === 'sunset')) return 'golden';
+  return FILM_GRADES[weather] ? weather : 'clear';
+}
 
 /** Sun position in normalized screen coordinates, or null when behind the camera. */
 export function sunScreenPosition(camera, sunDirection, out = new THREE.Vector3()) {
@@ -53,13 +83,18 @@ export function sunScreenPosition(camera, sunDirection, out = new THREE.Vector3(
 }
 
 /** How strongly shafts should show for a sun at screen uv; fades beyond the frame. */
-export function shaftStrength(screen, { weather = 'clear', inTunnel = false, dusk = false } = {}) {
+export function shaftStrength(
+  screen,
+  { weather = 'clear', inTunnel = false, dusk = false, sunPhase } = {},
+) {
   if (!screen || inTunnel || weather === 'rain') return 0;
   const dx = Math.max(0, Math.abs(screen.x - 0.5) - 0.5);
   const dy = Math.max(0, Math.abs(screen.y - 0.5) - 0.5);
   const outside = Math.hypot(dx, dy);
   const onScreen = Math.max(0, 1 - outside / 0.45);
-  return onScreen * (weather === 'snow' ? 0.35 : 1) * (dusk ? 1.25 : 0.75);
+  // A low sun through haze makes the longest shafts.
+  const low = sunPhase === 'sunrise' || sunPhase === 'sunset' ? 1.4 : 1;
+  return onScreen * (weather === 'snow' ? 0.35 : 1) * (dusk ? 1.25 : 0.75) * low;
 }
 
 const filmShader = {
@@ -241,7 +276,10 @@ export function createFilmPipeline({ renderer, scene, camera, quality = 'full' }
     shaftBoost: 1,
     bloomBoost: 1,
   };
-  let lastShafts = 0;
+  let lastShafts = 0,
+    bloomNight = 0,
+    bloomWet = 0,
+    lastGrade = 'clear';
 
   function disposeTargets() {
     target?.depthTexture?.dispose();
@@ -293,7 +331,8 @@ export function createFilmPipeline({ renderer, scene, camera, quality = 'full' }
         if (Number.isFinite(patch[key])) look[key] = Math.max(0, patch[key]);
     },
     /**
-     * Render one frame. context: { dt, weather, dusk, inTunnel, sunDirection, sunColor, neon }
+     * Render one frame. context: { dt, weather, dusk, inTunnel, sunDirection, sunColor, neon,
+     * storm (0..1), flash (0..1), sunPhase }
      */
     render(context) {
       const dt = Math.min(Math.max(context.dt ?? 0, 0), 0.1);
@@ -307,8 +346,8 @@ export function createFilmPipeline({ renderer, scene, camera, quality = 'full' }
       }
       ensureTargets();
       const blend = 1 - Math.exp(-dt * 2.2);
-      const key = context.dusk ? 'dusk' : (context.weather ?? 'clear');
-      const preset = FILM_GRADES[key] ?? FILM_GRADES.clear;
+      lastGrade = gradeKey(context);
+      const preset = FILM_GRADES[lastGrade] ?? FILM_GRADES.clear;
       grade.lift.lerp(scratch.fromArray(preset.lift), blend);
       grade.gamma.lerp(scratch.fromArray(preset.gamma), blend);
       grade.gain.lerp(scratch.fromArray(preset.gain), blend);
@@ -318,9 +357,18 @@ export function createFilmPipeline({ renderer, scene, camera, quality = 'full' }
       renderer.setRenderTarget(target);
       renderer.render(scene, camera);
       if (bloom) {
+        // At night the threshold drops so lamps, lit windows and their wet reflections
+        // grow soft halos; rain and storms scatter them wider.
+        const night = context.dusk ? 1 : 0;
+        const wet = context.weather === 'rain' ? 1 : 0;
+        bloomNight = THREE.MathUtils.lerp(bloomNight, night, blend);
+        bloomWet = THREE.MathUtils.lerp(bloomWet, wet, blend);
+        bloom.threshold = 0.92 - bloomNight * 0.2 - bloomWet * bloomNight * 0.04;
+        bloom.radius = 0.55 + bloomNight * 0.25 + bloomWet * 0.1;
         bloom.strength =
-          (context.dusk ? 0.42 : context.weather === 'clear' ? 0.28 : 0.2) *
+          (0.24 + bloomNight * 0.26 + bloomWet * bloomNight * 0.1) *
           (context.neon ? 1.5 : 1) *
+          (1 + (context.flash ?? 0) * 0.8) *
           look.bloomBoost;
         bloom.render(renderer, null, target, dt, false);
       }
@@ -361,6 +409,7 @@ export function createFilmPipeline({ renderer, scene, camera, quality = 'full' }
         size: [width, height],
         msaa: target?.samples ?? 0,
         bloom: Boolean(bloom),
+        grade: lastGrade,
         shafts: Number(lastShafts.toFixed(3)),
         letterbox: Number(look.letterbox.toFixed(3)),
         fade: Number(look.fade.toFixed(3)),

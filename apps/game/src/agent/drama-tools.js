@@ -101,7 +101,7 @@ export function registerDramaTools({ tool, runner, series, library, catalog, act
       intents: [...INTENTS],
       events: [...MIND_EVENTS],
       timesOfDay: ['daylight', 'sunrise', 'sunset', 'dusk'],
-      weather: ['clear', 'rain', 'snow'],
+      weather: ['clear', 'rain', 'snow', 'storm'],
       limits: { ...EPISODE_LIMITS },
       format: episodeSchema.description,
       tips: [

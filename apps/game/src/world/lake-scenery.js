@@ -1,3 +1,4 @@
+import { applyWaterSurface } from '../rendering/water-surface.js';
 /** The shoreline field is shared by terrain, water and bank dressing. */
 export const regionalLakes = Object.freeze([
   {
@@ -164,6 +165,7 @@ export function createLakeScenery({
     );
   };
   waterMat.customProgramCacheKey = () => 'regional-lake-ripples-v1';
+  applyWaterSurface(THREE, waterMat, { scale: 0.8 });
   const cedarMat = mat('waterside cedars', lake.alpine ? '#5d7770' : '#526e50');
   const cedarGeo = keepGeo(new THREE.ConeGeometry(1, 1, 8));
   const shoreMat = mat('gravel shoreline', lake.alpine ? '#a8b6ae' : '#b1ac81', {

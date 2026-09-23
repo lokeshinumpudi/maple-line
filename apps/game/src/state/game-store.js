@@ -52,6 +52,8 @@ export function createGameStore(startDistance = 0) {
         trainWipers: 'auto',
         powerFlow: true,
         filmLook: 'auto',
+        storm: false,
+        graphics: 'auto',
       },
       revision: 0,
       presentation: { menuOpen: false, sceneViewBeatId: null },
@@ -119,10 +121,16 @@ export function createGameStore(startDistance = 0) {
       store.setState({ drive: initialDrive(startDistance), revision: previous.revision + 1 });
     },
     setPreferences(patch) {
+      // 'storm' is heavy rain plus a storm flag, so every rain rule still applies.
+      // Choosing any other weather without an explicit storm flag clears the storm.
+      if (patch && 'weather' in patch && !('storm' in patch))
+        patch = { ...patch, storm: patch.weather === 'storm' };
+      if (patch?.weather === 'storm') patch = { ...patch, weather: 'rain', storm: true };
       const allowed = {
         mode: ['explore', 'challenge'],
         view: ['scenic', 'follow', 'cab', 'passenger', 'vista', 'director', 'orbit'],
         filmLook: ['auto', 'full', 'lite', 'off'],
+        graphics: ['auto', 'high', 'medium', 'low'],
         weather: ['clear', 'rain', 'snow'],
         sunPhase: ['daylight', 'sunrise', 'sunset'],
         trainLights: ['auto', 'on', 'off'],
@@ -155,6 +163,7 @@ export function createGameStore(startDistance = 0) {
             'manualControls',
             'powerFlow',
             'narrationEnabled',
+            'storm',
           ].includes(key)
         ) {
           if (typeof value !== 'boolean') throw new TypeError(`Invalid ${key}`);

@@ -98,8 +98,23 @@ test('teleporting the train recycles distant rings', () => {
 
 test('dispose removes the batch and GPU resources', () => {
   const { scene, impacts, mesh } = setup();
-  assert.equal(scene.children.length, 1);
+  // Rings and their splash crowns.
+  assert.equal(scene.children.length, 2);
   impacts.dispose();
   assert.equal(scene.children.length, 0);
   assert.equal(mesh.parent, null);
+});
+
+test('the graphics tier sets the ring count and splash crowns follow the rings', () => {
+  const scene = new THREE.Scene();
+  const impacts = createRainImpacts({ scene, heightAt: () => 0, count: 160 });
+  const [rings, crowns] = scene.children;
+  assert.equal(rings.count, 160);
+  assert.equal(crowns.count, 160);
+  impacts.update(0.05, { weather: 'rain', position: { x: 0, y: 0, z: 0 } });
+  assert.equal(crowns.visible, true);
+  for (let i = 0; i < 160; i++)
+    assert.ok(translation(crowns, i).distanceTo(translation(rings, i)) < 1e-6);
+  impacts.update(0.05, { weather: 'clear', position: { x: 0, y: 0, z: 0 } });
+  assert.equal(crowns.visible, false);
 });

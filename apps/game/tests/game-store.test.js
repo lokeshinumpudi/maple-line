@@ -70,3 +70,21 @@ test('a menu hold never changes manual pause, movement, or story viewing state',
   assert.throws(() => store.updatePresentation({ menuOpen: 'yes' }));
   assert.throws(() => store.updatePresentation({ sceneViewBeatId: {} }));
 });
+
+test('a storm is stored as rain with a storm flag, and other weather clears it', () => {
+  const store = createGameStore();
+  store.setPreferences({ weather: 'storm' });
+  assert.equal(store.getState().preferences.weather, 'rain');
+  assert.equal(store.getState().preferences.storm, true);
+  store.setPreferences({ dusk: true });
+  assert.equal(store.getState().preferences.storm, true, 'unrelated changes keep the storm');
+  store.setPreferences({ weather: 'rain' });
+  assert.equal(store.getState().preferences.storm, false);
+  store.setPreferences({ weather: 'rain', storm: true });
+  assert.equal(store.getState().preferences.storm, true, 'a restored flag is kept');
+  store.setPreferences({ weather: 'snow' });
+  assert.equal(store.getState().preferences.storm, false);
+  store.setPreferences({ graphics: 'low' });
+  assert.equal(store.getState().preferences.graphics, 'low');
+  assert.throws(() => store.setPreferences({ graphics: 'ultra' }), TypeError);
+});

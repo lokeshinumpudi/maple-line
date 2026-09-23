@@ -53,7 +53,7 @@ export const shotSchema = object(
     line: text(160),
     set: {
       ...object({
-        weather: { type: 'string', enum: ['clear', 'rain', 'snow'] },
+        weather: { type: 'string', enum: ['clear', 'rain', 'snow', 'storm'] },
         timeOfDay: { type: 'string', enum: ['daylight', 'sunrise', 'sunset', 'dusk'] },
         location: { oneOf: [{ type: 'string', enum: LOCATIONS }, number(-700, ROUTE_END_Z)] },
         speedKmh: number(0, 160),

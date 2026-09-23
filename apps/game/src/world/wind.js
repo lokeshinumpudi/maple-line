@@ -168,10 +168,13 @@ transformed += vec3(
       if (!Number.isFinite(dt) || dt < 0)
         throw new TypeError('Wind dt must be finite and nonnegative.');
       weather = context.weather ?? weather;
+      // Storm gusts (0..1) add to the weather's steady wind and arrive faster than it.
+      const gust = Number.isFinite(context.gust) ? Math.min(Math.max(context.gust, 0), 1.25) : 0;
       const target =
-        strengthOverride ?? (weather === 'rain' ? 1.65 : weather === 'snow' ? 1.1 : 0.7);
+        strengthOverride ??
+        Math.min(3, (weather === 'rain' ? 1.65 : weather === 'snow' ? 1.1 : 0.7) + gust * 1.1);
       time.value += dt;
-      strength.value += (target - strength.value) * (1 - Math.exp(-dt * 0.8));
+      strength.value += (target - strength.value) * (1 - Math.exp(-dt * (gust > 0 ? 1.6 : 0.8)));
     },
     getState() {
       return {

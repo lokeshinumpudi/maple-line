@@ -41,7 +41,7 @@ const PLACES = [
   'summit',
 ];
 const TIMES = ['daylight', 'sunrise', 'sunset', 'dusk'];
-const WEATHER = ['clear', 'rain', 'snow'];
+const WEATHER = ['clear', 'rain', 'snow', 'storm'];
 
 function fail(path, message) {
   throw new TypeError(`${path} ${message}`);
