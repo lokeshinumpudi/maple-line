@@ -1,23 +1,32 @@
 /**
  * The 17:42 — a three-episode companion drama for the director.
  *
- * One evening service down the Maple Line reaches Aonuma at 17:42. The last village
- * bus leaves at 17:40. Haru's campaign follows the driver who endorsed that timetable;
- * this series stays on the passenger side of the same two minutes and does not use or
- * alter the campaign's characters, dialogue or saved choices.
+ * Tomorrow Grandma Fusae moves to a care home in the city. Tonight she wants to hear
+ * Grandpa's old radio one last time, in her own house up the valley. Riko has it, freshly
+ * repaired. The last bus up the hill leaves Aonuma at 17:40; Riko's train gets in at 17:42.
+ * Haru's campaign follows the driver who endorsed that timetable; this series stays on
+ * the passenger side and does not use or alter the campaign's characters or saves.
  *
- * Casting uses characters the world already simulates. Riko is played by a Momiji
- * student in episode 1 and by an Aonuma resident in episode 3; the figures differ.
- * At Aonuma she is cast as the standing resident by the kiosk; the seated reader there
- * sits behind a shelter post that hides her from every portrait angle.
+ * Riko is the same figure in every episode: the Momiji student `commuter-2`, whose model
+ * the stage (drama/drama-stage.js) moves onto the train and off it at Aonuma. Fusae and
+ * the bus driver Aoi are staged people with their own models. Every key time is also on
+ * screen as words (a timetable insert, captions), so the story reads with the sound off.
  */
 const CAST = {
-  riko: { name: 'Riko', note: '17. Carrying her grandmother’s repaired radio home to Aonuma.' },
-  sato: { name: 'Mr. Sato', note: '44. Office commuter. Has taken this train for nine years.' },
-  ishida: { name: 'Mr. Ishida', note: '70s. Reads the paper on the Momiji bench every evening.' },
-  fusae: { name: 'Fusae', note: 'Riko’s grandmother, heard on the phone. Dry, unbothered.' },
-  aoi: { name: 'Mrs. Hara', note: '53. Runs the kiosk at Aonuma. Closes at six.' },
-  tanabe: { name: 'Mr. Tanabe', note: '47. Missed the same bus. Has written to the railway.' },
+  riko: { name: 'Riko', note: '17. Carrying Grandpa’s radio home, freshly repaired.' },
+  sato: {
+    name: 'Mr. Sato',
+    note: '44. Takes the same train home. Quietly kind. His daughter drives the Aonuma bus.',
+  },
+  ishida: {
+    name: 'Mr. Ishida',
+    note: '70s. Reads on the Momiji bench. Missed that bus once, forty years ago.',
+  },
+  fusae: {
+    name: 'Grandma Fusae',
+    note: '80. Moves to a care home in the city tomorrow. Heard on the phone, then at Aonuma.',
+  },
+  aoi: { name: 'Aoi', note: '24. Drives the last bus up the hill. Cheerful. Mr. Sato’s daughter.' },
 };
 
 export const THE_1742 = Object.freeze({
@@ -25,7 +34,13 @@ export const THE_1742 = Object.freeze({
   title: 'The 17:42',
   japanese: '十七時四十二分',
   logline:
-    'One evening train reaches Aonuma at 17:42. The last village bus leaves at 17:40. Three short episodes about the people on either side of those two minutes.',
+    'Tomorrow Grandma Fusae moves to a care home in the city. Tonight she wants to hear Grandpa’s old radio one last time, at home up the valley. Riko has it. The last bus up the hill leaves Aonuma at 17:40. Riko’s train gets in at 17:42.',
+  // Hand-written Telugu lines a native speaker should read before a video is shared.
+  review: [
+    'Episode 2, Mr. Sato: “Aoi? It’s Dad…”. The spelling of Aoi (అఓయి) and Aonuma (అఓనుమా) in Telugu script.',
+    'Episode 3, the radio line “(Static. Then soft music.)”: గరగర for radio static.',
+    'Episode 1, the care-home line: వృద్ధాశ్రమం is the everyday word but can sound bleak; ఆశ్రమం or కేర్ హోమ్ are the alternatives.',
+  ],
   episodes: [
     {
       id: 'the-1742-e1-two-minutes',
@@ -33,7 +48,7 @@ export const THE_1742 = Object.freeze({
       number: 1,
       title: 'Two Minutes',
       logline:
-        'Riko waits at Momiji with her grandmother’s radio and learns what the printed times mean.',
+        'At Momiji, Riko works out she will miss the last bus up the hill by two minutes. Two strangers on the platform notice the radio she is carrying.',
       cast: CAST,
       scenes: [
         {
@@ -45,6 +60,7 @@ export const THE_1742 = Object.freeze({
             timeOfDay: 'sunset',
             weather: 'clear',
             speedKmh: 50,
+            clock: '16:51',
           },
           stopAt: 'momiji',
           actors: { riko: 'commuter-2', sato: 'commuter-1', ishida: 'reader-1' },
@@ -53,91 +69,105 @@ export const THE_1742 = Object.freeze({
               shot: { type: 'establishing', aperture: 'deep' },
               caption: 'Momiji',
               subtitle: 'sunset · 16:51',
-              line: 'The evening service leaves Momiji at 16:58. It reaches Aonuma at 17:42.',
-              hold: 7,
+              line: 'Tomorrow, Grandma Fusae moves to a care home in the city.',
+              lineTranslations: {
+                'te-IN': 'రేపు ఫుసాయే బామ్మ పట్నంలోని వృద్ధాశ్రమానికి మారిపోతోంది.',
+              },
+              hold: 6,
               cues: [
                 {
                   after: 0,
-                  direct: { cast: 'riko', mood: 'anxious', intent: 'check-phone', hold: 60 },
+                  direct: { cast: 'riko', mood: 'wistful', intent: 'linger', hold: 60 },
                 },
                 { after: 0, direct: { cast: 'sato', mood: 'content', intent: 'linger', hold: 60 } },
-                { after: 0, direct: { cast: 'ishida', mood: 'content', intent: 'sit', hold: 90 } },
+                { after: 0, direct: { cast: 'ishida', mood: 'content', intent: 'sit', hold: 120 } },
               ],
             },
             {
+              shot: { type: 'portrait', subject: { cast: 'riko' }, lens: 60 },
+              line: 'Tonight she wants to hear Grandpa’s radio one last time, at home.',
+              lineTranslations: {
+                'te-IN': 'ఈ రాత్రి సొంత ఇంట్లో, తాతయ్య రేడియోని ఆఖరిసారి వినాలనుకుంటోంది.',
+              },
+              hold: 6,
+            },
+            {
+              shot: { type: 'insert', subject: { prop: 'momiji-timetable' } },
+              line: 'Arrives Aonuma 17:42 · Last bus 17:40',
+              lineTranslations: { 'te-IN': 'అఓనుమా చేరేది 17:42 · ఆఖరి బస్సు 17:40' },
+              hold: 6,
+            },
+            {
               shot: { type: 'portrait', subject: { cast: 'riko' } },
+              cues: [{ after: 0, direct: { cast: 'riko', mood: 'anxious', intent: 'linger' } }],
               dialogue: [
                 {
                   cast: 'riko',
-                  text: 'Seventeen forty-two in. Seventeen forty out.',
+                  text: 'Two minutes. I’ll miss the last bus by two minutes.',
                   emotion: 'anxious',
                   translations: {
-                    'te-IN': 'రైలు ఐదు నలభై రెండుకి వస్తుంది. బస్సు ఐదు నలభైకే వెళ్ళిపోతుంది.',
+                    'te-IN': 'రెండే నిమిషాలు. రెండు నిమిషాల తేడాతో ఆఖరి బస్సు తప్పిపోతుంది.',
                   },
-                },
-                {
-                  cast: 'riko',
-                  text: 'That isn’t a connection. That’s a race.',
-                  emotion: 'dry',
-                  translations: { 'te-IN': 'ఇది కనెక్షన్ కాదు. ఇది పరుగు పందెం.' },
                 },
               ],
             },
             {
               shot: { type: 'portrait', subject: { cast: 'sato' }, side: 'right' },
+              cues: [{ after: 0, direct: { cast: 'sato', mood: 'curious', intent: 'linger' } }],
               dialogue: [
-                { cast: 'sato', text: 'What’s in the box?', emotion: 'curious' },
-                {
-                  cast: 'riko',
-                  text: 'My grandmother’s radio. She says the new one talks too fast.',
-                  emotion: 'warm',
-                },
                 {
                   cast: 'sato',
-                  text: 'The bus waits, if the driver’s in a good mood.',
-                  emotion: 'dry',
-                },
-                {
-                  cast: 'riko',
-                  text: 'Is he usually?',
+                  text: 'Is that a radio?',
                   emotion: 'curious',
-                  // Machine translation made the driver "she" here, which spoils the reply.
-                  translations: { 'te-IN': 'అతను మామూలుగా మంచి మూడ్‌లో ఉంటాడా?' },
+                  translations: { 'te-IN': 'అది రేడియోనా?' },
                 },
                 {
-                  cast: 'sato',
-                  text: 'It’s a she. And no.',
-                  emotion: 'dry',
-                  translations: { 'te-IN': 'అతను కాదు, ఆమె. ఇక మూడ్ అంటావా, ఉండదు.' },
+                  cast: 'riko',
+                  text: 'Grandpa’s. I got it fixed. Grandma wants to hear it tonight.',
+                  emotion: 'warm',
+                  translations: {
+                    'te-IN': 'తాతయ్యది. బాగు చేయించాను. ఈ రాత్రి బామ్మ దీన్ని వినాలనుకుంటోంది.',
+                  },
                 },
               ],
+            },
+            {
+              // Sato says nothing. Hold on him: this is where he decides.
+              shot: { type: 'portrait', subject: { cast: 'sato' }, lens: 75, aperture: 'shallow' },
+              hold: 4,
+              cues: [{ after: 0, direct: { cast: 'sato', mood: 'wistful', intent: 'linger' } }],
             },
             {
               shot: { type: 'portrait', subject: { cast: 'ishida' }, lens: 40 },
               dialogue: [
                 {
                   cast: 'ishida',
-                  text: 'Ride in the front car. The bus stop is by the kiosk.',
+                  text: 'Ride in the front car. Run the moment the doors open.',
                   emotion: 'reassuring',
                   // "Car" is a railway carriage (బోగీ), not a motor car.
-                  translations: { 'te-IN': 'ముందు బోగీలో ఎక్కు. బస్ స్టాప్ కియోస్క్ పక్కనే ఉంది.' },
+                  translations: { 'te-IN': 'ముందు బోగీలో ఎక్కు. తలుపులు తెరుచుకోగానే పరిగెత్తు.' },
                 },
-                { cast: 'riko', text: 'Thank you.', emotion: 'warm' },
+                {
+                  cast: 'riko',
+                  text: 'Thank you.',
+                  emotion: 'warm',
+                  translations: { 'te-IN': 'చాలా థాంక్స్ అండీ.' },
+                },
                 {
                   cast: 'ishida',
-                  text: 'Don’t thank me. I’ve never made it.',
-                  emotion: 'dry',
+                  text: 'I missed that bus once. Forty years ago. I never went back up the hill.',
+                  emotion: 'reflective',
                   translations: {
-                    'te-IN': 'నాకు థ్యాంక్స్ చెప్పకు. నేను ఒక్కసారి కూడా ఆ బస్సు అందుకోలేదు.',
+                    'te-IN':
+                      'ఒకసారి నాకూ ఆ బస్సు తప్పిపోయింది. నలభై ఏళ్ళ క్రితం. మళ్ళీ ఆ కొండ పైకి ఎప్పుడూ వెళ్ళలేదు.',
                   },
                 },
               ],
             },
             {
               shot: { type: 'platform' },
-              line: 'Nobody on the platform looks at the timetable again.',
               waitFor: 'stopped',
-              hold: 6,
+              hold: 5,
               cues: [
                 {
                   after: 0,
@@ -148,31 +178,36 @@ export const THE_1742 = Object.freeze({
               ],
             },
             {
-              shot: { type: 'wheels', aperture: 'shallow' },
-              hold: 9,
+              // Riko hurries to the front car and gets in; Sato boards with the commuters.
+              shot: { type: 'portrait', subject: { cast: 'riko' }, lens: 35 },
+              line: 'Riko takes the front car.',
+              lineTranslations: { 'te-IN': 'రికో ముందు బోగీ ఎక్కుతుంది.' },
+              hold: 7,
               cues: [
+                { after: 0, move: { cast: 'riko', to: 'front-car-door', pace: 'run' } },
                 { after: 0.5, doors: 'open' },
                 { after: 1, event: 'doors-open' },
-                { after: 7, doors: 'close' },
               ],
             },
             {
-              shot: { type: 'window' },
-              waitFor: 'doors-closed',
-              hold: 3,
-              dialogue: [
-                { cast: 'riko', text: 'Front car.', translations: { 'te-IN': 'ముందు బోగీ.' } },
-              ],
+              shot: { type: 'platform', lens: 40 },
+              hold: 9,
+              cues: [{ after: 7.5, doors: 'close' }],
             },
             {
               shot: { type: 'trackside', aperture: 'shallow' },
-              hold: 10,
+              waitFor: 'doors-closed',
+              hold: 9,
               cues: [{ after: 0.5, release: true }],
             },
           ],
         },
       ],
-      endCard: { title: 'The 17:42 · Episode 1 · Two Minutes', line: 'Next: The Crossing' },
+      endCard: {
+        title: 'The 17:42 · Episode 1 · Two Minutes',
+        line: 'Next: The Crossing',
+        lineTranslations: { 'te-IN': 'తర్వాతి భాగం: The Crossing' },
+      },
     },
     {
       id: 'the-1742-e2-the-crossing',
@@ -180,58 +215,79 @@ export const THE_1742 = Object.freeze({
       number: 2,
       title: 'The Crossing',
       logline:
-        'On the train, Riko calls her grandmother. At the Sakuragawa farm road, the arms come down.',
+        'On the train, Riko tells her grandmother she will miss the bus. At the Sakuragawa farm road the train is held, and Mr. Sato, across the aisle, makes a call.',
       cast: CAST,
       scenes: [
         {
-          id: 'between-stations',
-          heading: 'INT./EXT. EVENING SERVICE AND SAKURAGAWA FARM ROAD — SUNSET, 17:09',
+          id: 'front-car',
+          heading: 'INT. FRONT CAR, EVENING SERVICE — SUNSET, 17:09',
           set: {
             location: 'sakuragawa',
-            offset: -900,
+            offset: -760,
             timeOfDay: 'sunset',
             weather: 'clear',
-            speedKmh: 60,
+            speedKmh: 55,
+            clock: '17:09',
           },
-          stopAt: 'sakuragawa',
+          holdAt: 'sakuragawa-farm-road',
+          actors: { riko: 'commuter-2', sato: 'commuter-1' },
+          marks: { riko: 'front-car-seat', sato: 'front-car-seat-across' },
           beats: [
             {
-              shot: { type: 'window' },
-              caption: 'Between Momiji and Sakuragawa',
+              shot: { type: 'telephoto' },
+              caption: 'The evening train',
               subtitle: '17:09',
+              hold: 8,
+            },
+            {
+              shot: { type: 'portrait', subject: { cast: 'riko' } },
+              cues: [
+                {
+                  after: 0,
+                  direct: { cast: 'riko', mood: 'anxious', intent: 'check-phone', hold: 40 },
+                },
+              ],
               dialogue: [
                 {
-                  cast: 'riko',
-                  text: 'Grandma, don’t come to the stop. It’s cold.',
+                  cast: 'fusae',
+                  phone: true,
+                  text: 'Did you get it working?',
                   emotion: 'warm',
+                  translations: { 'te-IN': 'రేడియో బాగయిందా, తల్లీ?' },
+                },
+                {
+                  cast: 'riko',
+                  text: 'It works. But the train’s running late. I’ll miss the bus.',
+                  emotion: 'anxious',
+                  translations: {
+                    'te-IN': 'పని చేస్తోంది. కానీ రైలు లేటుగా నడుస్తోంది. బస్సు తప్పిపోతుంది.',
+                  },
                 },
                 {
                   cast: 'fusae',
                   phone: true,
-                  text: 'I’m not coming for you. I’m coming for the radio.',
-                  emotion: 'dry',
+                  text: 'Then come tomorrow.',
+                  translations: { 'te-IN': 'అయితే రేపు రా.' },
+                },
+                {
+                  cast: 'riko',
+                  text: 'Tomorrow you won’t be there.',
+                  emotion: 'vulnerable',
+                  translations: { 'te-IN': 'రేపు నువ్వు అక్కడ ఉండవుగా.' },
                 },
               ],
             },
             {
-              shot: { type: 'telephoto' },
+              // The pause before Fusae answers.
+              shot: { type: 'portrait', subject: { cast: 'riko' }, lens: 70, aperture: 'shallow' },
+              hold: 3,
               dialogue: [
                 {
-                  cast: 'riko',
-                  text: 'The train gets in at 17:42. The bus goes at 17:40.',
-                  emotion: 'anxious',
-                },
-                {
                   cast: 'fusae',
                   phone: true,
-                  text: 'Kaneda’s girl drives it now. She waits if she sees the train.',
-                },
-                { cast: 'riko', text: 'And if she doesn’t see it?', emotion: 'anxious' },
-                {
-                  cast: 'fusae',
-                  phone: true,
-                  text: 'Then you walk, and I make tea.',
+                  text: 'Then hurry, child.',
                   emotion: 'warm',
+                  translations: { 'te-IN': 'అయితే త్వరగా రా, తల్లీ.' },
                 },
               ],
             },
@@ -239,59 +295,70 @@ export const THE_1742 = Object.freeze({
               shot: {
                 type: 'orbit',
                 subject: { crossing: 'sakuragawa-farm-road' },
-                distance: 24,
+                distance: 26,
                 height: 5,
                 lens: 32,
               },
               caption: 'Sakuragawa farm road',
-              hold: 14,
-            },
-            {
-              shot: { type: 'wheels' },
-              dialogue: [
-                {
-                  cast: 'riko',
-                  text: 'Why don’t they just move the bus five minutes?',
-                  emotion: 'curious',
-                },
-                {
-                  cast: 'fusae',
-                  phone: true,
-                  text: 'The bus belongs to the town. The train belongs to the railway.',
-                  emotion: 'dry',
-                },
-                {
-                  cast: 'fusae',
-                  phone: true,
-                  text: 'They don’t eat at the same table.',
-                  emotion: 'dry',
-                },
-              ],
-            },
-            {
-              shot: { type: 'cab' },
-              dialogue: [
-                {
-                  cast: 'fusae',
-                  phone: true,
-                  text: 'Bring the radio anyway. If you miss her, it can tell me the weather.',
-                  emotion: 'playful',
-                },
-                { cast: 'riko', text: 'It only gets one station.' },
-                { cast: 'fusae', phone: true, text: 'It’s the right one.', emotion: 'warm' },
-              ],
-            },
-            {
-              shot: { type: 'platform' },
-              caption: 'Sakuragawa',
-              subtitle: '17:14',
+              line: 'The train is held at the crossing. Now five minutes late.',
+              lineTranslations: {
+                'te-IN': 'రైలుని రైల్వే గేటు దగ్గర ఆపేశారు. ఇప్పుడు ఐదు నిమిషాలు ఆలస్యం.',
+              },
               waitFor: 'stopped',
-              hold: 6,
+              hold: 8,
+            },
+            {
+              shot: { type: 'portrait', subject: { cast: 'sato' }, partner: { cast: 'riko' } },
+              cues: [
+                {
+                  after: 0,
+                  direct: { cast: 'sato', mood: 'content', intent: 'check-phone', hold: 20 },
+                },
+              ],
+              dialogue: [
+                {
+                  cast: 'sato',
+                  text: 'Aoi? It’s Dad. The 17:40 from Aonuma. Can you wait tonight?',
+                  emotion: 'warm',
+                  translations: {
+                    'te-IN': 'అఓయి? నాన్నని. అఓనుమా నుంచి ఐదు నలభై బస్సు. ఈ రాత్రి కాసేపు ఆగగలవా?',
+                  },
+                },
+              ],
+            },
+            {
+              // Riko looks up.
+              shot: { type: 'portrait', subject: { cast: 'riko' }, partner: { cast: 'sato' } },
+              hold: 3,
+              cues: [{ after: 0, direct: { cast: 'riko', mood: 'curious', intent: 'linger' } }],
+            },
+            {
+              shot: { type: 'portrait', subject: { cast: 'sato' }, partner: { cast: 'riko' } },
+              cues: [{ after: 0, direct: { cast: 'sato', mood: 'cheerful', intent: 'linger' } }],
+              dialogue: [
+                {
+                  cast: 'sato',
+                  text: 'My daughter drives that bus. She never waits for me.',
+                  emotion: 'playful',
+                  translations: {
+                    'te-IN': 'ఆ బస్సు నడిపేది మా అమ్మాయే. నా కోసం మాత్రం ఎప్పుడూ ఆగదు.',
+                  },
+                },
+              ],
+            },
+            {
+              shot: { type: 'trackside', aperture: 'shallow' },
+              hold: 9,
+              cues: [{ after: 0.5, release: true }],
             },
           ],
         },
       ],
-      endCard: { title: 'The 17:42 · Episode 2 · The Crossing', line: 'Next: 17:42' },
+      endCard: {
+        title: 'The 17:42 · Episode 2 · The Crossing',
+        line: 'Next: 17:42',
+        lineTranslations: { 'te-IN': 'తర్వాతి భాగం: 17:42' },
+      },
     },
     {
       id: 'the-1742-e3-seventeen-forty-two',
@@ -299,186 +366,155 @@ export const THE_1742 = Object.freeze({
       number: 3,
       title: '17:42',
       logline:
-        'The train reaches Aonuma. The bus is gone. The kiosk is still open, and it starts to rain.',
+        'The train reaches Aonuma seven minutes after the last bus should have gone. Riko runs. The bus is still there.',
       cast: CAST,
       scenes: [
         {
           id: 'aonuma-arrival',
-          heading: 'EXT. AONUMA STATION — BLUE HOUR, 17:41',
+          heading: 'EXT. AONUMA STATION AND BUS STOP — BLUE HOUR, RAIN, 17:47',
           set: {
             location: 'aonuma',
-            offset: -450,
+            offset: -420,
             timeOfDay: 'dusk',
-            weather: 'clear',
+            weather: 'rain',
             speedKmh: 55,
+            clock: '17:47',
           },
           stopAt: 'aonuma',
-          actors: {
-            riko: 'aonuma-resident-3',
-            aoi: 'aonuma-resident-5',
-            tanabe: 'aonuma-resident-2',
-          },
+          actors: { riko: 'commuter-2', fusae: 'fusae', aoi: 'aoi' },
+          marks: { riko: 'front-car-door', fusae: 'aonuma-bus-stop', aoi: 'aonuma-bus-step' },
           beats: [
             {
               shot: { type: 'establishing', aperture: 'deep' },
-              caption: 'Aonuma',
-              subtitle: 'blue hour · 17:41',
-              line: 'The last village bus leaves from the kiosk side of the station.',
-              hold: 7,
+              caption: 'Aonuma · 17:47',
+              subtitle: 'blue hour · rain',
+              hold: 6,
               cues: [
-                { after: 0, direct: { cast: 'aoi', mood: 'content', intent: 'linger', hold: 120 } },
+                { after: 0, bus: { state: 'wait' } },
                 {
                   after: 0,
-                  direct: { cast: 'tanabe', mood: 'irritated', intent: 'check-phone', hold: 60 },
+                  direct: { cast: 'fusae', mood: 'content', intent: 'linger', hold: 120 },
                 },
+                { after: 0, direct: { cast: 'aoi', mood: 'cheerful', intent: 'linger', hold: 60 } },
               ],
+            },
+            {
+              shot: { type: 'insert', subject: { prop: 'aonuma-clock' } },
+              caption: '17:47',
+              subtitle: 'The last bus was due out at 17:40',
+              hold: 4,
             },
             {
               shot: { type: 'platform' },
-              line: '17:42.',
               waitFor: 'stopped',
-              hold: 5,
+              hold: 4,
               cues: [{ after: 1, event: 'train-arrival' }],
             },
             {
-              shot: { type: 'portrait', subject: { cast: 'riko' } },
+              // The doors open and Riko runs, the radio against her chest.
+              shot: { type: 'platform', lens: 40 },
+              hold: 4,
               cues: [
                 { after: 0, doors: 'open' },
-                { after: 0, direct: { cast: 'riko', mood: 'anxious', intent: 'hurry', hold: 20 } },
+                { after: 0.8, move: { cast: 'riko', to: 'aonuma-bus-door', pace: 'run' } },
               ],
-              dialogue: [{ cast: 'riko', text: 'Was that the bus?', emotion: 'anxious' }],
             },
             {
-              shot: { type: 'portrait', subject: { cast: 'aoi' } },
+              shot: { type: 'portrait', subject: { cast: 'riko' }, lens: 32 },
+              line: 'Riko runs.',
+              lineTranslations: { 'te-IN': 'రికో పరిగెడుతుంది.' },
+              hold: 4,
+            },
+            {
+              // The bus is still there: headlights on, doors open.
+              shot: { type: 'insert', subject: { prop: 'aonuma-bus' } },
+              line: 'The bus is still there.',
+              lineTranslations: { 'te-IN': 'బస్సు ఇంకా అక్కడే ఉంది.' },
+              hold: 5,
+            },
+            {
+              shot: { type: 'portrait', subject: { cast: 'aoi' }, partner: { cast: 'riko' } },
+              cues: [
+                { after: 0, direct: { cast: 'aoi', mood: 'cheerful', intent: 'wave', hold: 4 } },
+              ],
               dialogue: [
-                { cast: 'aoi', text: 'Two minutes ago. She waited one.' },
-                { cast: 'riko', text: 'One.', emotion: 'tired' },
                 {
                   cast: 'aoi',
-                  text: 'Last week it was none. You’re doing well.',
+                  text: 'You’re the girl with the radio? Dad said you’d run.',
                   emotion: 'playful',
+                  translations: {
+                    'te-IN':
+                      'రేడియో అమ్మాయి నువ్వేనా? నువ్వు పరిగెత్తుకుంటూ వస్తావని నాన్న చెప్పారు.',
+                  },
                 },
               ],
             },
             {
-              shot: { type: 'portrait', subject: { cast: 'tanabe' }, side: 'left' },
-              cues: [
-                { after: 0, direct: { cast: 'tanabe', mood: 'tired', intent: 'sit', hold: 90 } },
-              ],
-              dialogue: [
-                { cast: 'tanabe', text: 'I’ve written to the railway twice.', emotion: 'tired' },
-                { cast: 'aoi', text: 'And?', emotion: 'curious' },
-                {
-                  cast: 'tanabe',
-                  text: 'They wrote back that the bus isn’t the railway.',
-                  emotion: 'dry',
-                },
-              ],
-            },
-          ],
-        },
-        {
-          id: 'aonuma-kiosk-rain',
-          heading: 'EXT. AONUMA KIOSK — BLUE HOUR, RAIN, 17:46',
-          stopAt: 'aonuma',
-          actors: {
-            riko: 'aonuma-resident-3',
-            aoi: 'aonuma-resident-5',
-            tanabe: 'aonuma-resident-2',
-          },
-          beats: [
-            {
-              shot: { type: 'helicopter', distance: 90, height: 28 },
-              line: 'It starts to rain.',
-              hold: 8,
-              cues: [
-                { after: 0, weather: 'rain' },
-                { after: 0.5, event: 'rain-start' },
-                {
-                  after: 1,
-                  direct: { cast: 'riko', mood: 'wistful', intent: 'shelter', hold: 90 },
-                },
-                { after: 1, direct: { cast: 'tanabe', intent: 'shelter', hold: 90 } },
-              ],
-            },
-            {
-              shot: { type: 'portrait', subject: { cast: 'aoi' }, side: 'right' },
-              cues: [
-                { after: 0, direct: { cast: 'aoi', mood: 'cheerful', intent: 'wave', hold: 8 } },
-              ],
-              dialogue: [
-                { cast: 'aoi', text: 'Come under here, both of you.', emotion: 'warm' },
-                {
-                  cast: 'aoi',
-                  text: 'The roof is the only free thing I sell.',
-                  emotion: 'playful',
-                },
-              ],
-            },
-            {
-              shot: { type: 'portrait', subject: { cast: 'aoi' }, lens: 70, aperture: 'shallow' },
-              cues: [
-                {
-                  after: 0,
-                  direct: { cast: 'aoi', mood: 'content', intent: 'check-phone', hold: 20 },
-                },
-              ],
-              dialogue: [
-                {
-                  cast: 'aoi',
-                  text: 'Seventeen forty-two. Seventeen forty.',
-                  emotion: 'reflective',
-                  translations: { 'te-IN': 'ఐదు నలభై రెండు. ఐదు నలభై.' },
-                },
-                {
-                  cast: 'aoi',
-                  text: 'Write it down on the back of a receipt. Somebody reads these things.',
-                  emotion: 'warm',
-                },
-                { cast: 'riko', text: 'Who?', emotion: 'curious' },
-                { cast: 'aoi', text: 'The radio, maybe.', emotion: 'playful' },
-              ],
-            },
-            {
-              shot: { type: 'portrait', subject: { cast: 'riko' } },
-              cues: [
-                {
-                  after: 0,
-                  direct: { cast: 'riko', mood: 'content', intent: 'check-phone', hold: 30 },
-                },
-              ],
+              shot: { type: 'portrait', subject: { cast: 'riko' }, partner: { cast: 'fusae' } },
+              cues: [{ after: 0, direct: { cast: 'riko', mood: 'cheerful', intent: 'linger' } }],
               dialogue: [
                 {
                   cast: 'riko',
-                  text: 'Grandma? I missed it. Yes, I have the radio.',
-                  emotion: 'tired',
+                  text: 'Grandma, you came down?',
+                  emotion: 'excited',
+                  translations: { 'te-IN': 'బామ్మా, నువ్వు కిందికి వచ్చేశావా?' },
                 },
                 {
                   cast: 'fusae',
-                  phone: true,
-                  text: 'Then turn it on. Tell me what it says.',
+                  text: 'I wasn’t going to hear it through a phone.',
                   emotion: 'warm',
+                  translations: { 'te-IN': 'దాన్ని ఫోన్‌లో వింటానా ఏమిటి?' },
                 },
-                { cast: 'riko', text: 'It says rain.', emotion: 'reflective' },
               ],
             },
             {
-              shot: { type: 'wheels' },
-              hold: 8,
-              cues: [{ after: 1, doors: 'close' }],
+              // Under the bus lights Riko turns the radio on.
+              shot: {
+                type: 'portrait',
+                subject: { cast: 'riko' },
+                partner: { cast: 'fusae' },
+                framing: 'two',
+              },
+              line: '(Static. Then soft music.)',
+              lineTranslations: { 'te-IN': '(గరగర శబ్దం. ఆ తర్వాత మెల్లని సంగీతం.)' },
+              hold: 5,
+              cues: [{ after: 0, direct: { cast: 'fusae', mood: 'wistful', intent: 'linger' } }],
             },
             {
-              shot: { type: 'trackside', aperture: 'shallow' },
-              waitFor: 'doors-closed',
-              hold: 12,
-              cues: [{ after: 0.5, release: true }],
+              shot: {
+                type: 'portrait',
+                subject: { cast: 'fusae' },
+                lens: 70,
+                aperture: 'shallow',
+              },
+              cues: [{ after: 0, direct: { cast: 'fusae', mood: 'content', intent: 'linger' } }],
+              dialogue: [
+                {
+                  cast: 'fusae',
+                  text: 'That’s his station.',
+                  emotion: 'reflective',
+                  translations: { 'te-IN': 'ఇదే... ఆయన ఎప్పుడూ వినే స్టేషన్.' },
+                },
+              ],
+            },
+            {
+              // They get on. The bus pulls away up the hill with its windows lit.
+              shot: { type: 'insert', subject: { prop: 'aonuma-bus-stop' } },
+              hold: 10,
+              cues: [
+                { after: 0.3, move: { cast: 'fusae', to: 'aonuma-bus-aboard' } },
+                { after: 0.8, move: { cast: 'riko', to: 'aonuma-bus-aboard' } },
+                { after: 4.2, move: { cast: 'aoi', to: 'aonuma-bus-aboard' } },
+                { after: 5.5, bus: { state: 'leave' } },
+              ],
             },
           ],
         },
       ],
       endCard: {
-        title: 'The 17:42 · end',
-        line: 'Aonuma station to Fusae’s house: 3.1 km. The rain stopped at 18:20.',
+        title: 'The 17:42 · Episode 3 · 17:42',
+        line: 'She waited seven minutes. Somebody asked her to.',
+        lineTranslations: { 'te-IN': 'ఆమె ఏడు నిమిషాలు ఆగింది. ఎవరో ఆగమని అడిగారు.' },
       },
     },
   ],

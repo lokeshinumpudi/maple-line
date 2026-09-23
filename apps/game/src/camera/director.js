@@ -34,6 +34,7 @@ export const SHOT_TYPES = Object.freeze([
   'establishing',
   'portrait',
   'orbit',
+  'insert',
 ]);
 const SCALE = {
   telephoto: 'wide',
@@ -49,6 +50,7 @@ const SCALE = {
   cab: 'close',
   window: 'close',
   portrait: 'close',
+  insert: 'close',
 };
 const DEFAULT_DURATION = {
   trackside: 14,
@@ -64,6 +66,7 @@ const DEFAULT_DURATION = {
   establishing: 7,
   portrait: 5,
   orbit: 10,
+  insert: 5,
 };
 const APERTURE = { deep: 0, normal: 4, shallow: 9 };
 const INTERIOR = new Set(['cab', 'window']);
@@ -98,6 +101,11 @@ function validSubject(s, trainParts) {
   return (
     (trainParts && ['lead', 'middle', 'rear'].includes(s)) ||
     (s && typeof s === 'object' && typeof s.person === 'string' && s.person.length <= 48) ||
+    (trainParts &&
+      s &&
+      typeof s === 'object' &&
+      typeof s.prop === 'string' &&
+      s.prop.length <= 48) ||
     (trainParts &&
       s &&
       typeof s === 'object' &&
@@ -145,7 +153,7 @@ export function normalizeShot(spec) {
   if (spec.subject !== undefined) {
     if (!validSubject(spec.subject, true))
       throw new TypeError(
-        'subject must be lead, middle, rear, {person: id}, {stop: id} or {point: [x, y, z]}.',
+        'subject must be lead, middle, rear, {person: id}, {stop: id}, {prop: id} or {point: [x, y, z]}.',
       );
     shot.subject = typeof spec.subject === 'string' ? spec.subject : structuredClone(spec.subject);
   }
@@ -161,6 +169,8 @@ export function normalizeShot(spec) {
   }
   if (PERSON_SUBJECT.has(shot.type) && shot.type === 'portrait' && typeof shot.subject !== 'object')
     throw new TypeError('A portrait needs a person, stop or point subject.');
+  if (shot.type === 'insert' && typeof shot.subject !== 'object')
+    throw new TypeError('An insert needs a prop, person or point subject.');
   for (const key of ['caption', 'subtitle', 'line']) {
     if (spec[key] === undefined) continue;
     if (typeof spec[key] !== 'string' || spec[key].length > 160)
@@ -331,6 +341,8 @@ export function createDirector({
       eyes,
       chest: eyes.clone().addScaledVector(up, value.head ? -0.42 : -0.35),
       facing,
+      // Somewhere tight (a seat in a carriage): the camera stands no further than this.
+      reach: Number.isFinite(value.reach) ? value.reach : null,
     };
   }
   const flatDistance = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
@@ -430,10 +442,13 @@ export function createDirector({
       }
       if (framing === 'two') {
         const width = separation + 1.4;
-        const reach = THREE.MathUtils.clamp(
-          width / 2 / Math.tan(Math.atan(Math.tan(vfov / 2) * camera.aspect)),
-          2.5,
-          14,
+        const reach = Math.min(
+          speaker.reach ?? Infinity,
+          THREE.MathUtils.clamp(
+            width / 2 / Math.tan(Math.atan(Math.tan(vfov / 2) * camera.aspect)),
+            2.5,
+            14,
+          ),
         );
         return { angle: lineAngle + (side * Math.PI) / 2, reach, rise: 0.1 };
       }
@@ -447,7 +462,7 @@ export function createDirector({
         );
       }
       // A tall frame is narrow: stand closer so the face is not lost in the height.
-      const reach = spec.distance ?? (camera.aspect < 1 ? 2.5 : 3.2);
+      const reach = spec.distance ?? speaker.reach ?? (camera.aspect < 1 ? 2.5 : 3.2);
       return { angle, reach, rise: spec.height ?? 0.05 };
     };
     // Side of the line: an authored side, then the conversation's side, then whichever
@@ -826,6 +841,9 @@ export function createDirector({
     const u = THREE.MathUtils.clamp(t / shot.duration, 0, 1);
     const ease = u * u * (3 - 2 * u);
     let handheld = 0.0015;
+    // Someone seated in a moving carriage: aim without operator lag, or the lag at line speed
+    // leaves the lens pointing metres behind them.
+    let rigid = false;
     let desiredLens = spec.lens ?? 35;
     let aperture = APERTURE[spec.aperture ?? 'normal'];
     let focus = null;
@@ -989,6 +1007,7 @@ export function createDirector({
           if (u >= 1) person.blend = null;
         }
         lift(eye, 0.9);
+        rigid = Boolean(live?.speaker.reach);
         if (live && person.monitor.due(dt)) {
           person.score = sightScore(eye, live.targets, person.ignore);
           if (person.monitor.report(person.score)) {
@@ -1058,6 +1077,26 @@ export function createDirector({
         handheld = 0.0025;
         break;
       }
+      case 'insert': {
+        // A still, square-on close of a prop: the resolver names where the camera stands
+        // (`eye`); otherwise it stands `distance` metres back along the current view.
+        const data = Array.isArray(spec.subject.point) ? null : resolveSubject(spec.subject);
+        const target = subjectPoint(spec.subject);
+        if (data && Array.isArray(data.eye)) eye.set(...data.eye);
+        else if (t === 0 || !shot.insertEye) {
+          tmp.copy(camera.position).sub(target).setY(0).normalize();
+          eye.copy(target).addScaledVector(tmp, spec.distance ?? 2.2);
+        } else eye.copy(shot.insertEye);
+        shot.insertEye = eye.clone();
+        // A slow push in keeps a held insert alive.
+        eye.lerp(target, Math.min(0.12, t * 0.012));
+        aim.copy(target);
+        desiredLens = spec.lens ?? data?.lens ?? 40;
+        aperture = APERTURE[spec.aperture ?? 'normal'];
+        focus = eye.distanceTo(target);
+        handheld = 0.0008;
+        break;
+      }
       case 'orbit': {
         const subject = subjectPoint(spec.subject ?? 'middle');
         const personal = typeof spec.subject === 'object';
@@ -1093,9 +1132,12 @@ export function createDirector({
       shot.snap = false;
     } else {
       // Operator lag: a camera person follows the subject a fraction behind.
-      smoothAim.x = THREE.MathUtils.damp(smoothAim.x, aim.x, 7, dt);
-      smoothAim.y = THREE.MathUtils.damp(smoothAim.y, aim.y, 7, dt);
-      smoothAim.z = THREE.MathUtils.damp(smoothAim.z, aim.z, 7, dt);
+      if (rigid) smoothAim.copy(aim);
+      else {
+        smoothAim.x = THREE.MathUtils.damp(smoothAim.x, aim.x, 7, dt);
+        smoothAim.y = THREE.MathUtils.damp(smoothAim.y, aim.y, 7, dt);
+        smoothAim.z = THREE.MathUtils.damp(smoothAim.z, aim.z, 7, dt);
+      }
       lens = THREE.MathUtils.damp(lens, desiredLens, 2.5, dt);
     }
     camera.position.copy(eye);

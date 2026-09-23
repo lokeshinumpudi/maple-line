@@ -77,7 +77,8 @@ test('every built-in episode validates against the real stops and crossings', ()
     const clean = normalizeEpisode(episode, context);
     assert.equal(clean.id, episode.id);
     const seconds = episodeSeconds(clean);
-    assert.ok(seconds > 60 && seconds < 360, `${episode.id} plans ${seconds}s`);
+    // Waits for the train come on top of the plan.
+    assert.ok(seconds > 45 && seconds < 360, `${episode.id} plans ${seconds}s`);
   }
 });
 
@@ -92,7 +93,7 @@ test('the format rejects mistakes with the path of the problem', () => {
     /dialogue\[0\]\.cast must name a cast member/,
   );
   bad((e) => delete e.scenes[0].actors.a, /needs an actor for this cast member/);
-  bad((e) => delete e.scenes[0].stopAt, /release only applies to a scene with stopAt/);
+  bad((e) => delete e.scenes[0].stopAt, /release only applies to a scene with stopAt or holdAt/);
   bad((e) => (e.scenes[0].beats[0].cues[0].event = 'horn'), /exactly one action/);
   bad((e) => (e.scenes[0].beats[0].cues[0].direct.mood = 'furious'), /mood must be one of/);
   bad((e) => (e.scenes[0].beats[0].shot.type = 'crane'), /Shot type/);

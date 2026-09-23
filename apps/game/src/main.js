@@ -79,6 +79,12 @@ import { createManifestVoice } from './drama/voice-manifest.js';
 import { NARRATION_LANGUAGES } from '@maple-line/voice-score';
 import { createModelLoader, createGltfLoader } from './rendering/model-loader.js';
 import { createHeroCast, MOMIJI_CAST } from './world/hero-cast.js';
+import { createDramaStage } from './drama/drama-stage.js';
+import { STAGED_CAST } from './drama/drama-roles.js';
+import { clockMinutes } from './drama/drama-props.js';
+import { createStationProps, stationFrame } from './world/station-props.js';
+import { createVillageBus } from './world/village-bus.js';
+import { CAR_COUNT } from './train/consist.js';
 import { createVrmLoader } from './characters/vrm-loader.js';
 import { findHeadNode } from './characters/humanoid-bones.js';
 import { createStationModules } from './world/station-modules.js';
@@ -951,15 +957,82 @@ const modelLoader = createModelLoader({
   load: (path) => gltfLoader.then((load) => load(path)),
   onError: (path) => controlMessage(`${path} could not load; showing the simple version.`),
 });
+// Episodes can stage people on marks (drama/drama-stage.js): a staged person's model follows
+// the stage instead of the population simulation, so Riko can leave Momiji and reach Aonuma.
+const stageFrames = new Map();
+const frameOfStop = (stopId) => {
+  if (!stageFrames.has(stopId)) {
+    const stop = routeStops.find((item) => item.id === stopId);
+    stageFrames.set(stopId, stop ? stationFrame(railPoint, stop.z) : null);
+  }
+  return stageFrames.get(stopId);
+};
+const stagePoint = new THREE.Vector3();
+const stageForward = new THREE.Vector3();
+const dramaStage = createDramaStage({
+  resolve(mark) {
+    if (mark.kind === 'station') {
+      const frame = frameOfStop(mark.stop);
+      if (!frame) return null;
+      return { ...frame.point(mark.x, 0.6, mark.z), heading: frame.heading(mark.face ?? 0) };
+    }
+    if (mark.kind === 'bus') return villageBus?.spot(mark.spot) ?? null;
+    const lead = state.direction >= 0 ? 0 : CAR_COUNT - 1;
+    const car = train[mark.car === 0 ? lead : mark.car];
+    if (!car) return null;
+    car.updateWorldMatrix(true, false);
+    stageForward.set(0, 0, 1).transformDirection(car.matrixWorld);
+    const carHeading = Math.atan2(stageForward.x, stageForward.z);
+    if (mark.kind === 'car') {
+      stagePoint.set(mark.x, 1.1, mark.z).applyMatrix4(car.matrixWorld);
+      return {
+        x: stagePoint.x,
+        y: stagePoint.y,
+        z: stagePoint.z,
+        heading: carHeading + (mark.face ?? 0),
+        seated: Boolean(mark.seated),
+      };
+    }
+    // A platform-side door: just outside the doorway, on the platform deck.
+    const side = state.direction >= 0 ? 1 : -1;
+    const doorZ = (mark.door === 0 ? -1 : 1) * 4.59 * (state.direction >= 0 ? 1 : -1);
+    stagePoint.set(side * 1.95, 0, doorZ).applyMatrix4(car.matrixWorld);
+    return {
+      x: stagePoint.x,
+      y: railPoint(stagePoint.z).y + 0.6,
+      z: stagePoint.z,
+      heading: carHeading + (side > 0 ? Math.PI / 2 : -Math.PI / 2),
+    };
+  },
+  station(stopId, x, z) {
+    const frame = frameOfStop(stopId);
+    return frame ? frame.point(x, 0.6, z) : null;
+  },
+  origin(id) {
+    const figure = worldDetails.figureOf?.(id);
+    if (!figure?.visible) return null;
+    return {
+      x: figure.position.x,
+      y: figure.position.y,
+      z: figure.position.z,
+      heading: figure.heading,
+    };
+  },
+});
 // worldDetails is replaced when a generated valley is built, so resolve it each call.
 const heroWorld = {
   setStandIn: (id, enabled) => worldDetails.setStandIn?.(id, enabled),
-  figureOf: (id) => worldDetails.figureOf?.(id) ?? null,
+  figureOf: (id) =>
+    dramaStage.has(id) ? dramaStage.figureOf(id) : (worldDetails.figureOf?.(id) ?? null),
+};
+// A staged person's acting note comes from the stage; everyone else's from their mind.
+const heroMinds = {
+  expressionFor: (id) => dramaStage.expressionFor(id) ?? minds.expressionFor(id),
 };
 // VRM (anime) cast first; `?cast=blender` keeps the older Blender GLBs for comparison.
 const vrmLoader =
   new URLSearchParams(location.search).get('cast') === 'blender' ? null : createVrmLoader();
-const heroCasts = MOMIJI_CAST.map((member) =>
+const heroCasts = [...MOMIJI_CAST, ...STAGED_CAST].map((member) =>
   createHeroCast({
     THREE,
     scene,
@@ -967,10 +1040,29 @@ const heroCasts = MOMIJI_CAST.map((member) =>
     vrmLoader,
     mobile: mobilePlay,
     worldDetails: heroWorld,
-    minds,
+    minds: heroMinds,
     ...member,
   }),
 );
+// Drama props: readable timetables and clocks, and the Aonuma village bus and its stop.
+const stationProps = createStationProps({
+  THREE,
+  momiji: station,
+  scene,
+  railPoint,
+  stops: routeStops,
+});
+const villageBus = createVillageBus({
+  THREE,
+  scene,
+  loader: modelLoader,
+  railPoint,
+  groundAt: (x, z) => terrain(x - center(z), z),
+  stops: routeStops,
+});
+// Development: episode checks read the stage, the bus and the props through this.
+if (import.meta.env.DEV)
+  window.__mapleDrama = { stage: dramaStage, bus: villageBus, props: stationProps };
 // Development: motion measurement scripts switch rig layers and read bones through this.
 if (import.meta.env.DEV) window.__mapleHeroes = heroCasts;
 const stationModules = createStationModules({ THREE, loader: modelLoader, parent: station });
@@ -982,6 +1074,8 @@ if (import.meta.hot)
   import.meta.hot.dispose(() => {
     for (const hero of heroCasts) hero.dispose();
     stationModules.dispose();
+    stationProps.dispose();
+    villageBus.dispose();
   });
 if (import.meta.hot) import.meta.hot.dispose(() => mindsClient.dispose());
 directorButton.onclick = () => {
@@ -1336,6 +1430,20 @@ const filmDirector = createDirector({
   groundAt: (x, z) => terrain(x - center(z), z),
   canopyAt: (x, z) => Math.max(activeCanopy.heightAt(x, z), extendedWorld.foliageHeight(x, z)),
   resolveSubject(subject) {
+    if (subject.prop) return stationProps.subject(subject.prop) ?? villageBus.subject(subject.prop);
+    if (subject.person && dramaStage.has(subject.person)) {
+      const figure = dramaStage.figureOf(subject.person);
+      if (!figure?.visible) return null;
+      const point = [figure.position.x, figure.position.y, figure.position.z];
+      const seated = figure.pose === 'seated';
+      return {
+        point,
+        head: castHead(subject.person) ?? [point[0], point[1] + (seated ? 1.1 : 1.5), point[2]],
+        heading: figure.heading,
+        // A seat in a carriage: portraits stand inside the car, across the aisle.
+        ...(dramaStage.inCar(subject.person) ? { reach: 1.75 } : {}),
+      };
+    }
     if (subject.person) {
       const person = worldDetails
         .getPopulationState()
@@ -1461,7 +1569,7 @@ let peopleCache = { at: -Infinity, list: [] };
 function peopleCapsules() {
   if (sightFrame - peopleCache.at < 4) return peopleCache.list;
   const list = [];
-  const heroes = new Set(MOMIJI_CAST.map((member) => member.personId));
+  const heroes = new Set(heroCasts.map((hero) => hero.personId));
   for (const id of heroes) {
     const entry = castRoot(id);
     if (!entry) continue;
@@ -1562,6 +1670,9 @@ function shotObstacles(point) {
   collect(station);
   const regional = scene.getObjectByName('Regional railway / streamed countryside');
   if (regional && point.z > 700) collect(regional);
+  // The Aonuma bus stop: its shelter and the bus itself.
+  const busStop = scene.getObjectByName('Aonuma / village bus stop');
+  if (busStop?.visible) collect(busStop);
   obstacleCache = { z: point.z, meshes };
   return meshes;
 }
@@ -1631,15 +1742,23 @@ const episodeRunner = createEpisodeRunner(
   {
     setScene(set) {
       applySceneSettings(set);
+      if (set.clock) stationProps.setClock(clockMinutes(set.clock));
       if (set.speedKmh !== undefined)
         changeDrive((next) => {
           next.speed = set.speedKmh / 3.6;
         });
       ensureAutoDrive();
     },
-    setStop(id) {
+    setStop(id, { crossing = null } = {}) {
       episodeStopDistance = routeStops.find((stop) => stop.id === id)?.distance ?? null;
-      if (id === null && episodeRunner.playing) ensureAutoDrive();
+      const site = crossing
+        ? levelCrossings.getState().crossings.find((item) => item.id === crossing)
+        : null;
+      // Held at a level crossing: the front of the train stands 30 m short of the road.
+      if (site)
+        episodeStopDistance =
+          distanceAtZ(track, trackLength, site.position[2]) - state.direction * 30;
+      if (id === null && !site && episodeRunner.playing) ensureAutoDrive();
     },
     cut: (shot) => filmDirector.cut(shot),
     say(line) {
@@ -1651,7 +1770,24 @@ const episodeRunner = createEpisodeRunner(
       if (renderMode && !episodeRunner.playing) return;
       filmCaptions.show(caption);
     },
-    direct: (entity, note) => minds.setDirective(entity, note),
+    direct(entity, note) {
+      if (dramaStage.has(entity)) {
+        dramaStage.direct(entity, note);
+        // Staged people who also have a mind keep it in step; the others have only the stage.
+        if (!STAGED_CAST.some((member) => member.personId === entity))
+          minds.setDirective(entity, note);
+        return;
+      }
+      minds.setDirective(entity, note);
+    },
+    mark: (entity, mark) => dramaStage.place(entity, mark),
+    move: (entity, mark, pace) => dramaStage.move(entity, mark, pace),
+    bus: (value) => villageBus.cue(value),
+    clearStage() {
+      dramaStage.clear();
+      villageBus.reset();
+      stationProps.setClock(null);
+    },
     event: (type) => minds.observe({ type }),
     weather(value) {
       $('weather').value = value;
@@ -1670,6 +1806,12 @@ const episodeRunner = createEpisodeRunner(
     isStopped: () => Math.abs(state.speed) < 0.05,
     doorsClosed: () => !state.doorsOpen && !state.doorsClosing,
     resolve(subject) {
+      if (subject.prop)
+        return stationProps.subject(subject.prop) || villageBus.subject(subject.prop)
+          ? { prop: subject.prop }
+          : null;
+      if (dramaStage.has(subject.entity))
+        return dramaStage.figureOf(subject.entity)?.visible ? { person: subject.entity } : null;
       if (subject.crossing) {
         const crossing = levelCrossings
           .getState()
@@ -2488,6 +2630,9 @@ function frame(now) {
     camera,
     portrait: heroShot?.type === 'portrait' ? (heroShot.subject?.person ?? null) : null,
   };
+  dramaStage.update(state.paused ? 0 : dt);
+  villageBus.update(state.paused ? 0 : dt, { camera, dusk });
+  stationProps.update(state.paused ? 0 : dt, { minutes: railNetwork.now(), dusk });
   for (const hero of heroCasts) hero.update(state.paused ? 0 : dt, heroContext);
   mindsStop ??= nearestUpcomingStop();
   mindsStopAge += realDt;
@@ -3792,7 +3937,11 @@ function installRenderControl() {
     ]
       .filter(Boolean)
       .join(' · '),
-    next: episode.endCard?.line ?? '',
+    // The closing line in the voice manifest's language, when the render has one.
+    next: episode.endCard?.line
+      ? (renderVoice?.text({ id: 'end', caption: 'end', text: episode.endCard.line }) ??
+        episode.endCard.line)
+      : '',
     credit: 'Maple Line · もみじ線',
   });
   const status = () => {
@@ -3900,7 +4049,7 @@ function installRenderControl() {
     framing: () => ({
       shot: filmDirector.getState().shot,
       camera: camera.position.toArray().map((value) => Number(value.toFixed(2))),
-      cast: MOMIJI_CAST.map(({ personId }) => ({
+      cast: heroCasts.map(({ personId }) => ({
         id: personId,
         head: castHead(personId)?.map((value) => Number(value.toFixed(2))) ?? null,
         heading: heroWorld.figureOf(personId)?.heading ?? null,

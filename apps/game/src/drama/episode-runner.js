@@ -16,7 +16,8 @@ import { lineId, beatId } from './render-timeline.js';
  * the host performs each request with the game's existing actions:
  *
  *   setScene(set, scene)            weather, time, location jump, speed (UI action paths)
- *   setStop(stopId | null)          scheduled stop for auto drive
+ *   setStop(stopId | null, { crossing }) scheduled stop for auto drive; with a crossing id
+ *                                   (scene holdAt) the train stops short of that crossing
  *   cut(shot)                       director shot; subjects already resolved
  *   say({ speaker, text, seconds, phone, entity, voiced })
  *   card({ kind, title, subtitle, line, seconds })
@@ -25,7 +26,12 @@ import { lineId, beatId } from './render-timeline.js';
  *   weather(value)
  *   doors('open' | 'close')         returns false when interlocks refuse
  *   isStopped(), doorsClosed()
- *   resolve(subject)                { cast, entity } | { crossing } -> director subject or null
+ *   resolve(subject)                { cast, entity } | { crossing } | { prop } -> director
+ *                                   subject or null
+ *   mark?(entityId, markId)         stand a person on a stage mark (drama-stage.js)
+ *   move?(entityId, markId, pace)   walk or run a staged person to a mark
+ *   bus?(state)                     'wait' | 'leave' | 'arrive' for the village bus
+ *   clearStage?()                   hand staged people back to the simulation
  *   ended?(state)                   optional: the last beat finished (not called on stop)
  *   voice?                          optional voice and translation (episode-voice.js):
  *     active()                      true when voiced or translated lines are in use
@@ -119,7 +125,7 @@ export function createEpisodeRunner(host, { stops = [], crossings = [], onEvent 
           caption: 'end',
           text: episode.endCard.line,
           voice: null,
-          translations: null,
+          translations: episode.endCard.lineTranslations ?? null,
         }
       : null;
   /** Current beat plus a few ahead, across scene boundaries, and the end card near the end. */
@@ -203,12 +209,18 @@ export function createEpisodeRunner(host, { stops = [], crossings = [], onEvent 
       const { partner: _drop, ...rest } = shot;
       return resolveShot(partner ? { ...rest, partner } : rest);
     }
-    if (!subject || typeof subject !== 'object' || !('cast' in subject || 'crossing' in subject))
+    if (
+      !subject ||
+      typeof subject !== 'object' ||
+      !('cast' in subject || 'crossing' in subject || 'prop' in subject)
+    )
       return shot;
     const resolved =
       'cast' in subject
         ? host.resolve({ cast: subject.cast, entity: scene().actors[subject.cast] })
-        : host.resolve({ crossing: subject.crossing });
+        : 'prop' in subject
+          ? host.resolve({ prop: subject.prop })
+          : host.resolve({ crossing: subject.crossing });
     if (resolved) return { ...shot, subject: resolved };
     // The actor is not on screen: keep the scene going on a safe wide shot.
     note(`subject ${JSON.stringify(subject)} unavailable; using a platform or orbit shot`);
@@ -220,8 +232,16 @@ export function createEpisodeRunner(host, { stops = [], crossings = [], onEvent 
     sceneIndex = index;
     released = false;
     const current = scene();
-    host.setStop(current.stopAt ?? null);
+    host.setStop(current.stopAt ?? null, { crossing: current.holdAt ?? null });
     if (current.set) host.setScene(current.set, current);
+    // Staged people stand on their marks before the first shot looks for them.
+    for (const [cast, mark] of Object.entries(current.marks ?? {})) {
+      try {
+        host.mark?.(current.actors[cast], mark);
+      } catch (error) {
+        note(`mark ${mark} for ${cast} skipped: ${error.message}`);
+      }
+    }
     note(`scene ${current.id}: ${current.heading}`);
     onEvent({ type: 'scene', id: current.id, heading: current.heading, index });
     if (!deferBeat) startBeat(0);
@@ -355,6 +375,13 @@ export function createEpisodeRunner(host, { stops = [], crossings = [], onEvent 
         schedule.push({ ...item, at: beatElapsed + 0.5, tries });
         schedule.sort((a, b) => a.at - b.at);
       } else note(`doors ${cue.doors} refused by interlocks`);
+    } else if (cue.bus) host.bus?.(cue.bus.state);
+    else if (cue.move) {
+      try {
+        host.move?.(scene().actors[cue.move.cast], cue.move.to, cue.move.pace ?? 'walk');
+      } catch (error) {
+        note(`move for ${cue.move.cast} skipped: ${error.message}`);
+      }
     } else if (cue.event) host.event(cue.event);
     else if (cue.weather) host.weather(cue.weather);
     else if (cue.release) {
@@ -424,6 +451,7 @@ export function createEpisodeRunner(host, { stops = [], crossings = [], onEvent 
     play(input) {
       const next = normalizeEpisode(input, { stops, crossings });
       api.stop();
+      host.clearStage?.();
       episode = next;
       status = 'playing';
       elapsed = 0;
@@ -469,7 +497,7 @@ export function createEpisodeRunner(host, { stops = [], crossings = [], onEvent 
       if (!beatDone()) return;
       if (beatIndex + 1 < scene().beats.length) startBeat(beatIndex + 1);
       else if (sceneIndex + 1 < episode.scenes.length) {
-        if (scene().stopAt && !released) host.setStop(null);
+        if ((scene().stopAt || scene().holdAt) && !released) host.setStop(null);
         startScene(sceneIndex + 1);
       } else finish();
     },
@@ -477,6 +505,7 @@ export function createEpisodeRunner(host, { stops = [], crossings = [], onEvent 
       if (status === 'playing') {
         host.setStop(null);
         host.voice?.stopAll();
+        host.clearStage?.();
         note('episode stopped');
       }
       status = episode ? 'stopped' : 'idle';

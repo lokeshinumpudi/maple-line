@@ -268,6 +268,8 @@ export function createHeroCast({
   }
 
   async function loadGlb() {
+    // Staged drama roles have only a VRM; without it nothing stands in.
+    if (!path) return false;
     const gltf = await loader.get(path);
     if (!gltf || status === 'disposed') return false;
     root = SkeletonUtils.clone(gltf.scene);

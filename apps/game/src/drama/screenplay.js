@@ -1,4 +1,5 @@
 import { beatSeconds, episodeSeconds } from './episode-schema.js';
+import { DRAMA_PROPS } from './drama-props.js';
 
 /**
  * Screenplay text generated from episode data, so the readable script and the
@@ -18,6 +19,7 @@ const SHOT_WORDS = {
   establishing: 'ESTABLISHING',
   portrait: 'CLOSE',
   orbit: 'ORBIT',
+  insert: 'INSERT',
 };
 
 function shotLine(beat, episode, scene) {
@@ -27,7 +29,9 @@ function shotLine(beat, episode, scene) {
       ? ` ON ${episode.cast[subject.cast]?.name.toUpperCase() ?? subject.cast}`
       : subject?.crossing
         ? ' ON THE CROSSING'
-        : '';
+        : subject?.prop
+          ? ` ON: ${(DRAMA_PROPS[subject.prop] ?? subject.prop).toUpperCase()}`
+          : '';
   const lens = beat.shot.lens ? `, ${beat.shot.lens} mm` : '';
   const cast = subject?.cast !== undefined ? ` (${scene.actors[subject.cast]})` : '';
   return `**${SHOT_WORDS[beat.shot.type] ?? beat.shot.type.toUpperCase()}${who}**${lens}${cast}`;
@@ -38,6 +42,16 @@ function cueText(cue, episode) {
   if (cue.weather) return `Weather turns to ${cue.weather}.`;
   if (cue.event) return `World event: ${cue.event}.`;
   if (cue.release) return 'The train is released and departs.';
+  if (cue.bus)
+    return {
+      wait: 'The bus waits: headlights on, doors open.',
+      leave: 'The bus shuts its doors and pulls away.',
+      arrive: 'The bus pulls in to the stop.',
+    }[cue.bus.state];
+  if (cue.move) {
+    const name = episode.cast[cue.move.cast]?.name ?? cue.move.cast;
+    return `${name} ${cue.move.pace === 'run' ? 'runs' : 'walks'} to ${cue.move.to}.`;
+  }
   if (cue.direct) {
     const name = episode.cast[cue.direct.cast]?.name ?? cue.direct.cast;
     const parts = [cue.direct.mood, cue.direct.intent].filter(Boolean).join(', ');
@@ -66,9 +80,15 @@ export function episodeScreenplay(episode) {
       );
     if (scene.set?.speedKmh !== undefined) setting.push(`moving at ${scene.set.speedKmh} km/h`);
     if (scene.stopAt) setting.push(`stops at ${scene.stopAt}`);
+    if (scene.holdAt) setting.push(`held at the ${scene.holdAt} crossing`);
+    if (scene.set?.clock) setting.push(`clocks at ${scene.set.clock}`);
     if (scene.set?.timeOfDay) setting.push(scene.set.timeOfDay);
     if (scene.set?.weather) setting.push(scene.set.weather);
     if (setting.length) out.push(`_Setting: ${setting.join(', ')}._`, '');
+    const marks = Object.entries(scene.marks ?? {}).map(
+      ([cast, mark]) => `${episode.cast[cast]?.name ?? cast} at ${mark}`,
+    );
+    if (marks.length) out.push(`_Staged: ${marks.join(', ')}._`, '');
     for (const beat of scene.beats) {
       out.push(`${shotLine(beat, episode, scene)} · ${beatSeconds(beat).toFixed(0)} s`, '');
       if (beat.caption || beat.subtitle)
@@ -76,6 +96,8 @@ export function episodeScreenplay(episode) {
       const cues = beat.cues.map((cue) => cueText(cue, episode)).filter(Boolean);
       if (cues.length) out.push(`_${cues.join(' ')}_`, '');
       if (beat.line) out.push(beat.line, '');
+      for (const [code, text] of Object.entries(beat.lineTranslations ?? {}))
+        out.push(`> _${code}:_ ${text}`, '');
       for (const line of beat.dialogue) {
         const name = (line.speaker ?? episode.cast[line.cast]?.name ?? line.cast).toUpperCase();
         const notes = [line.phone ? 'on the phone' : null, line.emotion ?? null].filter(Boolean);
@@ -92,6 +114,8 @@ export function episodeScreenplay(episode) {
   }
   if (episode.endCard)
     out.push(`> ${[episode.endCard.title, episode.endCard.line].filter(Boolean).join(' — ')}`, '');
+  for (const [code, text] of Object.entries(episode.endCard?.lineTranslations ?? {}))
+    out.push(`> _${code}:_ ${text}`, '');
   return out.join('\n');
 }
 
@@ -110,5 +134,15 @@ export function seriesScreenplay(series, normalize = (episode) => episode) {
     ),
     '',
     ...episodes.map(episodeScreenplay),
+    ...(series.review?.length
+      ? [
+          '## Translations to check',
+          '',
+          'These hand-written Telugu lines should be read by a native speaker before a video is shared:',
+          '',
+          ...series.review.map((item) => `- ${item}`),
+          '',
+        ]
+      : []),
   ].join('\n');
 }

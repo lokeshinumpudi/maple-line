@@ -6,6 +6,8 @@ import {
   ENTITY_ID_PATTERN,
 } from '../simulation/npc-minds.js';
 import { NARRATION_LANGUAGES, VOICE_CAST, VOICE_DELIVERY } from '@maple-line/voice-score';
+import { DRAMA_PROP_IDS, BUS_CUES, CLOCK_PATTERN } from './drama-props.js';
+import { STAGE_MARK_IDS, STAGE_PACES } from './drama-stage.js';
 
 /**
  * Episode format for short dramas staged in the running game. An episode is data:
@@ -15,14 +17,20 @@ import { NARRATION_LANGUAGES, VOICE_CAST, VOICE_DELIVERY } from '@maple-line/voi
  *
  * Episode:
  *   { id, series?, number?, title, logline?, cast: { [castId]: { name, note?, voice? } },
- *     scenes: [Scene], endCard?: { title?, line? } }
+ *     scenes: [Scene], endCard?: { title?, line?, lineTranslations? } }
  * Scene:
- *   { id, heading, set?: { location, offset?, timeOfDay?, weather?, speedKmh? },
- *     stopAt?: stopId, actors?: { [castId]: entityId }, beats: [Beat] }
+ *   { id, heading, set?: { location, offset?, timeOfDay?, weather?, speedKmh?, clock? },
+ *     stopAt?: stopId, holdAt?: crossingId, actors?: { [castId]: entityId },
+ *     marks?: { [castId]: markId }, beats: [Beat] }
+ *   `clock` ('HH:MM') sets the station clocks for the scene; they run on from there.
+ *   `holdAt` stops the train short of a level crossing instead of at a platform.
+ *   `marks` takes cast members off the simulation and stands them on stage marks
+ *   (drama-stage.js); a mark at a train door means aboard, hidden until they move.
  * Beat:
  *   { shot: Shot, caption?, subtitle?, line?, lineTranslations?, dialogue?: [Line], hold?,
  *     waitFor?, cues?: [Cue] }
- *   Shot subjects may also be { cast: castId } or { crossing: crossingId }. A portrait may
+ *   Shot subjects may also be { cast: castId }, { crossing: crossingId } or { prop: propId }
+ *   (drama-props.js; an `insert` shot frames a prop close and square). A portrait may
  *   name a listener as `partner: { cast }` and a `framing` of single, ots or two.
  * Line:  { cast?: castId, speaker?: text, text, phone?: boolean, emotion?, translations? }
  *
@@ -30,7 +38,8 @@ import { NARRATION_LANGUAGES, VOICE_CAST, VOICE_DELIVERY } from '@maple-line/voi
  * VOICE_CAST part; without it a cast id that is itself a VOICE_CAST part uses that voice.
  * `emotion` is a VOICE_DELIVERY name. `translations` / `lineTranslations` map a language
  * code (for example `te-IN`) to hand-written text that wins over machine translation.
- * Cue:   { after, doors? | event? | weather? | direct? | release? }
+ * Cue:   { after, doors? | event? | weather? | direct? | release? | bus? | move? }
+ *   bus: { state: 'wait' | 'leave' | 'arrive' } · move: { cast, to: markId, pace?: walk|run }
  */
 export const EPISODE_LIMITS = Object.freeze({
   scenes: 12,
@@ -152,13 +161,18 @@ export function normalizeEpisode(input, { stops = [], crossings = [] } = {}) {
   const scenes = list(episode.scenes, 'episode.scenes', EPISODE_LIMITS.scenes).map((raw, s) => {
     const path = `episode.scenes[${s}]`;
     const scene = record(raw, path);
-    only(scene, ['id', 'heading', 'set', 'stopAt', 'actors', 'beats'], path);
+    only(scene, ['id', 'heading', 'set', 'stopAt', 'holdAt', 'actors', 'marks', 'beats'], path);
     if (typeof scene.id !== 'string' || !ID.test(scene.id))
       fail(`${path}.id`, 'needs a lowercase id.');
     let set;
     if (scene.set !== undefined) {
       const raw = record(scene.set, `${path}.set`);
-      only(raw, ['location', 'offset', 'timeOfDay', 'weather', 'speedKmh'], `${path}.set`);
+      only(raw, ['location', 'offset', 'timeOfDay', 'weather', 'speedKmh', 'clock'], `${path}.set`);
+      if (
+        raw.clock !== undefined &&
+        (typeof raw.clock !== 'string' || !CLOCK_PATTERN.test(raw.clock))
+      )
+        fail(`${path}.set.clock`, 'must be a 24-hour time such as 17:42.');
       set = clean({
         location: oneOf(raw.location, places, `${path}.set.location`, { optional: true }),
         offset: number(raw.offset, `${path}.set.offset`, SCENE_OFFSET.min, SCENE_OFFSET.max, {
@@ -167,17 +181,26 @@ export function normalizeEpisode(input, { stops = [], crossings = [] } = {}) {
         timeOfDay: oneOf(raw.timeOfDay, TIMES, `${path}.set.timeOfDay`, { optional: true }),
         weather: oneOf(raw.weather, WEATHER, `${path}.set.weather`, { optional: true }),
         speedKmh: number(raw.speedKmh, `${path}.set.speedKmh`, 0, 120, { optional: true }),
+        clock: raw.clock,
       });
       if (set.offset !== undefined && set.location === undefined)
         fail(`${path}.set.offset`, 'needs a location.');
     }
     const stopAt = oneOf(scene.stopAt, stops, `${path}.stopAt`, { optional: true });
+    const holdAt = oneOf(scene.holdAt, crossings, `${path}.holdAt`, { optional: true });
+    if (stopAt && holdAt) fail(`${path}.holdAt`, 'cannot be used with stopAt.');
     const actors = {};
     for (const [castId, entity] of Object.entries(record(scene.actors ?? {}, `${path}.actors`))) {
       castRef(castId, `${path}.actors.${castId}`);
       if (typeof entity !== 'string' || !ENTITY_ID_PATTERN.test(entity))
         fail(`${path}.actors.${castId}`, 'must be a character id such as commuter-2.');
       actors[castId] = entity;
+    }
+    const marks = {};
+    for (const [castId, mark] of Object.entries(record(scene.marks ?? {}, `${path}.marks`))) {
+      castRef(castId, `${path}.marks.${castId}`);
+      if (!actors[castId]) fail(`${path}.marks.${castId}`, 'needs an actor for this cast member.');
+      marks[castId] = oneOf(mark, STAGE_MARK_IDS, `${path}.marks.${castId}`);
     }
     const beats = list(scene.beats, `${path}.beats`, EPISODE_LIMITS.beatsPerScene).map(
       (rawBeat, b) => {
@@ -201,10 +224,14 @@ export function normalizeEpisode(input, { stops = [], crossings = [] } = {}) {
         const rawShot = record(beat.shot, `${at}.shot`);
         let subject = rawShot.subject;
         const episodeSubject =
-          subject && typeof subject === 'object' && ('cast' in subject || 'crossing' in subject);
+          subject &&
+          typeof subject === 'object' &&
+          ('cast' in subject || 'crossing' in subject || 'prop' in subject);
         if (episodeSubject) {
-          only(subject, ['cast', 'crossing'], `${at}.shot.subject`);
-          if ('cast' in subject) {
+          only(subject, ['cast', 'crossing', 'prop'], `${at}.shot.subject`);
+          if ('prop' in subject)
+            subject = { prop: oneOf(subject.prop, DRAMA_PROP_IDS, `${at}.shot.subject.prop`) };
+          else if ('cast' in subject) {
             castRef(subject.cast, `${at}.shot.subject.cast`);
             if (!actors[subject.cast])
               fail(`${at}.shot.subject.cast`, 'needs an actor for this cast member in the scene.');
@@ -270,8 +297,12 @@ export function normalizeEpisode(input, { stops = [], crossings = [] } = {}) {
         ).map((rawCue, c) => {
           const cueAt = `${at}.cues[${c}]`;
           const cue = record(rawCue, cueAt);
-          only(cue, ['after', 'doors', 'event', 'weather', 'direct', 'release'], cueAt);
-          const actions = ['doors', 'event', 'weather', 'direct', 'release'].filter(
+          only(
+            cue,
+            ['after', 'doors', 'event', 'weather', 'direct', 'release', 'bus', 'move'],
+            cueAt,
+          );
+          const actions = ['doors', 'event', 'weather', 'direct', 'release', 'bus', 'move'].filter(
             (key) => cue[key] !== undefined,
           );
           if (actions.length !== 1) fail(cueAt, 'needs exactly one action.');
@@ -285,6 +316,25 @@ export function normalizeEpisode(input, { stops = [], crossings = [] } = {}) {
           if (cue.release !== undefined) {
             if (cue.release !== true) fail(`${cueAt}.release`, 'must be true.');
             result.release = true;
+          }
+          if (cue.bus !== undefined) {
+            const bus = record(cue.bus, `${cueAt}.bus`);
+            only(bus, ['state'], `${cueAt}.bus`);
+            result.bus = { state: oneOf(bus.state, BUS_CUES, `${cueAt}.bus.state`) };
+          }
+          if (cue.move !== undefined) {
+            const move = record(cue.move, `${cueAt}.move`);
+            only(move, ['cast', 'to', 'pace'], `${cueAt}.move`);
+            castRef(move.cast, `${cueAt}.move.cast`);
+            if (!actors[move.cast])
+              fail(`${cueAt}.move.cast`, 'needs an actor for this cast member in the scene.');
+            result.move = clean({
+              cast: move.cast,
+              to: oneOf(move.to, STAGE_MARK_IDS, `${cueAt}.move.to`),
+              pace: oneOf(move.pace, Object.keys(STAGE_PACES), `${cueAt}.move.pace`, {
+                optional: true,
+              }),
+            });
           }
           if (cue.direct !== undefined) {
             const direct = record(cue.direct, `${cueAt}.direct`);
@@ -307,8 +357,8 @@ export function normalizeEpisode(input, { stops = [], crossings = [] } = {}) {
         });
         if (beat.lineTranslations !== undefined && beat.line === undefined)
           fail(`${at}.lineTranslations`, 'needs a line to translate.');
-        if (cues.some((cue) => cue.release) && !stopAt)
-          fail(`${at}.cues`, 'release only applies to a scene with stopAt.');
+        if (cues.some((cue) => cue.release) && !stopAt && !holdAt)
+          fail(`${at}.cues`, 'release only applies to a scene with stopAt or holdAt.');
         return clean({
           shot,
           caption: text(beat.caption, `${at}.caption`, 80, { optional: true }),
@@ -329,17 +379,22 @@ export function normalizeEpisode(input, { stops = [], crossings = [] } = {}) {
       heading: text(scene.heading, `${path}.heading`, 100),
       set,
       stopAt,
+      holdAt,
       actors,
+      marks: Object.keys(marks).length ? marks : undefined,
       beats,
     });
   });
   let endCard;
   if (episode.endCard !== undefined) {
     const raw = record(episode.endCard, 'episode.endCard');
-    only(raw, ['title', 'line'], 'episode.endCard');
+    only(raw, ['title', 'line', 'lineTranslations'], 'episode.endCard');
+    if (raw.lineTranslations !== undefined && raw.line === undefined)
+      fail('episode.endCard.lineTranslations', 'needs a line to translate.');
     endCard = clean({
       title: text(raw.title, 'episode.endCard.title', 80, { optional: true }),
       line: text(raw.line, 'episode.endCard.line', EPISODE_LIMITS.text, { optional: true }),
+      lineTranslations: translations(raw.lineTranslations, 'episode.endCard.lineTranslations'),
     });
   }
   return clean({

@@ -119,7 +119,7 @@ test('every speaking part in The 17:42 has a distinct Sarvam voice and a valid d
     assert.equal(lines.length, spoken.length, `${source.id} has an unvoiced line`);
     for (const line of lines) parts.add(line.voice);
   }
-  assert.deepEqual([...parts].sort(), ['aoi', 'fusae', 'ishida', 'riko', 'sato', 'tanabe']);
+  assert.deepEqual([...parts].sort(), ['aoi', 'fusae', 'ishida', 'riko', 'sato']);
   const speakers = [...parts].map((part) => VOICE_CAST[part].speaker);
   assert.equal(new Set(speakers).size, speakers.length);
 });
@@ -329,23 +329,26 @@ test('the audio manifest uses renderer line ids and runner timing', () => {
   // Exactly the renderer's audio manifest: version 1 and { line, file } clips.
   assert.equal(manifest.version, 1);
   assert.deepEqual(manifest.clips[0], {
-    line: 'momiji-platform/2/1',
-    file: 'momiji-platform-2-1-riko.wav',
+    line: 'momiji-platform/4/1',
+    file: 'momiji-platform-4-1-riko.wav',
   });
   for (const clip of manifest.clips) assert.deepEqual(Object.keys(clip), ['line', 'file']);
-  assert.equal(manifest.lines[0].text, 'Seventeen forty-two in. Seventeen forty out.');
-  const beat = clean.scenes[0].beats[1];
-  const entry = manifest.plan.beats.find((item) => item.beat === 'momiji-platform/2');
+  assert.equal(manifest.lines[0].text, 'Two minutes. I’ll miss the last bus by two minutes.');
+  // Beat 5 is Sato and Riko: the second and third voiced lines (1100 and 1200 ms).
+  const beat = clean.scenes[0].beats[4];
+  const entry = manifest.plan.beats.find((item) => item.beat === 'momiji-platform/5');
   assert.equal(
     entry.plannedMs,
-    Math.round(beatSeconds(beat, [voicedSeconds(1000), voicedSeconds(1100)]) * 1000),
+    Math.round(beatSeconds(beat, [voicedSeconds(1100), voicedSeconds(1200)]) * 1000),
   );
   assert.equal(entry.lines[0].offsetMs, 1000);
-  assert.equal(entry.lines[1].offsetMs, 1000 + Math.round(voicedSeconds(1000) * 1000) + 350);
+  assert.equal(entry.lines[1].offsetMs, 1000 + Math.round(voicedSeconds(1100) * 1000) + 350);
   // The first beat carries the title card lead; later beats start where the previous ended.
-  assert.equal(manifest.plan.beats[0].plannedMs, 4500 + 7000);
-  assert.equal(entry.startMs, manifest.plan.beats[0].plannedMs);
-  assert.equal(manifest.lines[0].plannedStartMs, entry.startMs + 1000);
+  assert.equal(manifest.plan.beats[0].plannedMs, 4500 + 6000);
+  const before = manifest.plan.beats.slice(0, 4).reduce((sum, item) => sum + item.plannedMs, 0);
+  assert.equal(entry.startMs, before);
+  const first = manifest.plan.beats.find((item) => item.beat === 'momiji-platform/4');
+  assert.equal(manifest.lines[0].plannedStartMs, first.startMs + 1000);
   assert.equal(
     manifest.plan.plannedMs,
     manifest.plan.beats.reduce((sum, item) => sum + item.plannedMs, 0),
@@ -377,8 +380,8 @@ test('a render replays manifest lengths and emits line events with the same ids'
   const cut = host.calls.find((call) => call[0] === 'cut')[1];
   assert.equal(cut.line, 'te:caption');
   const spoken = events.filter((event) => event.type === 'line');
-  assert.equal(spoken[0].id, 'momiji-platform/2/1');
-  assert.equal(spoken[0].text, 'te:Seventeen forty-two in. Seventeen forty out.');
+  assert.equal(spoken[0].id, 'momiji-platform/4/1');
+  assert.equal(spoken[0].text, 'te:Two minutes. I’ll miss the last bus by two minutes.');
   assert.equal(spoken[0].seconds, voicedSeconds(3000));
   assert.equal(spoken[0].voiced, true);
   assert.deepEqual(
