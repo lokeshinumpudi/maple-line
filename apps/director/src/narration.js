@@ -1,51 +1,77 @@
 import { createHash } from 'node:crypto';
+import { join } from 'node:path';
 import {
+  NARRATION_LANGUAGES,
   VOICE_CAST,
   VOICE_DELIVERY,
   VOICE_MODEL,
+  VOICE_MODELS,
   VOICE_REVISION,
-  voiceSettings,
+  voiceFor,
 } from '@maple-line/voice-score';
 import { DirectorError } from './director.js';
-import { createNarrationCache, isNarrationWav } from './narration-cache.js';
-export const NARRATION_LANGUAGES = [
-  ['en-IN', 'English'],
-  ['te-IN', 'Telugu'],
-  ['hi-IN', 'Hindi'],
-  ['ta-IN', 'Tamil'],
-  ['bn-IN', 'Bengali'],
-  ['mr-IN', 'Marathi'],
-  ['gu-IN', 'Gujarati'],
-  ['kn-IN', 'Kannada'],
-  ['ml-IN', 'Malayalam'],
-  ['pa-IN', 'Punjabi'],
-  ['od-IN', 'Odia'],
-].map(([code, label]) => ({ code, label }));
+import { createNarrationCache, createTranslationCache, isNarrationWav } from './narration-cache.js';
+
+export { NARRATION_LANGUAGES };
+export const TRANSLATION_MODEL = 'sarvam-translate:v1';
+const MAX_TRANSLATED = 2500;
+
+/**
+ * Disk and memory key for one translated line. Speaker gender is part of the key because
+ * it can change verb forms; the model and mode are included so a switch never reuses text.
+ * @param {string} text @param {string} language @param {string|null} [gender]
+ */
+export function translationKey(text, language, gender = null) {
+  return createHash('sha256')
+    .update(
+      JSON.stringify([TRANSLATION_MODEL, 'formal', 'en-IN', language, gender ?? '', text.trim()]),
+    )
+    .digest('hex');
+}
+
+/** @param {unknown} value */
+const selectModel = (value) =>
+  typeof value === 'string' && VOICE_MODELS.includes(value) ? value : VOICE_MODEL;
 
 /** @typedef {{audio:Buffer,text:string,language:string}} Clip */
-/** @typedef {{text:string,language:string,character:string,emotion:string}} Cue */
+/** @typedef {{text:string,language:string,character:string,emotion:string,textLanguage?:string}} Cue */
 /** @typedef {{key:string,cue:Cue,priority:number,controller:AbortController,waiters:number,promise:Promise<Clip>,resolve:(clip:Clip)=>void,reject:(error:unknown)=>void}} Job */
+/** @typedef {{text:string,source:string}} Translation */
 const cancelled = () => new DirectorError(504, 'Narration was cancelled or timed out.');
 
-/** @param {{apiKey?:string, fetchImpl?:typeof fetch, deadlineMs?:number, cacheDirectory?:string|null, concurrency?:number}} [options] */
+/** @param {{apiKey?:string, fetchImpl?:typeof fetch, deadlineMs?:number, cacheDirectory?:string|null, concurrency?:number, model?:string}} [options] */
 export function createNarration({
   apiKey = process.env.SARVAM_API_KEY,
   fetchImpl = fetch,
   deadlineMs = 30000,
   cacheDirectory = null,
   concurrency = 2,
+  model = process.env.SARVAM_VOICE_MODEL,
 } = {}) {
+  const voiceModel = selectModel(model);
   const disk = createNarrationCache(cacheDirectory);
+  const translationDisk = createTranslationCache(
+    cacheDirectory ? join(cacheDirectory, 'translations') : null,
+  );
   /** @type {Map<string, Clip>} */
   const cache = new Map();
   /** @type {Map<string, Job>} */
   const jobs = new Map();
   /** @type {Job[]} */
   const queue = [];
+  /** @type {Map<string, string>} */
+  const translations = new Map();
+  /** @type {Map<string, Promise<Translation>>} */
+  const translating = new Map();
+  /** @type {(() => void)[]} */
+  const translationWaiters = [];
   let cacheBytes = 0,
     active = 0,
     hits = 0,
-    generated = 0;
+    generated = 0,
+    translationActive = 0,
+    translationHits = 0,
+    translated = 0;
   const limit = Math.max(1, Math.min(4, concurrency));
 
   /** @param {string} key @param {Clip} clip */
@@ -59,6 +85,129 @@ export function createNarration({
     cacheBytes += clip.audio.length;
     return clip;
   }
+  function requireKey() {
+    if (!apiKey?.trim())
+      throw new DirectorError(
+        503,
+        'Add SARVAM_API_KEY to the server .env and restart the director to enable narration.',
+      );
+  }
+  /** @param {string} path @param {Record<string,unknown>} body @param {AbortSignal} signal */
+  async function request(path, body, signal) {
+    const response = await fetchImpl(`https://api.sarvam.ai/${path}`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'api-subscription-key': /** @type {string} */ (apiKey),
+      },
+      body: JSON.stringify(body),
+      signal,
+    });
+    if (!response.ok)
+      throw new DirectorError(
+        response.status === 429 ? 429 : 502,
+        response.status === 429
+          ? 'Sarvam is busy. Try narration again shortly.'
+          : 'Sarvam could not prepare this narration. Check the server key and account access.',
+      );
+    return response.json();
+  }
+  /**
+   * English text to one language: memory, then disk, then one bounded provider call.
+   * Concurrent requests for the same line share that call.
+   * @param {string} text @param {string} language @param {string|null} gender @param {AbortSignal} [signal]
+   * @returns {Promise<Translation>}
+   */
+  function translateLine(text, language, gender, signal) {
+    const key = translationKey(text, language, gender);
+    const remembered = translations.get(key);
+    if (remembered) {
+      translationHits++;
+      return Promise.resolve({ text: remembered, source: 'cache' });
+    }
+    let shared = translating.get(key);
+    if (!shared) {
+      if (translating.size >= 32)
+        return Promise.reject(
+          new DirectorError(429, 'The translation queue is full. Try again shortly.'),
+        );
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), Math.min(deadlineMs, 20000));
+      shared = (async () => {
+        try {
+          const stored = await translationDisk.read(key);
+          if (stored) {
+            translationHits++;
+            return { text: stored, source: 'cache' };
+          }
+          requireKey();
+          while (translationActive >= limit)
+            await new Promise((resolve) => translationWaiters.push(() => resolve(undefined)));
+          translationActive++;
+          try {
+            const result = await request(
+              'translate',
+              {
+                input: text.trim(),
+                source_language_code: 'en-IN',
+                target_language_code: language,
+                model: TRANSLATION_MODEL,
+                ...(gender ? { speaker_gender: gender } : {}),
+              },
+              controller.signal,
+            );
+            const value = result?.translated_text;
+            if (typeof value !== 'string' || !value.trim() || value.length > MAX_TRANSLATED)
+              throw new DirectorError(502, 'Sarvam returned an unsupported translation.');
+            translated++;
+            await translationDisk.write(key, {
+              text: value.trim(),
+              language,
+              model: TRANSLATION_MODEL,
+              source: text.trim(),
+            });
+            return { text: value.trim(), source: 'sarvam' };
+          } finally {
+            translationActive--;
+            translationWaiters.shift()?.();
+          }
+        } catch (error) {
+          if (controller.signal.aborted) throw cancelled();
+          if (error instanceof DirectorError) throw error;
+          throw new DirectorError(502, 'Sarvam translation is temporarily unavailable.');
+        } finally {
+          clearTimeout(timer);
+          translating.delete(key);
+        }
+      })();
+      shared.then(
+        (value) => {
+          while (translations.size >= 1024)
+            translations.delete(/** @type {string} */ (translations.keys().next().value));
+          translations.set(key, value.text);
+        },
+        () => {},
+      );
+      translating.set(key, shared);
+    }
+    if (!signal) return shared;
+    const pending = shared;
+    return new Promise((resolve, reject) => {
+      if (signal.aborted) return reject(cancelled());
+      const abort = () => reject(cancelled());
+      signal.addEventListener('abort', abort, { once: true });
+      pending.then(
+        (value) => {
+          signal.removeEventListener('abort', abort);
+          resolve(value);
+        },
+        (error) => {
+          signal.removeEventListener('abort', abort);
+          reject(error);
+        },
+      );
+    });
+  }
   /** @param {Job} job */
   async function generate(job) {
     const { cue, controller, key } = job;
@@ -68,57 +217,30 @@ export function createNarration({
       hits++;
       return remember(key, { audio: stored, text: cue.text, language: cue.language });
     }
-    if (!apiKey?.trim())
-      throw new DirectorError(
-        503,
-        'Add SARVAM_API_KEY to the server .env and restart the director to enable narration.',
-      );
+    requireKey();
     const timer = setTimeout(() => controller.abort(), deadlineMs);
-    /** @param {string} path @param {Record<string,unknown>} body */
-    async function request(path, body) {
-      const response = await fetchImpl(`https://api.sarvam.ai/${path}`, {
-        method: 'POST',
-        headers: {
-          'content-type': 'application/json',
-          'api-subscription-key': /** @type {string} */ (apiKey),
-        },
-        body: JSON.stringify(body),
-        signal: controller.signal,
-      });
-      if (!response.ok)
-        throw new DirectorError(
-          response.status === 429 ? 429 : 502,
-          response.status === 429
-            ? 'Sarvam is busy. Try narration again shortly.'
-            : 'Sarvam could not prepare this narration. Check the server key and account access.',
-        );
-      return response.json();
-    }
     try {
-      let text = cue.text;
-      if (cue.language !== 'en-IN') {
-        const translated = await request('translate', {
-          input: text,
-          source_language_code: 'en-IN',
-          target_language_code: cue.language,
-          model: 'sarvam-translate:v1',
-        });
-        if (
-          typeof translated.translated_text !== 'string' ||
-          !translated.translated_text.trim() ||
-          translated.translated_text.length > 2500
-        )
-          throw new DirectorError(502, 'Sarvam returned an unsupported translation.');
-        text = translated.translated_text;
-      }
-      const result = await request('text-to-speech', {
-        text,
-        language_code: cue.language,
-        model: VOICE_MODEL,
-        ...voiceSettings(cue.character, cue.emotion),
-        speech_sample_rate: 24000,
-        output_audio_codec: 'wav',
+      const text =
+        cue.language === 'en-IN' || cue.textLanguage === cue.language
+          ? cue.text
+          : (await translateLine(cue.text, cue.language, null, controller.signal)).text;
+      const voice = voiceFor(cue.character, cue.emotion, {
+        model: voiceModel,
+        language: cue.language,
       });
+      const result = await request(
+        'text-to-speech',
+        {
+          text,
+          language_code: cue.language,
+          model: voice.model,
+          speaker: voice.speaker,
+          pace: voice.pace,
+          speech_sample_rate: 24000,
+          output_audio_codec: 'wav',
+        },
+        controller.signal,
+      );
       if (
         !Array.isArray(result.audios) ||
         result.audios.length !== 1 ||
@@ -169,12 +291,16 @@ export function createNarration({
       emotion = data.emotion ?? 'natural';
     if (
       Object.keys(data).some(
-        (key) => !['text', 'language', 'character', 'emotion', 'priority'].includes(key),
+        (key) =>
+          !['text', 'language', 'character', 'emotion', 'priority', 'textLanguage'].includes(key),
       ) ||
       typeof data.text !== 'string' ||
       !data.text.trim() ||
       data.text.length > 1600 ||
       !NARRATION_LANGUAGES.some((lang) => lang.code === data.language) ||
+      (data.textLanguage !== undefined &&
+        data.textLanguage !== 'en-IN' &&
+        data.textLanguage !== data.language) ||
       typeof character !== 'string' ||
       !Object.hasOwn(VOICE_CAST, character) ||
       typeof emotion !== 'string' ||
@@ -187,20 +313,26 @@ export function createNarration({
         'Choose a supported language, character, delivery and 1–1600 characters of dialogue.',
       );
     if (signal?.aborted) throw cancelled();
+    const language = /** @type {string} */ (data.language);
+    /** @type {Cue} */
     const cue = {
       text: data.text.trim(),
-      language: /** @type {string} */ (data.language),
+      language,
       character,
       emotion,
+      // Only text already written in the target language carries this field, so keys
+      // made before translated lines existed stay valid.
+      ...(data.textLanguage === language && language !== 'en-IN' ? { textLanguage: language } : {}),
     };
+    const voice = voiceFor(character, emotion, { model: voiceModel, language });
     const key = createHash('sha256')
       .update(
         JSON.stringify([
           VOICE_REVISION,
-          VOICE_MODEL,
-          'sarvam-translate:v1',
+          voice.model,
+          TRANSLATION_MODEL,
           cue,
-          voiceSettings(character, emotion),
+          { speaker: voice.speaker, pace: voice.pace },
           24000,
         ]),
       )
@@ -266,12 +398,46 @@ export function createNarration({
       );
     });
   }
+  /**
+   * Translate one English line for subtitles. speak() reads the same cache, so a
+   * machine-translated subtitle and its audio always use the same words.
+   * @param {unknown} input @param {AbortSignal} [signal]
+   */
+  async function translate(input, signal) {
+    if (!input || typeof input !== 'object' || Array.isArray(input))
+      throw new DirectorError(400, 'Invalid translation request.');
+    const data = /** @type {Record<string,unknown>} */ (input);
+    if (
+      Object.keys(data).some((key) => !['text', 'language', 'character'].includes(key)) ||
+      typeof data.text !== 'string' ||
+      !data.text.trim() ||
+      data.text.length > 1600 ||
+      !NARRATION_LANGUAGES.some((lang) => lang.code === data.language) ||
+      (data.character !== undefined &&
+        (typeof data.character !== 'string' || !Object.hasOwn(VOICE_CAST, data.character)))
+    )
+      throw new DirectorError(
+        400,
+        'Choose a supported language, character and 1–1600 characters of text.',
+      );
+    const language = /** @type {string} */ (data.language);
+    const text = data.text.trim();
+    if (language === 'en-IN') return { text, language, source: 'original' };
+    const gender =
+      typeof data.character === 'string'
+        ? VOICE_CAST[/** @type {keyof typeof VOICE_CAST} */ (data.character)].gender
+        : null;
+    const result = await translateLine(text, language, gender, signal);
+    return { text: result.text, language, source: result.source };
+  }
   return {
     speak,
+    translate,
     status: () => ({
       configured: Boolean(apiKey?.trim()),
       provider: 'sarvam',
-      model: VOICE_MODEL,
+      model: voiceModel,
+      translationModel: TRANSLATION_MODEL,
       defaultLanguage: 'en-IN',
       languages: NARRATION_LANGUAGES,
       busy: active > 0,
@@ -281,6 +447,12 @@ export function createNarration({
       delivery: VOICE_DELIVERY,
       revision: VOICE_REVISION,
       cache: { ...disk.status(), clips: cache.size, bytes: cacheBytes, hits, generated },
+      translations: {
+        active: translationActive,
+        lines: translations.size,
+        hits: translationHits,
+        translated,
+      },
     }),
   };
 }

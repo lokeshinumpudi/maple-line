@@ -10,10 +10,10 @@ To watch, open **Places** and choose an episode under **Watch a short drama**. P
 
 | Part  | What it holds                                                                                                                                                                                                                                         |
 | ----- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Cast  | Named parts with a short note. Parts are not tied to a figure until a scene casts them.                                                                                                                                                               |
+| Cast  | Named parts with a short note and an optional `voice` (a part in the shared voice cast). Parts are not tied to a figure until a scene casts them.                                                                                                     |
 | Scene | A heading, optional scene settings (`location` with an `offset` in metres, `timeOfDay`, `weather`, `speedKmh`), an optional `stopAt` station where auto drive stops the train at the platform, and `actors` mapping parts to characters in the world. |
 | Beat  | One shot, optional place card (`caption`, `subtitle`), an on-screen `line`, `dialogue`, a minimum `hold`, an optional `waitFor` (`stopped` or `doors-closed`), and timed `cues`.                                                                      |
-| Line  | A cast part (or a free `speaker` label) and text up to 160 characters; `phone: true` sets it in italics.                                                                                                                                              |
+| Line  | A cast part (or a free `speaker` label) and text up to 160 characters; `phone: true` sets it in italics; optional `emotion` (a delivery such as `dry`) and `translations` (`{ "te-IN": "…" }`).                                                       |
 | Cue   | Seconds `after` the beat starts and one action: an acting note (`direct` with mood, intent and hold), `doors`, a world `event`, `weather`, or `release` to let the train leave.                                                                       |
 
 Shot subjects can be a cast part (`{ "cast": "riko" }`) or a level crossing (`{ "crossing": "sakuragawa-farm-road" }`) as well as the director's own subjects. Dialogue is timed to reading speed (about 180 words a minute, 1.8–7 seconds a line), so a beat lasts as long as its lines need. The runner waits for the train only where a beat says so, and gives up after 45 seconds with a note in the log.
@@ -91,6 +91,86 @@ pnpm --filter @maple-line/game drama:script
 
 A test fails if a line the game plays is missing from the committed script.
 
+## Voices and languages
+
+Episode lines can be spoken by Sarvam voices, in English or ten Indian languages. In **Places → Watch a short drama**, pick a **Language** and leave **Voices (Sarvam)** on. The choice is saved with the other preferences; the language is shared with Haru's story narration.
+
+Lines are written in English. For another language the director translates each line with Sarvam, keeps the translation on disk beside the audio, and the subtitle shows the translated text. Speaker names, captions and scene headings stay as written. A hand-written translation in the episode wins over the machine one:
+
+```js
+{ cast: 'riko', text: 'Front car.', emotion: 'dry', translations: { 'te-IN': 'ముందు బోగీ.' } }
+```
+
+Use `lineTranslations` on a beat for its on-screen `line`. Machine translation gets names right (Riko, Aonuma and Kaneda came out correctly in Telugu), but it misreads idioms and clock times: "Seventeen forty-two in" became inches, and "front car" became a motor car. Check the translated script before sharing a video, and add a `translations` entry for any line that reads wrong.
+
+A cast id that matches a part in the voice cast (`packages/voice-score`) is voiced by that part; `voice` on the cast entry picks another part. Lines with only a `speaker` label stay subtitles. The 17:42 cast:
+
+| Part       | Sarvam speaker (bulbul:v3) | Base pace | Casting intent                           |
+| ---------- | -------------------------- | --------- | ---------------------------------------- |
+| Riko       | `ishita`                   | 1.05      | Female, 17, a little quick               |
+| Mr. Sato   | `varun`                    | 0.98      | Mid-life male, even                      |
+| Mr. Ishida | `anand`                    | 0.88      | Male, slowed for an older man            |
+| Fusae      | `rupali`                   | 0.93      | Female, slower and dry, heard on a phone |
+| Mrs. Hara  | `neha`                     | 1.00      | Female, brisk shopkeeper                 |
+| Mr. Tanabe | `mohit`                    | 0.95      | Male, tired                              |
+
+Sarvam does not publish ages or genders for its speakers; these were chosen by name and not auditioned against each other. Every part uses a different speaker from the campaign cast. `emotion` changes pace and the pause after a line (`anxious`, `dry` and `tired` were added for the drama); it does not change the voice.
+
+While a line is spoken the runner holds the beat until the clip ends, instead of the reading-time estimate, and the train and ambient sound duck. The next lines are prepared two beats ahead, and the first beat waits under the title card (up to four extra seconds) for its audio. A line whose audio is not ready within four seconds is shown without it, and the log says so. Pausing the ride pauses the line.
+
+When the director is offline, has no `SARVAM_API_KEY`, or the build has no director (Signal and static builds), the episode plays exactly as before with subtitles, and a small label says why: _Director offline · subtitles only_ or _No Sarvam key on the director · subtitles only_. Hand-written translations still show offline. `get_episode_state` reports the same status under `voice`, and `play_episode` takes optional `language` and `voice` arguments.
+
+### Voice clips for videos
+
+```sh
+pnpm voice:episode --episode the-1742-1 --lang te-IN
+pnpm voice:episode --episode the-1742-1 --lang te-IN --list   # lines and characters, no requests
+```
+
+`--episode` takes an id, `the-1742-<n>` or a number; `--file draft.json` voices a draft. The script runs the director's narration code in-process with the root `.env`, so it shares the disk cache with the game: lines already heard in the game cost nothing, and a re-run only fills gaps. Output goes to `artifacts/voice/<episode>/<language>/` (ignored by git): one WAV per line (24 kHz mono, named like `momiji-platform-2-1-riko.wav`) and `manifest.json`.
+
+The manifest is the video renderer's audio manifest, with details alongside:
+
+```json
+{
+  "version": 1,
+  "kind": "maple-line-episode-voice",
+  "episode": "the-1742-e1-two-minutes",
+  "language": "te-IN",
+  "model": "bulbul:v3",
+  "clips": [{ "line": "momiji-platform/2/1", "file": "momiji-platform-2-1-riko.wav" }],
+  "lines": [
+    {
+      "line": "momiji-platform/2/1",
+      "cast": "riko",
+      "speaker": "ishita",
+      "emotion": "anxious",
+      "durationMs": 4128,
+      "text": "రైలు ఐదు నలభై రెండుకి వస్తుంది. …",
+      "sourceText": "Seventeen forty-two in. Seventeen forty out.",
+      "textSource": "authored",
+      "plannedStartMs": 12500
+    }
+  ],
+  "captions": { "momiji-platform/1": "…", "end": "…" },
+  "plan": {
+    "beats": [{ "beat": "momiji-platform/1", "startMs": 0, "plannedMs": 11500, "lines": [] }]
+  }
+}
+```
+
+Line ids are `<scene id>/<beat number>/<line number>`, both counted from 1, the same ids the renderer's timeline uses. `clips` holds only `line` and `file` (paths relative to the manifest), so `pnpm render:episode --episode the-1742-1 --audio artifacts/voice/the-1742-e1-two-minutes/te-IN/manifest.json` can place each clip at the time its line appears. `textSource` is `original`, `authored` or `machine`. `plan` is an estimate that ignores waits for the train; the render timeline has the real times. For a render to hold each line for its clip and show translated subtitles, give the runner `createManifestVoice(manifest)` from `apps/game/src/drama/voice-manifest.js` as its voice host.
+
+### Sarvam limits and cost
+
+Checked against Sarvam's documentation on 23 September 2026:
+
+- **Text to speech** (`bulbul:v3`): up to 2,500 characters a request, 11 languages (`en-IN` and ten Indian languages), about 37 speakers, `pace` 0.5–2.0, `temperature` 0.01–2.0 (default 0.6, left at the default here). `pitch` and `loudness` exist only on `bulbul:v2`. Sample rates 8–48 kHz; we use 24 kHz WAV. There is no emotion control. Romanised Indian-language text sounds worse than native script, which is why translations are kept in native script.
+- **Translation**: `sarvam-translate:v1` (used here) takes up to 2,000 characters, 22 languages, formal register only. `mayura:v1` takes 1,000 characters and offers colloquial and code-mixed modes. In a test on five lines of this script, Mayura's colloquial mode mixed English words into Telugu and turned "Grandma" into "aunt", so the formal model stays. `speaker_gender` is sent from the voice cast so verbs agree with the speaker.
+- **Rate limits** (Starter plan): 30 requests a minute for `bulbul:v3`, 60 for translation. The director runs at most two requests at once; the script retries a 429 up to four times with growing waits.
+- **Cost** (published pay-as-you-go prices): speech ₹30 per 10,000 characters, translation ₹50 per 10,000 characters. Episode 1 is 347 English characters: about ₹1 in English, about ₹3 in Telugu (the translated text is longer and is also translated). All three episodes (1,327 English characters) in one Indian language cost roughly ₹12.
+- **bulbul:v4-flash** uses per-language styled speakers such as `kavitha_te_conversation`. It was not open to this account. Start the director with `SARVAM_VOICE_MODEL=bulbul:v4-flash` once it is; parts with a confirmed v4 speaker for that language switch, and the rest keep their v3 voice. The v4 settings have not been heard.
+
 ## Sharing an episode as a video
 
 `pnpm render:episode --episode the-1742-1 --aspect 9:16` renders an episode to an MP4 for phones, with a poster image and a timeline of when each line is spoken. The timeline's line ids (`momiji-platform/2/1`) are what an audio manifest uses to place voice lines. [Episode videos](../VIDEO.md) covers the options, render mode and the manifest format.
@@ -98,7 +178,8 @@ A test fails if a line the game plays is missing from the committed script.
 ## Limits
 
 - Only Momiji's `commuter-1` (Mr. Sato), `commuter-2` (Riko in episode 1) and `reader-1` (Mr. Ishida) have Blender models with faces and a jaw that moves on their lines. Everyone else, including the Aonuma cast, is still a low-poly figure without a face. The [Blender asset skill](../../.agents/skills/maple-blender-assets/SKILL.md) covers adding more.
-- Dialogue is subtitles. It is not voiced in the game; Haru's campaign keeps its own narration. A rendered video can carry voice clips through an audio manifest.
+- Voices need the local director and a Sarvam key; everywhere else dialogue is subtitles. Haru's campaign keeps its own narration. The jaw of a modelled figure moves for the length of the line, not in step with the words. A rendered video carries voice clips through an audio manifest.
+- Voice casting and the Telugu translations have been checked by reading, not by a listening review.
 - A part may be played by different figures in different scenes (Riko is a Momiji student in episode 1 and a standing Aonuma resident in episode 3).
 - Shots are planned when they start. A character who walks far can leave the frame; portraits follow them but do not re-plan the angle.
 - The episode tools, like the other WebMCP tools, are registered only in development builds. The Places entry works in every build.

@@ -21,6 +21,7 @@
     "check": "turbo run lint test build format:check //#format:workspace:check",
     "typecheck": "turbo run typecheck",
     "narration:prepare": "node scripts/prepare-narration.mjs",
+    "voice:episode": "node --env-file-if-exists=.env scripts/voice-episode.mjs",
     "build:ship": "pnpm --filter @maple-line/game exec vite build --mode ship && node scripts/bundle-ship-function.mjs",
     "build:public": "pnpm --filter @maple-line/game exec vite build --mode public",
     "build:runbook": "node scripts/build-runbook.mjs",

@@ -45,7 +45,10 @@ export function mountFilmCaptions(root = document.body, { clock = realClock } = 
   const barBottom = document.createElement('div');
   barTop.className = 'film-bar film-bar-top';
   barBottom.className = 'film-bar film-bar-bottom';
-  layer.append(barTop, barBottom, place, line, card);
+  const note = document.createElement('div');
+  note.className = 'film-note';
+  note.setAttribute('role', 'status');
+  layer.append(barTop, barBottom, place, line, card, note);
   root.append(layer);
   if (manualFades) layer.classList.add('manual-fades');
   const timers = new Map();
@@ -77,6 +80,11 @@ export function mountFilmCaptions(root = document.body, { clock = realClock } = 
     /** caption: { kind: 'place'|'shot'|'title'|'end', title, native, subtitle, line, seconds } */
     show(caption) {
       const seconds = caption.seconds ?? 6;
+      if (caption.kind === 'note') {
+        note.textContent = caption.text ?? '';
+        if (caption.text) show(note, seconds);
+        return;
+      }
       if (caption.kind === 'dialogue') {
         const wait = titleUntil - clock.now();
         if (wait > 0) {
@@ -121,7 +129,7 @@ export function mountFilmCaptions(root = document.body, { clock = realClock } = 
       layer.classList.toggle('draws-bars', drawBars);
     },
     hide() {
-      for (const element of [place, line, card]) setShown(element, false);
+      for (const element of [place, line, card, note]) setShown(element, false);
     },
     /** Render mode: apply clock-driven fades. A no-op with the wall clock. */
     tick() {

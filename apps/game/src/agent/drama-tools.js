@@ -2,6 +2,7 @@ import { normalizeEpisode, episodeSeconds, EPISODE_LIMITS } from '../drama/episo
 import { episodeScreenplay } from '../drama/screenplay.js';
 import { SHOT_TYPES } from '../camera/director.js';
 import { MOODS, INTENTS, MIND_EVENTS } from '../simulation/npc-minds.js';
+import { NARRATION_LANGUAGES, VOICE_CAST, VOICE_DELIVERY } from '@maple-line/voice-score';
 
 /**
  * Narrative tools: agents write episodes as data, check them, read them back as a
@@ -21,7 +22,7 @@ const idSchema = { type: 'string', pattern: '^[a-z0-9-]{1,40}$' };
 // Episode bodies are validated by normalizeEpisode, which reports the exact failing path.
 const episodeSchema = {
   description:
-    'Episode data: { id, series?, number?, title, logline?, cast: { id: { name, note? } }, scenes: [{ id, heading, set?, stopAt?, actors?, beats: [{ shot, caption?, subtitle?, line?, dialogue?, hold?, waitFor?, cues? }] }], endCard? }. Call get_drama_catalog for every allowed value.',
+    'Episode data: { id, series?, number?, title, logline?, cast: { id: { name, note?, voice? } }, scenes: [{ id, heading, set?, stopAt?, actors?, beats: [{ shot, caption?, subtitle?, line?, lineTranslations?, dialogue?: [{ cast?, speaker?, text, phone?, emotion?, translations? }], hold?, waitFor?, cues? }] }], endCard? }. voice names a voice part, emotion a delivery, translations maps a language code to hand-written text. Call get_drama_catalog for every allowed value.',
 };
 
 export function createEpisodeLibrary(storage) {
@@ -60,9 +61,19 @@ export function createEpisodeLibrary(storage) {
 
 /**
  * `play(source)` starts an episode through the game (camera, UI, runner);
- * `linkFor(episode)` returns `{ url, via }` for a validated episode.
+ * `linkFor(episode)` returns `{ url, via }` for a validated episode;
+ * `configureVoice({ language, enabled })` sets the player's subtitle and voice choice.
  */
-export function registerDramaTools({ tool, runner, series, library, catalog, play, linkFor }) {
+export function registerDramaTools({
+  tool,
+  runner,
+  series,
+  library,
+  catalog,
+  play,
+  linkFor,
+  configureVoice = () => {},
+}) {
   const context = () => ({
     stops: catalog().stops.map((stop) => stop.id),
     crossings: catalog().crossings.map((c) => c.id),
@@ -107,12 +118,16 @@ export function registerDramaTools({ tool, runner, series, library, catalog, pla
       timesOfDay: ['daylight', 'sunrise', 'sunset', 'dusk'],
       weather: ['clear', 'rain', 'snow'],
       limits: { ...EPISODE_LIMITS },
+      voices: Object.entries(VOICE_CAST).map(([id, part]) => ({ id, name: part.name })),
+      deliveries: Object.keys(VOICE_DELIVERY),
+      languages: NARRATION_LANGUAGES.map((item) => ({ ...item })),
       format: episodeSchema.description,
       tips: [
         'Beats are one shot each; dialogue lines are timed to reading speed.',
         'Use waitFor "stopped" on the beat that shows the train arriving, then open doors in the next beat.',
         'Close doors, wait for "doors-closed", then release to let the train leave.',
         'A portrait needs the actor visible; otherwise the runner falls back to a platform or orbit shot and logs it.',
+        'A cast id that is also a voice part (or a cast voice) is voiced by Sarvam; a voiced line holds its beat until the clip ends.',
       ],
     }),
   );
@@ -183,16 +198,23 @@ export function registerDramaTools({ tool, runner, series, library, catalog, pla
   );
   tool(
     'play_episode',
-    'Play an episode in the running game: title card, scene settings, director shots, timed dialogue, acting notes, doors and weather cues. Pass the id of a built-in or saved episode, or a full episode to play once without saving. Pausing the ride pauses the episode.',
+    'Play an episode in the running game: title card, scene settings, director shots, timed dialogue, acting notes, doors and weather cues. Pass the id of a built-in or saved episode, or a full episode to play once without saving. language picks subtitles and voices (default: the player’s choice); voice false plays subtitles only. Pausing the ride pauses the episode.',
     {
-      ...object({ id: idSchema, episode: episodeSchema }),
+      ...object({
+        id: idSchema,
+        episode: episodeSchema,
+        language: { type: 'string', enum: NARRATION_LANGUAGES.map((item) => item.code) },
+        voice: { type: 'boolean' },
+      }),
       minProperties: 1,
     },
     false,
-    ({ id, episode }) => {
+    ({ id, episode, language, voice }) => {
       if (id && episode) throw new TypeError('Pass an id or an episode, not both.');
       const source = episode ?? find(id);
       if (!source) throw new Error(`No episode ${id}.`);
+      if (language !== undefined || voice !== undefined)
+        configureVoice({ language, enabled: voice });
       return play(source);
     },
   );
