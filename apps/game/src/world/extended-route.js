@@ -1035,7 +1035,7 @@ export function createExtendedWorld({ THREE, scene, railPoint, center = routeCen
     };
   }
   const api = {
-    update(dt, { position, dusk = false, weather = 'clear' } = {}) {
+    update(dt, { position, dusk = false, weather = 'clear', minds } = {}) {
       surfaceDetail.update(dt || 1 / 60, weather);
       if (disposed) return;
       const z = Array.isArray(position) ? position[2] : position?.z;
@@ -1060,7 +1060,7 @@ export function createExtendedWorld({ THREE, scene, railPoint, center = routeCen
         chunk.group.visible = Math.abs((chunk.start + chunk.end) / 2 - z) < 1650;
         for (const lake of chunk.lakeScenes) lake.update(dt);
         chunk.tokyo?.update(dt, { dusk, weather, activityTime });
-        for (const resident of chunk.residents) resident.update(activityTime, { weather });
+        for (const resident of chunk.residents) resident.update(activityTime, { weather, minds });
       }
     },
     cameraObstacles() {

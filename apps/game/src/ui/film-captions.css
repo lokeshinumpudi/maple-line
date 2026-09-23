@@ -1,0 +1,117 @@
+.film-captions {
+  position: fixed;
+  inset: 0;
+  z-index: 4;
+  pointer-events: none;
+  color: var(--paper, #fff8e8);
+  font-family: 'Outfit', 'DM Sans', sans-serif;
+}
+.film-bar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: var(--film-bar, 0px);
+  background: #000;
+  display: none;
+}
+.film-captions.draws-bars .film-bar {
+  display: block;
+}
+.film-bar-top {
+  top: 0;
+}
+.film-bar-bottom {
+  bottom: 0;
+}
+.film-place,
+.film-line,
+.film-title {
+  position: absolute;
+  opacity: 0;
+  transition:
+    opacity 900ms ease,
+    transform 1400ms cubic-bezier(0.2, 0.7, 0.2, 1);
+  text-shadow: 0 1px 12px #0009;
+}
+.film-captions .is-shown {
+  opacity: 1;
+  transform: none;
+}
+.film-place {
+  left: max(16px, 6vw);
+  bottom: calc(var(--film-bar, 0px) + clamp(84px, 18vh, 170px));
+  max-width: min(78vw, 520px);
+  transform: translateY(8px);
+}
+.film-place-title {
+  display: flex;
+  align-items: baseline;
+  gap: 0.7em;
+  font-weight: 300;
+  font-size: clamp(22px, 3.4vw, 44px);
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+}
+.film-place-title span {
+  font-size: 0.55em;
+  letter-spacing: 0.12em;
+  color: var(--accent, #f0d49b);
+}
+.film-place-rule {
+  width: 0;
+  height: 1px;
+  margin: 10px 0 8px;
+  background: currentColor;
+  opacity: 0.6;
+  transition: width 1600ms ease 300ms;
+}
+.film-place.is-shown .film-place-rule {
+  width: min(100%, 220px);
+}
+.film-place-subtitle {
+  font-size: clamp(11px, 1.2vw, 14px);
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--muted, #c4cdc2);
+}
+.film-line {
+  left: 50%;
+  bottom: calc(var(--film-bar, 0px) + clamp(28px, 6vh, 64px));
+  width: min(86vw, 760px);
+  transform: translate(-50%, 6px);
+  text-align: center;
+  font-family: 'DM Sans', sans-serif;
+  font-size: clamp(14px, 1.7vw, 20px);
+  line-height: 1.45;
+}
+.film-captions .film-line.is-shown {
+  transform: translate(-50%, 0);
+}
+.film-title {
+  inset: 0;
+  display: grid;
+  place-content: center;
+  text-align: center;
+  font-weight: 300;
+  font-size: clamp(26px, 5vw, 64px);
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  transform: scale(1.02);
+}
+@media (prefers-reduced-motion: reduce) {
+  .film-place,
+  .film-line,
+  .film-title,
+  .film-place-rule {
+    transition-duration: 1ms;
+  }
+}
+/* Director mode: the HUD steps back from the frame until the pointer or keys wake it. */
+body.film-mode > :is(header, main, footer, .vignette, #speedometer, #mobile-hud-toggle) {
+  transition: opacity 700ms ease;
+}
+body.film-mode:not(.film-pointer):not(:has(dialog[open], [popover]:popover-open, :focus-visible))
+  > :is(header, main, footer, .vignette, #speedometer, #mobile-hud-toggle) {
+  opacity: 0;
+  pointer-events: none;
+}

@@ -1,0 +1,445 @@
+/* Regional network dialog. Matches the Places dialog: dark green surface, paper text, gold accent. */
+#network-toggle {
+  color: var(--accent, #f0d49b);
+}
+#network-toggle::before {
+  content: '⌗';
+  margin-right: 8px;
+}
+#network-panel {
+  width: min(1000px, calc(100vw - 28px));
+  max-height: calc(100dvh - 36px);
+  margin: auto;
+  padding: clamp(16px, 3vw, 30px);
+  border: 1px solid #d9d6b740;
+  border-radius: 22px;
+  background: #142f2af8;
+  color: var(--paper, #fff8e8);
+  overflow-x: hidden;
+  overflow-y: auto;
+  box-shadow: 0 24px 100px #061c2380;
+}
+#network-panel::backdrop {
+  background: #09241c88;
+  backdrop-filter: blur(5px);
+}
+#network-panel *,
+#network-panel *::before {
+  box-sizing: border-box;
+}
+#network-panel button:focus-visible,
+#network-panel [role='button']:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 3px;
+}
+.network-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.network-heading .eyebrow {
+  font-size: 9px;
+  color: var(--accent, #f0d49b);
+  letter-spacing: 0.14em;
+}
+#network-title {
+  margin: 10px 0 0;
+  font-size: clamp(26px, 4vw, 38px);
+  font-weight: 400;
+  letter-spacing: -0.04em;
+}
+.network-heading-side {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.network-clock {
+  font-size: 12px;
+  color: var(--muted, #c4cdc2);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.network-close {
+  font-size: 25px;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 4px;
+}
+.network-intro {
+  color: var(--muted, #c4cdc2);
+  font-size: 13px;
+  line-height: 1.6;
+  margin: 10px 0 8px;
+}
+.network-notice {
+  min-height: 1.5em;
+  margin: 0 0 10px;
+  font-size: 12px;
+  color: var(--accent, #f0d49b);
+}
+.network-notice[data-tone='failure'] {
+  color: #f0a58f;
+}
+.network-notice[data-tone='success'],
+.network-notice[data-tone='unlock'] {
+  color: #b9e0a5;
+}
+.network-map {
+  margin: 0 0 18px;
+}
+.network-map-frame {
+  border: 1px solid var(--line, #e7e2c529);
+  border-radius: 14px;
+  background: radial-gradient(circle at 40% 40%, #1d3f37, #11261f);
+  overflow: hidden;
+}
+.network-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.net-prefecture-label {
+  font-size: 22px;
+  letter-spacing: 0.24em;
+  opacity: 0.32;
+  pointer-events: none;
+}
+.net-border {
+  stroke: #fff8e8;
+  stroke-width: 2;
+  stroke-dasharray: 4 4;
+  opacity: 0.55;
+}
+.net-line {
+  fill: none;
+  stroke-width: 6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transition: opacity 200ms;
+}
+.net-line.is-double {
+  stroke-width: 9;
+}
+.net-line.is-diesel {
+  stroke-dasharray: 14 6;
+}
+.net-line-maple {
+  stroke-width: 10;
+}
+.net-line.is-locked {
+  opacity: 0.28;
+}
+.net-dot,
+.net-junction {
+  fill: #142f2a;
+  stroke: #fff8e8;
+  stroke-width: 2.5;
+}
+.net-junction {
+  stroke-width: 3.5;
+}
+.net-label {
+  font-size: 17px;
+  fill: #fff8e8;
+  paint-order: stroke;
+  stroke: #10241e;
+  stroke-width: 4px;
+  stroke-linejoin: round;
+}
+.net-station.is-maple[role='button'] {
+  cursor: pointer;
+}
+.net-station.is-maple[role='button']:hover .net-dot,
+.net-station.is-maple[role='button']:hover .net-junction,
+.net-station.is-maple[role='button']:focus-visible .net-dot,
+.net-station.is-maple[role='button']:focus-visible .net-junction {
+  fill: var(--accent, #f0d49b);
+}
+.net-station.is-target .net-dot,
+.net-station.is-target .net-junction {
+  fill: #f2a65a;
+  stroke: #fff;
+}
+.net-train {
+  stroke: #10241e;
+  stroke-width: 2;
+}
+.net-train.is-held {
+  stroke: #f0a58f;
+  stroke-width: 3;
+}
+.net-player-marker circle:last-child {
+  fill: var(--accent, #f0d49b);
+  stroke: #10241e;
+  stroke-width: 3;
+}
+.net-player-halo {
+  fill: #f0d49b40;
+  animation: net-pulse 1.8s ease-in-out infinite;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+@keyframes net-pulse {
+  50% {
+    transform: scale(1.5);
+    opacity: 0.2;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .net-player-halo {
+    animation: none;
+  }
+}
+.network-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  margin-top: 8px;
+  font-size: 11px;
+  color: var(--muted, #c4cdc2);
+}
+.network-legend i {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin-right: 6px;
+  border-radius: 50%;
+  vertical-align: -1px;
+}
+.network-legend .legend-player {
+  background: var(--accent, #f0d49b);
+  box-shadow: 0 0 0 3px #f0d49b40;
+}
+.network-legend .legend-locked {
+  border-radius: 2px;
+  height: 4px;
+  width: 16px;
+  vertical-align: 2px;
+  background: #fff8e848;
+}
+.network-columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+  gap: 18px;
+}
+.network-columns > section {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+#network-panel h3 {
+  margin: 0 0 10px;
+  font-size: 15px;
+  font-weight: 500;
+}
+#network-panel h4 {
+  margin: 16px 0 8px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent, #f0d49b);
+}
+.network-campaign {
+  display: flex;
+  gap: 6px;
+  margin: 0 0 4px;
+  padding: 0;
+  list-style: none;
+}
+.network-campaign li {
+  flex: 1;
+  height: 6px;
+  border-radius: 3px;
+  background: #fff8e81f;
+}
+.network-campaign li.is-done {
+  background: var(--accent, #f0d49b);
+}
+.network-campaign li.is-current {
+  background: #f0d49b66;
+}
+.net-mission {
+  margin: 0 0 10px;
+  padding: 12px 14px;
+  border: 1px solid #e7dec329;
+  border-radius: 13px;
+  background: #ffffff05;
+}
+.net-mission.is-campaign {
+  border-color: #f0d49b70;
+}
+.net-mission.is-loading,
+.net-mission.is-unloading {
+  border-color: #f2a65a;
+}
+.net-mission.is-failed {
+  opacity: 0.7;
+}
+.net-mission-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+}
+.net-mission strong {
+  font-size: 13px;
+  font-weight: 500;
+}
+.net-status {
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--accent, #f0d49b);
+}
+.net-mission p {
+  margin: 6px 0 0;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.net-meta {
+  color: var(--muted, #c4cdc2);
+  font-size: 11px !important;
+}
+.net-hint {
+  color: #e6ce98;
+  font-size: 11px !important;
+}
+.net-empty {
+  color: var(--muted, #c4cdc2);
+  font-size: 12px;
+}
+.net-progress {
+  height: 6px;
+  margin-top: 8px;
+  border-radius: 3px;
+  background: #fff8e81f;
+  overflow: hidden;
+}
+.net-progress span {
+  display: block;
+  height: 100%;
+  background: #f2a65a;
+  transition: width 240ms linear;
+}
+.net-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+.net-actions button {
+  min-height: 40px;
+  padding: 8px 12px;
+  font-size: 11px;
+}
+.net-actions .net-primary {
+  color: #183b32;
+  background: #f0e2bd;
+  border-color: #d8cba5;
+}
+.net-actions .net-primary:hover {
+  background: #f7e9c5;
+}
+.net-archive summary {
+  cursor: pointer;
+  margin: 14px 0 8px;
+  font-size: 12px;
+}
+.net-money {
+  margin: 0;
+  font-size: 30px;
+  font-weight: 400;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+}
+.net-reputation,
+.net-history {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 12px;
+}
+.net-reputation li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 70px 26px;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+}
+.net-reputation li.is-locked {
+  color: var(--muted, #c4cdc2);
+}
+.net-reputation b {
+  text-align: right;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+.net-bar {
+  display: block;
+  height: 5px;
+  border-radius: 3px;
+  background: #fff8e81f;
+  overflow: hidden;
+}
+.net-bar span {
+  display: block;
+  height: 100%;
+}
+.net-history li {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 5px 0;
+  border-bottom: 1px solid var(--line, #e7e2c529);
+}
+.net-history b {
+  font-weight: 500;
+  color: #b9e0a5;
+  white-space: nowrap;
+}
+.net-history b.is-loss {
+  color: #f0a58f;
+}
+
+/* HUD chip written by renderMissionChip(). The caller decides where to place it. */
+.mission-chip {
+  display: inline-flex;
+  align-items: center;
+  max-width: min(360px, calc(100vw - 32px));
+  min-height: 30px;
+  padding: 5px 12px;
+  border: 1px solid #e9d9a746;
+  border-radius: 999px;
+  background: #183b32eb;
+  color: #f6ecd1;
+  font-size: 11px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.mission-chip[data-tone='working'] {
+  border-color: #f2a65a;
+}
+.mission-chip[data-tone='urgent'] {
+  border-color: #f0a58f;
+  color: #ffd9cc;
+}
+
+@media (max-width: 720px) {
+  .network-columns {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .net-label-minor {
+    display: none;
+  }
+  .net-label {
+    font-size: 26px;
+  }
+  .net-prefecture-label {
+    font-size: 24px;
+  }
+  .network-clock {
+    display: none;
+  }
+}

@@ -1,49 +1,93 @@
 import { experimental_evaluate } from 'ai';
 
-/** @param {import('./world-planner.js').Evaluator} [evaluate] */
+/**
+ * One provider evaluation at a time, with three priorities:
+ * foreground (world) > background (AI life) > idle (NPC minds).
+ * Idle work is cancelled when a higher-priority request arrives. Every request
+ * still waits until the provider settles, so calls never overlap.
+ * @param {import('./world-planner.js').Evaluator} [evaluate]
+ */
 export function createEvaluationGate(evaluate = experimental_evaluate) {
-  /** @type {Promise<unknown>|null} */
+  /** @typedef {Parameters<typeof experimental_evaluate>[0]} Request */
+  /** @typedef {{resolve:()=>void}} Waiter */
+  /** @type {{tier:'foreground'|'background'|'idle'|'reserved', preempt?:AbortController}|null} */
   let active = null;
-  let waiting = false;
-  /** @param {Parameters<typeof experimental_evaluate>[0]} request */
-  async function run(request) {
-    if (request.abortSignal?.aborted) throw new Error('Cancelled');
-    const pending = Promise.resolve().then(() => evaluate(request));
-    active = pending;
-    try {
-      return await pending;
-    } finally {
-      if (active === pending) active = null;
+  /** @type {{foreground:Waiter|null, background:Waiter|null}} */
+  const queue = { foreground: null, background: null };
+
+  function release() {
+    active = null;
+    const next = queue.foreground ?? queue.background;
+    if (!next) return;
+    if (next === queue.foreground) queue.foreground = null;
+    else queue.background = null;
+    // Hold the slot until the waiting caller starts, so idle work cannot slip in.
+    active = { tier: 'reserved' };
+    next.resolve();
+  }
+  /** @param {'foreground'|'background'|'idle'} tier @param {Request} request @param {AbortController} [preempt] */
+  function start(tier, request, preempt) {
+    if (request.abortSignal?.aborted) {
+      if (active?.tier === 'reserved') release();
+      throw new Error('Cancelled');
     }
+    const pending = Promise.resolve().then(() => evaluate(request));
+    active = { tier, preempt };
+    void pending.then(release, release);
+    return pending;
+  }
+  /** @param {'foreground'|'background'} tier @param {Request} request */
+  function wait(tier, request) {
+    return new Promise((resolve, reject) => {
+      const signal = request.abortSignal;
+      const abort = () => {
+        if (queue[tier] === entry) queue[tier] = null;
+        signal?.removeEventListener('abort', abort);
+        reject(new Error('Cancelled'));
+      };
+      /** @type {Waiter} */
+      const entry = {
+        resolve: () => {
+          signal?.removeEventListener('abort', abort);
+          resolve(undefined);
+        },
+      };
+      queue[tier] = entry;
+      signal?.addEventListener('abort', abort, { once: true });
+      if (signal?.aborted) abort();
+    });
   }
   return {
-    /** @param {Parameters<typeof experimental_evaluate>[0]} request */
+    /** AI-life decisions. Rejects while another request is active or queued, except idle work, which it preempts. @param {Request} request */
     async background(request) {
-      if (active || waiting) throw new Error('Evaluation busy');
-      return run(request);
+      if (queue.foreground || queue.background) throw new Error('Evaluation busy');
+      if (active) {
+        if (active.tier !== 'idle') throw new Error('Evaluation busy');
+        active.preempt?.abort();
+        await wait('background', request);
+      }
+      return start('background', request);
     },
-    /** @param {Parameters<typeof experimental_evaluate>[0]} request */
+    /** World requests wait for the active evaluation and take priority over later work. @param {Request} request */
     async foreground(request) {
-      if (waiting) throw new Error('World request already queued');
-      waiting = true;
+      if (queue.foreground) throw new Error('World request already queued');
+      if (active) {
+        if (active.tier === 'idle') active.preempt?.abort();
+        await wait('foreground', request);
+      }
+      return start('foreground', request);
+    },
+    /** NPC minds. Runs only when nothing else is active or queued, and yields to any later request. @param {Request} request */
+    async idle(request) {
+      if (active || queue.foreground || queue.background) throw new Error('Evaluation busy');
+      if (request.abortSignal?.aborted) throw new Error('Cancelled');
+      const controller = new AbortController();
+      const forward = () => controller.abort();
+      request.abortSignal?.addEventListener('abort', forward, { once: true });
       try {
-        if (active) {
-          const pending = active;
-          await new Promise((resolve, reject) => {
-            const abort = () => reject(new Error('Cancelled'));
-            request.abortSignal?.addEventListener('abort', abort, { once: true });
-            void pending
-              .catch(() => {})
-              .then(() => {
-                request.abortSignal?.removeEventListener('abort', abort);
-                resolve(undefined);
-              });
-            if (request.abortSignal?.aborted) abort();
-          });
-        }
-        return await run(request);
+        return await start('idle', { ...request, abortSignal: controller.signal }, controller);
       } finally {
-        waiting = false;
+        request.abortSignal?.removeEventListener('abort', forward);
       }
     },
   };

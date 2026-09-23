@@ -4,6 +4,7 @@ import { createDirector, DirectorError } from './director.js';
 import { createEvaluationGate } from './evaluation-gate.js';
 import { createWorldPlanner } from './world-planner.js';
 import { createNarration } from './narration.js';
+import { createMinds } from './minds.js';
 
 const MAX_BODY_BYTES = 4096;
 const ALLOWED_ORIGINS = new Set([
@@ -78,7 +79,7 @@ function readJson(request) {
   });
 }
 
-/** @param {{director?:ReturnType<typeof createDirector>,worldPlanner?:ReturnType<typeof createWorldPlanner>,narration?:ReturnType<typeof createNarration>, hosted?:boolean, allowedOrigins?:string[], cacheDirectory?:string|null}} [options] */
+/** @param {{director?:ReturnType<typeof createDirector>,worldPlanner?:ReturnType<typeof createWorldPlanner>,minds?:ReturnType<typeof createMinds>,narration?:ReturnType<typeof createNarration>, hosted?:boolean, allowedOrigins?:string[], cacheDirectory?:string|null}} [options] */
 export function createDirectorHandler(options = {}) {
   const gate = createEvaluationGate();
   const narration =
@@ -91,6 +92,7 @@ export function createDirectorHandler(options = {}) {
     });
   const director = options.director ?? createDirector({ evaluate: gate.background });
   const worldPlanner = options.worldPlanner ?? createWorldPlanner({ evaluate: gate.foreground });
+  const minds = options.minds ?? createMinds({ evaluate: gate.idle });
   const allowedOrigins = new Set(options.allowedOrigins ?? ALLOWED_ORIGINS);
   /** @param {import('node:http').IncomingMessage} request @param {import('node:http').ServerResponse} response */
   return async (request, response) => {
@@ -111,6 +113,7 @@ export function createDirectorHandler(options = {}) {
           '/api/director/status',
           '/api/director/decide',
           '/api/director/world',
+          '/api/director/minds',
           '/api/director/narration',
           '/api/director/narration/status',
         ].includes(pathname)
@@ -127,11 +130,18 @@ export function createDirectorHandler(options = {}) {
       if (pathname === '/api/director/narration/status' && request.method === 'GET')
         return json(response, 200, narration.status());
       if (pathname === '/api/director/status' && request.method === 'GET')
-        return json(response, 200, { ...director.status(), world: worldPlanner.status() });
+        return json(response, 200, {
+          ...director.status(),
+          world: worldPlanner.status(),
+          minds: minds.status(),
+        });
       if (
-        !['/api/director/decide', '/api/director/world', '/api/director/narration'].includes(
-          pathname,
-        ) ||
+        ![
+          '/api/director/decide',
+          '/api/director/world',
+          '/api/director/minds',
+          '/api/director/narration',
+        ].includes(pathname) ||
         request.method !== 'POST'
       )
         return json(response, 405, { error: 'Method not allowed.' });
@@ -165,7 +175,9 @@ export function createDirectorHandler(options = {}) {
       const result =
         pathname === '/api/director/world'
           ? await worldPlanner.plan(body)
-          : await director.decide(body);
+          : pathname === '/api/director/minds'
+            ? await minds.choose(body)
+            : await director.decide(body);
       return json(response, 200, result);
     } catch (error) {
       if (response.destroyed || response.headersSent) return;

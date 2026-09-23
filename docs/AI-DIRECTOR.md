@@ -61,6 +61,45 @@ The **AI life** button enables or disables the director. While enabled and playi
 
 The accepted decision and source label live in Zustand. The app stops applying a decision after 60 seconds and returns to the standard target/routines. The UI distinguishes live Jev answers, local fallback, disabled state, and an offline server. Requests send only the five synthetic game-state fields in the contract.
 
+## NPC minds
+
+Background characters have local minds in `apps/game/src/simulation/npc-minds.js`. Each character gets seeded persona traits (warmth, patience, curiosity, sociability, energy), an emotion (valence −1 to 1, arousal 0 to 1, and a named mood), and needs (rest, social, and comfort are satisfaction from 0 to 1; urgency is 0 to 1). Weather, dusk, the train's approach and doors, crowds, chats, and horn or fast-pass startles change them. A local rule set picks an intent with seeded softmax sampling: the same seed and inputs give the same result. An intent is held for at least six seconds.
+
+`POST /api/director/minds` lets Jev choose a mood and an intent for up to six characters. It accepts exactly:
+
+```json
+{
+  "context": {
+    "weather": "rain",
+    "dusk": false,
+    "region": "station",
+    "trainPhase": "approaching",
+    "crowd": 4
+  },
+  "entities": [
+    {
+      "id": "commuter-2",
+      "role": "student",
+      "mood": "curious",
+      "intent": "watch-train",
+      "valence": 0.21,
+      "arousal": 0.58,
+      "needs": { "rest": 0.7, "social": 0.4, "urgency": 0.55, "comfort": 0.35 }
+    }
+  ]
+}
+```
+
+Weather is `clear`, `rain`, or `snow`. Dusk is a boolean. Region is one of the seven decision regions or a regional stop theme (`farmland`, `wetland`, `lakeside`, `cedar`, `forest`, `mountain`, `snow`, `alpine-lake`, `birch`, `autumn`, `harbour`). Train phase is `away`, `approaching`, `stopped`, or `departing`. Crowd is an integer from 0 to 20. There are one to six entities with unique ids of 1–24 characters from `a-z`, `0-9`, and `-`. Role is `commuter`, `student`, `shopper`, `resident`, `visitor`, `worker`, `shopkeeper`, `gardener`, `elder`, `reader`, `vendor`, `neighbour`, or `traveller`. Mood is `content`, `cheerful`, `wistful`, `anxious`, `impatient`, `curious`, `tired`, `irritated`, or `shy`. Intent is `continue`, `linger`, `chat`, `hurry`, `shelter`, `watch-train`, `wave`, `sit`, `check-phone`, or `stretch`. Numbers must be finite and in range. Extra fields at any level are rejected.
+
+The response is `{ "source": "jev" | "fallback", "reason": "…", "entities": [{ "id", "mood", "intent" }] }`. Jev answers one typed mood question and one typed intent question per entity; the server checks each answer against the whitelists again. Reasons are fixed application strings. A fallback returns simple deterministic choices, and the browser does not apply them.
+
+The minds route uses the lowest priority on the shared evaluation slot. It runs only when no AI-life or world request is active or waiting, and a later AI-life or world request cancels it and waits for the provider to settle. It has its own 20-second cooldown and six-second deadline. A refused slot does not start the cooldown. `GET /api/director/status` reports `minds.inflight`, `minds.cooldownMs`, and `minds.retryAfterMs`.
+
+In the browser, `apps/game/src/agent/minds-client.js` sends one request at most every 25 seconds, only while AI life is on, with a 10-second deadline and one request at a time. It picks the most salient visible characters: near the camera, recently changed mood, or requested by an agent. It discards the whole answer if weather, dusk, region, or train phase changed while waiting, and drops any character that despawned or respawned. Accepted choices hold for 45 seconds of game time and are labelled `source: "jev"`; other choices are `local`. The Signal and static builds report `offline` and keep local minds running.
+
+Agents can steer characters through `setDirective(id, { mood, intent, holdSeconds })`. A directive holds for 1–300 seconds of game time, wins over Jev and local choices, and is labelled `directed`. `apps/game/src/agent/mind-tools.js` exposes read and direction tools through the validated WebMCP executor. Minds change visible behaviour only: walking speed within 0.6–1.4×, short pauses, shelter, and facing. A mind can delay a waiting passenger's walk to an open door by at most two seconds. It never slows platform passengers while a train is being served and never stops boarding. It has no action for doors, signals, or the train.
+
 ## Request limits
 
 The process permits one provider evaluation at a time. AI life has a minimum 15 seconds between decision evaluation starts. World requests wait for an active AI-life evaluation and take priority over subsequent background requests; they have their own five-second cooldown and eight-second deadline. An AI-life model request has a five-second deadline and disables SDK retries. If a provider ignores cancellation, its slot stays occupied until it settles; later requests receive local fallback rather than launching overlapping calls.
@@ -75,7 +114,7 @@ pnpm --filter @maple-line/director typecheck
 pnpm --filter @maple-line/director lint
 ```
 
-Tests inject the evaluator and verify fallback behavior, strict input validation, typed questions, allowed answer extraction, provider-error redaction, cooldown, concurrent-request limits, timeout cancellation, paused behavior, and HTTP constraints. Source code is checked using TypeScript `checkJs`; tests do not spend provider credits.
+Tests inject the evaluator and verify fallback behavior, strict input validation (including the minds contract), typed questions, allowed answer extraction, provider-error redaction, cooldown, concurrent-request limits, timeout cancellation, paused behavior, and HTTP constraints. Source code is checked using TypeScript `checkJs`; tests do not spend provider credits.
 
 A live smoke test succeeded: a rainy station request returned `source: "jev"` with `pace: "cautious"` and `stationActivity: "shelter"`. This verifies one provider request, not sustained availability. An HTTP 200 with `source: "fallback"` confirms continuity but does not prove live model access.
 

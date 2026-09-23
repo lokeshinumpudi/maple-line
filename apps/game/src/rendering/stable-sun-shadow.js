@@ -17,13 +17,19 @@ export function createStableSunShadow({
   const texelSize = frustumSize / mapSize;
   const offsetVec = new Vector3(offset.x, offset.y, offset.z);
   const worldUp = new Vector3(0, 1, 0);
-  const zCam = new Vector3().copy(offsetVec);
-  if (zCam.lengthSq() === 0) zCam.set(0, 1, 0);
-  zCam.normalize();
-  const xCam = new Vector3().crossVectors(worldUp, zCam);
-  if (xCam.lengthSq() < 1e-12) xCam.set(1, 0, 0).cross(zCam);
-  xCam.normalize();
-  const yCam = new Vector3().crossVectors(zCam, xCam).normalize();
+  const zCam = new Vector3();
+  const xCam = new Vector3();
+  const yCam = new Vector3();
+  function computeBasis() {
+    zCam.copy(offsetVec);
+    if (zCam.lengthSq() === 0) zCam.set(0, 1, 0);
+    zCam.normalize();
+    xCam.crossVectors(worldUp, zCam);
+    if (xCam.lengthSq() < 1e-12) xCam.set(1, 0, 0).cross(zCam);
+    xCam.normalize();
+    yCam.crossVectors(zCam, xCam).normalize();
+  }
+  computeBasis();
   const snapped = new Vector3();
   const previousFocus = new Vector3(Number.NaN, Number.NaN, Number.NaN);
 
@@ -36,16 +42,15 @@ export function createStableSunShadow({
   }
 
   return {
-    setOffset(value) {
-      offsetVec.set(value[0], value[1], value[2]);
-      zCam.copy(offsetVec).normalize();
-      xCam.crossVectors(worldUp, zCam).normalize();
-      yCam.crossVectors(zCam, xCam).normalize();
-    },
     texelSize,
     frustumSize,
     basis: { x: xCam, y: yCam, z: zCam },
     offset: offsetVec,
+    /** Moves the sun for a lighting phase; accepts [x, y, z]. */
+    setOffset(value) {
+      offsetVec.set(value[0], value[1], value[2]);
+      computeBasis();
+    },
     snap(worldTarget, out = snapped) {
       return snapTo(worldTarget, out);
     },

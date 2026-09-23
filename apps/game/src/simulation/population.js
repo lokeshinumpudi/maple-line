@@ -1,4 +1,16 @@
 import { CAR_COUNT, CAR_SPACING } from '../train/consist.js';
+// Optional NPC minds (context.minds) may delay a waiting passenger's walk to the door by at
+// most this many seconds. They can never slow the walk to the door or prevent boarding.
+export const MAX_MIND_BOARDING_DELAY = 2;
+const PAUSING_INTENTS = new Set([
+  'linger',
+  'chat',
+  'watch-train',
+  'check-phone',
+  'sit',
+  'stretch',
+  'wave',
+]);
 // Deterministic residents and passengers. No renderer or random position changes.
 export function createPopulation({ center, terrain, homes = [], stationZ = 525 }) {
   const stationX = center(stationZ) + 28,
@@ -59,6 +71,9 @@ export function createPopulation({ center, terrain, homes = [], stationZ = 525 }
       speed: 1.05 + (people.length % 3) * 0.12,
       lastService: 0,
       stateTime: 0,
+      mindSpeed: 1,
+      mindPause: false,
+      mindShelter: false,
       ...extra,
     };
     people.push(p);
@@ -218,7 +233,7 @@ export function createPopulation({ center, terrain, homes = [], stationZ = 525 }
       if (p.state === 'reading') {
         p.pose = 'reading';
         p.heading = angle - Math.PI / 2;
-        if (elapsed - p.stateTime > 38) {
+        if (elapsed - p.stateTime > 38 + (p.mindPause ? 12 : 0)) {
           p.state = 'returning-home';
           p.pose = 'standing';
           p.destination = 'home after the morning paper';
@@ -325,7 +340,15 @@ export function createPopulation({ center, terrain, homes = [], stationZ = 525 }
     return results;
   }
   function advanceRoute(p, dt) {
-    let remaining = p.speed * dt;
+    // A mind may speed anyone up. It never slows a passenger heading for a door, or any
+    // platform passenger while a train is being served.
+    const scale =
+      p.state === 'approaching-door' ||
+      p.state === 'boarding' ||
+      (serving && !p.village && !p.actor)
+        ? Math.max(1, p.mindSpeed)
+        : p.mindSpeed;
+    let remaining = p.speed * scale * dt;
     p.walking = false;
     while (remaining > 0 && p.routeIndex < p.route.length) {
       const target = p.route[p.routeIndex],
@@ -365,6 +388,14 @@ export function createPopulation({ center, terrain, homes = [], stationZ = 525 }
   return {
     people,
     stationPoint,
+    /** True when a world point lies on the Momiji platform strip. Allocation-free. */
+    platformAt(x, z) {
+      const dx = x - stationX,
+        dz = z - stationZ,
+        localX = dx * cs - dz * sn,
+        localZ = dx * sn + dz * cs;
+      return localX > 1.5 && localX < 8 && localZ > -42 && localZ < 15;
+    },
     entry,
     rampBottom,
     rampTop,
@@ -395,13 +426,20 @@ export function createPopulation({ center, terrain, homes = [], stationZ = 525 }
         events.push({ type: 'station-service', service, time: Math.round(elapsed * 10) / 10 });
       }
       serving = nowServing;
+      const minds = context.minds;
       for (const p of people) {
+        const expression = minds?.expressionFor(p.id);
+        p.mindSpeed = Number.isFinite(expression?.walkSpeedScale)
+          ? Math.min(1.4, Math.max(0.6, expression.walkSpeedScale))
+          : 1;
+        p.mindPause = Boolean(expression && PAUSING_INTENTS.has(expression.intent));
+        p.mindShelter = expression?.intent === 'shelter';
         if (p.actor) {
           updateActor(p, dt, context);
           continue;
         }
         if (p.village) {
-          const sheltering = context.stationActivity === 'shelter';
+          const sheltering = context.stationActivity === 'shelter' || p.mindShelter;
           if (p.state === 'at-home' && elapsed >= p.departure && !sheltering) {
             p.state = 'going-to-errand';
             setRoute(p, p.outbound, 'at-destination');
@@ -410,7 +448,8 @@ export function createPopulation({ center, terrain, homes = [], stationZ = 525 }
           if (
             p.state === 'at-destination' &&
             (sheltering ||
-              elapsed - p.stateTime > p.dwell * (context.stationActivity === 'stroll' ? 1.5 : 1))
+              elapsed - p.stateTime >
+                p.dwell * (context.stationActivity === 'stroll' ? 1.5 : 1) + (p.mindPause ? 10 : 0))
           ) {
             p.state = 'returning-home';
             setRoute(p, p.inbound, 'at-home');
@@ -421,15 +460,13 @@ export function createPopulation({ center, terrain, homes = [], stationZ = 525 }
         }
         // Platform passengers use the station canopy while waiting in wet weather.
         // An arriving service always takes priority over the director's activity.
-        if (p.state === 'waiting' && !nowServing && context.stationActivity === 'shelter') {
+        const wantsShelter = context.stationActivity === 'shelter' || p.mindShelter;
+        if (p.state === 'waiting' && !nowServing && wantsShelter) {
           p.state = 'seeking-shelter';
           p.destination = 'station canopy';
           setRoute(p, [stationPoint(5.4 + (p.queue % 2) * 0.5, -4 + p.queue * 1.2)], 'sheltering');
         }
-        if (
-          ['seeking-shelter', 'sheltering'].includes(p.state) &&
-          (nowServing || context.stationActivity !== 'shelter')
-        ) {
+        if (['seeking-shelter', 'sheltering'].includes(p.state) && (nowServing || !wantsShelter)) {
           p.state = 'arriving';
           p.destination = 'Momiji platform';
           setRoute(p, [p.wait], 'waiting');
@@ -453,7 +490,10 @@ export function createPopulation({ center, terrain, homes = [], stationZ = 525 }
             event(p, 'disembarked-at-door');
           }
         }
-        if (p.state === 'leaving-station' && elapsed - p.stateTime > 18 + p.queue) {
+        if (
+          p.state === 'leaving-station' &&
+          elapsed - p.stateTime > 18 + p.queue + (p.mindPause ? 8 : 0)
+        ) {
           p.state = 'arriving';
           p.destination = 'Momiji platform';
           setRoute(p, [rampBottom, rampTop, p.wait], 'waiting');
@@ -462,7 +502,8 @@ export function createPopulation({ center, terrain, homes = [], stationZ = 525 }
           p.state === 'waiting' &&
           nowServing &&
           service > p.lastService &&
-          elapsed - serviceStarted > 5.5 + p.queue * 0.7
+          elapsed - serviceStarted >
+            5.5 + p.queue * 0.7 + (p.mindPause ? MAX_MIND_BOARDING_DELAY : 0)
         ) {
           p.serviceDoor = copy(openDoors[p.queue % openDoors.length]);
           const local = localStation(p.serviceDoor);
