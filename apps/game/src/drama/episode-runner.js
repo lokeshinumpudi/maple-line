@@ -16,6 +16,7 @@ import { beatId, lineId } from './render-timeline.js';
  *   doors('open' | 'close')         returns false when interlocks refuse
  *   isStopped(), doorsClosed()
  *   resolve(subject)                { cast, entity } | { crossing } -> director subject or null
+ *   ended?(state)                   optional: the last beat finished (not called on stop)
  *
  * Advance with update(dt) using simulation time, so pauses and menus hold the episode.
  *
@@ -182,6 +183,7 @@ export function createEpisodeRunner(host, { stops = [], crossings = [], onEvent 
     });
     if (episode.endCard?.line) host.card({ kind: 'shot', line: episode.endCard.line, seconds: 6 });
     note('episode ended');
+    host.ended?.(api.getState());
   }
 
   const api = {
@@ -227,7 +229,10 @@ export function createEpisodeRunner(host, { stops = [], crossings = [], onEvent 
       status = episode ? 'stopped' : 'idle';
       schedule = [];
     },
-    /** Scheduled stop distance id while a scene holds the train at a platform. */
+    /** A detached copy of the last episode played (normalized), or null. */
+    current() {
+      return episode ? structuredClone(episode) : null;
+    },
     get playing() {
       return status === 'playing';
     },

@@ -57,6 +57,15 @@ import { createEpisodeRunner } from './drama/episode-runner.js';
 import { THE_1742 } from './drama/series/the-1742.js';
 import { registerDramaTools, createEpisodeLibrary } from './agent/drama-tools.js';
 import { installEpisodePicker } from './ui/episode-picker.js';
+import { mountEpisodeHandoff } from './ui/episode-handoff.js';
+import { normalizeEpisode } from './drama/episode-schema.js';
+import { parseDeepLink, buildDeepLink, withoutDeepLink } from './share/deep-link.js';
+import {
+  createEpisodeSharing,
+  createUrlEpisodeStore,
+  createSignalEpisodeStore,
+} from './share/episode-store.js';
+import { shareLink } from './share/share-link.js';
 import { createModelLoader, createGltfLoader } from './rendering/model-loader.js';
 import { createHeroCast, MOMIJI_CAST } from './world/hero-cast.js';
 import { createStationModules } from './world/station-modules.js';
@@ -1340,23 +1349,27 @@ const ensureAutoDrive = () => {
   if (!state.autopilot && !state.doorsOpen && !state.doorsClosing && !state.emergency)
     $('autopilot').click();
 };
+/** Place, weather and time of day from an episode scene or a place link. */
+function applySceneSettings(set) {
+  if (set.location !== undefined) {
+    const base =
+      routeStops.find((stop) => stop.id === set.location)?.z ?? directorLocations[set.location];
+    if (Number.isFinite(base)) jumpTo(base + (set.offset ?? 0));
+  }
+  if (set.weather && set.weather !== weather) {
+    $('weather').value = set.weather;
+    $('weather').dispatchEvent(new Event('change'));
+  }
+  if (set.timeOfDay)
+    gameStore.setPreferences({
+      dusk: set.timeOfDay === 'dusk',
+      sunPhase: set.timeOfDay === 'dusk' ? 'daylight' : set.timeOfDay,
+    });
+}
 const episodeRunner = createEpisodeRunner(
   {
     setScene(set) {
-      if (set.location !== undefined) {
-        const base =
-          routeStops.find((stop) => stop.id === set.location)?.z ?? directorLocations[set.location];
-        if (Number.isFinite(base)) jumpTo(base + (set.offset ?? 0));
-      }
-      if (set.weather && set.weather !== weather) {
-        $('weather').value = set.weather;
-        $('weather').dispatchEvent(new Event('change'));
-      }
-      if (set.timeOfDay)
-        gameStore.setPreferences({
-          dusk: set.timeOfDay === 'dusk',
-          sunPhase: set.timeOfDay === 'dusk' ? 'daylight' : set.timeOfDay,
-        });
+      applySceneSettings(set);
       if (set.speedKmh !== undefined)
         changeDrive((next) => {
           next.speed = set.speedKmh / 3.6;
@@ -1405,6 +1418,11 @@ const episodeRunner = createEpisodeRunner(
       // Regional residents are tracked live through the minds, so walking actors stay in frame.
       return mindStandingPoint(subject.entity) ? { person: subject.entity } : null;
     },
+    // Offer the end panel once the closing card has had its moment.
+    ended: () =>
+      setTimeout(() => {
+        if (episodeRunner.getState().status === 'ended') showEpisodeEnd();
+      }, 5200),
   },
   {
     stops: routeStops.map((stop) => stop.id),
@@ -1413,12 +1431,98 @@ const episodeRunner = createEpisodeRunner(
   },
 );
 const episodeLibrary = createEpisodeLibrary(embedded ? null : globalThis.localStorage);
+const validateEpisode = (data) =>
+  normalizeEpisode(data, {
+    stops: routeStops.map((stop) => stop.id),
+    crossings: levelCrossings.getState().crossings.map((item) => item.id),
+  });
+// Custom episodes travel in the link itself everywhere; the Signal edition can also keep
+// them in its site store for a short ?watch= link. Everything loaded is validated again.
+const episodeSharing = createEpisodeSharing({
+  stores: [
+    document.documentElement.dataset.hosting === 'signal' ? createSignalEpisodeStore() : null,
+    createUrlEpisodeStore(),
+  ],
+  validate: validateEpisode,
+});
+const episodeHeading = (episode) =>
+  [episode.series, episode.title].filter(Boolean).join(' · ') || episode.title;
+async function episodeLinkFor(episode) {
+  const clean = validateEpisode(episode);
+  const builtIn = THE_1742.episodes.find((item) => item.id === clean.id);
+  const link =
+    builtIn && JSON.stringify(validateEpisode(builtIn)) === JSON.stringify(clean)
+      ? { kind: 'episode', id: clean.id }
+      : await episodeSharing.save(clean);
+  return { url: buildDeepLink(location.href, link), via: link.kind };
+}
 function watchEpisode(source) {
   if (!state.started) start();
   if (state.paused) pause();
   if (view !== 'director') selectCamera('director');
-  return episodeRunner.play(source);
+  const result = episodeRunner.play(source);
+  episodeHandoff?.showPlaying({ title: episodeHeading(episodeRunner.current()) });
+  return result;
 }
+function showEpisodeEnd({ skipped = false } = {}) {
+  const episode = episodeRunner.current();
+  if (episode) episodeHandoff?.showEnded({ title: episodeHeading(episode), skipped });
+}
+/** The viewer takes over where the episode left the train: same place, still running. */
+function handOffToPlayer() {
+  if (episodeRunner.playing) episodeRunner.stop();
+  episodeHandoff?.hide();
+  filmCaptions.hide();
+  if (view === 'director') selectCamera('follow');
+  if (state.paused) pause();
+  ensureAutoDrive();
+  const stop = nearestUpcomingStop();
+  episodeHandoff?.toast(
+    `Your turn${stop ? `. Next stop: ${stop.name}` : ''}. Press W or S (or move the lever) to drive yourself, D for the doors, C to change the camera.`,
+    { seconds: 10 },
+  );
+}
+async function shareCurrentEpisode() {
+  const episode = episodeRunner.current();
+  if (!episode || !episodeHandoff) return;
+  episodeHandoff.shareBusy(true);
+  try {
+    const { url } = await episodeLinkFor(episode);
+    const result = await shareLink({
+      url,
+      title: `Maple Line · ${episode.title}`,
+      text: episode.logline ?? 'A short drama on the Maple Line.',
+    });
+    episodeHandoff.shareStatus(result, url);
+  } catch (error) {
+    episodeHandoff.shareStatus('error', error.message);
+  } finally {
+    episodeHandoff.shareBusy(false);
+  }
+}
+const episodeHandoff = embedded
+  ? null
+  : mountEpisodeHandoff({
+      actions: {
+        skip() {
+          episodeRunner.stop();
+          filmCaptions.hide();
+          showEpisodeEnd({ skipped: true });
+        },
+        takeControls: handOffToPlayer,
+        drive: handOffToPlayer,
+        watchAgain() {
+          const episode = episodeRunner.current();
+          if (!episode) return;
+          try {
+            watchEpisode(episode);
+          } catch (error) {
+            controlMessage(error.message);
+          }
+        },
+        share: () => void shareCurrentEpisode(),
+      },
+    });
 function updateCamera(dt, snap = false) {
   storyCinematics?.restoreBaseCamera();
   cameraRig.update({
@@ -2812,11 +2916,8 @@ if (import.meta.env.DEV) {
           runner: episodeRunner,
           series: [THE_1742],
           library: episodeLibrary,
-          activate: () => {
-            if (!state.started) start();
-            if (state.paused) pause();
-            if (view !== 'director') selectCamera('director');
-          },
+          play: watchEpisode,
+          linkFor: episodeLinkFor,
           catalog: () => ({
             stops: routeStops.map((stop) => ({
               id: stop.id,
@@ -3083,6 +3184,98 @@ installEpisodePicker({
     }
   },
 });
+// Deep links: ?episode=, ?scene=, ?watch= and #ep= open the game somewhere specific.
+// The welcome card turns into the invitation, so one tap (which also allows sound) starts it.
+function inviteFromWelcome({ eyebrow, title, body, action, run }) {
+  const welcome = $('welcome');
+  const label = welcome.querySelector('.eyebrow');
+  label.lastChild.textContent = ` ${eyebrow}`;
+  welcome.querySelector('h2').textContent = title;
+  welcome.querySelector(':scope > p').textContent = body;
+  welcome.querySelector('.welcome-note').textContent =
+    'Opened from a link. Take the controls whenever you like.';
+  const arrow = document.createElement('span');
+  arrow.setAttribute('aria-hidden', 'true');
+  arrow.textContent = '↗';
+  $('start').replaceChildren(`${action} `, arrow);
+  $('start').disabled = false;
+  $('start').onclick = () => {
+    try {
+      run();
+    } catch (error) {
+      if (!state.started) start();
+      episodeHandoff.toast(error.message);
+    }
+  };
+}
+const placeTitle = (set) => {
+  const stop = routeStops.find((item) => item.id === set.location);
+  if (stop) return `${stop.name} station`;
+  const names = { city: 'the valley town', tokyo: 'the Tokyo neon passage' };
+  return names[set.location] ?? `the ${set.location}`;
+};
+function forgetDeepLink(notice) {
+  history.replaceState(history.state, '', withoutDeepLink(location.href));
+  if (notice) episodeHandoff.toast(notice, { seconds: 9 });
+}
+function openDeepLink() {
+  const { link, notice } = parseDeepLink(location.href, {
+    episodeIds: THE_1742.episodes.map((episode) => episode.id),
+    stops: routeStops.map((stop) => stop.id),
+  });
+  if (notice) forgetDeepLink(notice);
+  if (!link) return;
+  if (link.kind === 'episode') {
+    const episode = THE_1742.episodes.find((item) => item.id === link.id);
+    inviteFromWelcome({
+      eyebrow: 'AN EPISODE FOR YOU',
+      title: episodeHeading(episode),
+      body: episode.logline ?? THE_1742.logline,
+      action: 'Watch the episode',
+      run: () => watchEpisode(episode),
+    });
+    return;
+  }
+  if (link.kind === 'scene') {
+    const details = [link.set.timeOfDay, link.set.weather].filter(Boolean).join(' · ');
+    const title = placeTitle(link.set);
+    inviteFromWelcome({
+      eyebrow: 'A PLACE ON THE LINE',
+      title: title[0].toUpperCase() + title.slice(1),
+      body: details ? `Someone sent you here: ${details}.` : 'Someone sent you here.',
+      action: 'Start here',
+      run() {
+        start();
+        applySceneSettings(link.set);
+        if (link.camera) selectCamera(link.camera);
+      },
+    });
+    return;
+  }
+  // A shared custom episode: untrusted data, decoded and validated before anything plays.
+  const startLabel = [...$('start').childNodes].map((node) => node.cloneNode(true));
+  $('start').textContent = 'Opening the shared episode…';
+  $('start').disabled = true;
+  const timeout = new Promise((_, reject) =>
+    setTimeout(() => reject(new Error('The shared episode took too long to load.')), 10000),
+  );
+  Promise.race([episodeSharing.load(link), timeout])
+    .then((episode) =>
+      inviteFromWelcome({
+        eyebrow: 'A SHARED EPISODE',
+        title: episodeHeading(episode),
+        body: episode.logline ?? 'A short drama written for the Maple Line.',
+        action: 'Watch the episode',
+        run: () => watchEpisode(episode),
+      }),
+    )
+    .catch((error) => {
+      $('start').replaceChildren(...startLabel);
+      $('start').disabled = false;
+      forgetDeepLink(`${error.message} The ride starts normally.`);
+    });
+}
+if (!embedded) openDeepLink();
 $('film-look').value = gameStore.getState().preferences.filmLook;
 $('film-look').onchange = () => gameStore.setPreferences({ filmLook: $('film-look').value });
 if (embedded) {

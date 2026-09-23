@@ -196,3 +196,29 @@ test('the episode library keeps valid episodes and survives bad storage', () => 
   store.set(EPISODE_LIBRARY_KEY, '{not json');
   assert.deepEqual(library.list(), []);
 });
+
+test('a normalized episode validates again unchanged (replays, saved and shared copies)', () => {
+  for (const episode of [...THE_1742.episodes, tiny()]) {
+    const once = normalizeEpisode(episode, context);
+    assert.deepEqual(normalizeEpisode(once, context), once);
+  }
+  const runner = createEpisodeRunner(fakeHost(), context);
+  runner.play(tiny());
+  const copy = runner.current();
+  copy.title = 'Changed';
+  assert.equal(runner.current().title, 'Tiny');
+  assert.equal(runner.play(runner.current()).status, 'playing');
+});
+
+test('the runner tells the host when the last beat ends, not when stopped', () => {
+  const host = fakeHost();
+  const ended = [];
+  host.ended = (state) => ended.push(state.status);
+  const runner = createEpisodeRunner(host, context);
+  runner.play(tiny());
+  runner.stop();
+  assert.deepEqual(ended, []);
+  runner.play(tiny());
+  run(runner, 200);
+  assert.deepEqual(ended, ['ended']);
+});

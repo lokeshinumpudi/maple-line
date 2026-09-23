@@ -29,6 +29,7 @@ Agents use WebMCP tools on the running development build:
 3. `validate_episode` checks a draft and returns its planned length and screenplay, or the first problem with its exact path (for example `episode.scenes[0].beats[2].cues[1].direct.mood must be one of: …`).
 4. `play_episode` performs a draft once, or a saved or built-in episode by id. `get_episode_state` reports the scene, beat, what the runner is waiting for, and a log of substitutions.
 5. `save_episode` keeps a draft in this browser's library (24 episodes, 64 KB each); `list_episodes` shows built-in and saved episodes.
+6. `get_episode_share_link` returns a link that opens an episode for someone else. It validates the episode first.
 
 A useful loop is: read the catalog, write a scene, validate, play it, read the log and look at the frame, then adjust. The director tools (`direct_shot`, `play_sequence`) and NPC tools (`direct_npc`, `get_npc_minds`) remain available for trying a single shot or acting note before writing it into a beat.
 
@@ -38,6 +39,47 @@ A useful loop is: read the catalog, write a scene, validate, play it, read the l
 - **A departure:** close doors in a cue, add a beat with `waitFor: "doors-closed"`, then `release` in the next beat and cut to a `trackside` shot.
 - **Weather turning:** a `weather` cue changes the sky over about half a second; follow it with a `rain-start` event so characters react and shelter.
 - **Close shots:** portraits frame a person's chest from the side they face, try eight angles and then a higher, wider pass, and avoid walls, shelters and benches near the subject.
+
+## Sharing an episode
+
+Someone who gets a link should land in the story and then keep playing. At the end of an episode (or after **Skip**) the panel offers **Drive from here**, **Watch again** and **Share**. **Take the controls** during an episode does the same handover straight away: the episode stops, the train stays where it is and keeps running on auto drive, and the camera moves from Director to Follow.
+
+| Episode             | Link                                                                             |
+| ------------------- | -------------------------------------------------------------------------------- |
+| Built-in            | `?episode=<id>`, for example `?episode=the-1742-e2-the-crossing`                 |
+| Custom, any edition | `#ep=1.<payload>`: the episode JSON, deflated and base64url-encoded, in the link |
+| Custom, Signal      | `?watch=<id>`: a short link to a copy kept in the Signal site store              |
+
+A built-in episode that an author has changed but kept the id of is shared as a custom episode, so the recipient sees the changed version.
+
+The link payload lives after `#`, so browsers do not send it to the server. The three built-in episodes compress to 1.5–2 KB of link text. Links are capped at 12,000 characters; a longer episode cannot be shared as a link.
+
+### Shared episodes are untrusted
+
+Whatever arrives from a link or the site store is treated as someone else's data:
+
+- The payload must match `1.` plus base64url characters and fit the 12,000-character cap before it is decoded.
+- Decompression stops at 64 KB, so a short link cannot inflate into a huge document. Text must be valid UTF-8 and JSON.
+- The result goes through the same `normalizeEpisode` validator as agent drafts. Unknown keys, unknown cue types, unknown places or stops, bad character ids and text over the limits are all rejected, and `__proto__` is refused as an unknown key.
+- Every string is shown with `textContent`. Markup in a line appears as plain characters.
+- A link that fails any check is removed from the address bar, a notice says what went wrong, and the ride starts normally.
+
+### Where custom episodes are stored
+
+`apps/game/src/share/episode-store.js` defines one adapter shape (`kind`, `save(episode)`, `load(link)`, `handles(link)`). `createEpisodeSharing` tries adapters in order when saving and validates everything it loads.
+
+- **URL adapter** (every edition). No server. The episode travels inside the link.
+- **Signal adapter** (Signal build only, when `signal.db` exists). It uses the Signal Ship site database: `signal.db('shared-episodes').get/set`, about 900 KB per value, with per-collection rules in `ship.json`. The key is a SHA-256 hash of the episode, so sharing the same episode twice gives the same link. The build adds `"shared-episodes": { "read": "any", "write": "author" }`: anyone who can open the site can read, and only the person who first shared an episode can overwrite it. Each write records the sharer's Loop email (`updatedBy`), and anyone with site access can list the collection. The rule takes effect when the site is next published. The live write path has not been tested against the Signal gateway; the unit tests use a stand-in for `signal.db`. If the store is unreachable, sharing falls back to the URL adapter. Signal sites sit behind Loop sign-in, so `?watch=` links only work for Loop users.
+- **Public site** (`lokeshinumpudi.com/maple-line/`) uses the URL adapter only. A `?watch=` link there shows a notice. No hosted store is set up.
+
+A hosted store for the public site would need:
+
+- A small server function (for example a Vercel Function) with `POST /api/episodes`, which validates with `normalizeEpisode` and returns an id, and `GET /api/episodes/:id`.
+- Storage: Vercel Blob (one JSON object per id) or Upstash Redis (a key per id with a TTL).
+- Server-side size caps (64 KB) and per-IP rate limits. There are no user accounts, so there is also no one to review abuse.
+- Content-hash ids, so repeat shares do not create new objects.
+- A takedown path.
+- A third adapter in `episode-store.js` placed before the URL adapter, with the URL adapter kept as the fallback.
 
 ## Keeping the script in step
 
@@ -60,3 +102,4 @@ A test fails if a line the game plays is missing from the committed script.
 - A part may be played by different figures in different scenes (Riko is a Momiji student in episode 1 and a standing Aonuma resident in episode 3).
 - Shots are planned when they start. A character who walks far can leave the frame; portraits follow them but do not re-plan the angle.
 - The episode tools, like the other WebMCP tools, are registered only in development builds. The Places entry works in every build.
+- Places lists only the built-in series. A custom episode reaches players through an agent's `play_episode` (development builds) or a shared link. Links work in every build.

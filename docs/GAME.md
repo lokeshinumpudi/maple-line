@@ -79,6 +79,19 @@ The express tuning reaches 60 km/h in about 11 seconds and 120 km/h in about 23 
 
 **Places → Watch a short drama** plays episodes of _The 17:42_, a three-part companion series staged with the director, NPC acting notes, auto drive, doors and weather. Episodes are data that agents can write, validate and play through WebMCP; see [writing episodes](drama/README.md). `pnpm render:episode` renders an episode to a phone-ready MP4 (16:9 or 9:16) with a poster and a line timeline for voice clips; see [episode videos](VIDEO.md).
 
+While an episode plays, a small bar offers **Skip** and **Take the controls**. When an episode ends or is skipped, a panel offers **Drive from here**, **Watch again** and **Share**. Taking over keeps the train where the story left it, still on auto drive, switches to the follow camera and shows how to drive. Share uses the system share sheet when the browser has one; otherwise it copies the link, or shows it to copy by hand.
+
+Links open the game somewhere specific. The welcome card turns into an invitation, and one tap starts it (that tap also allows sound):
+
+| Link                               | Opens                                                                                                                                                                                                            |
+| ---------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `?episode=the-1742-e1-two-minutes` | A built-in episode                                                                                                                                                                                               |
+| `?scene=station/-380/sunset/rain`  | A place: a stop id or `gorge`, `terraces`, `village`, `shrine`, `station`, `city`, `tokyo`, `bridge`, `tunnel`, `summit`, then optional offset in metres (−2000 to 2000), time, weather and camera, in any order |
+| `#ep=1.<payload>`                  | A custom episode carried inside the link                                                                                                                                                                         |
+| `?watch=<id>`                      | A custom episode kept in the Signal site store (Signal edition only)                                                                                                                                             |
+
+Links are built on the page's own address, so they work at `/`, `/maple-line/` and `/s/maple-line/`. A link the game cannot use is removed from the address bar, a short notice explains why, and the ride starts normally. Embedded runbook scenes ignore links.
+
 Three Momiji people are Blender-built characters: Mr. Sato the office commuter, Riko the student with her grandmother's radio, and Mr. Ishida, who reads the paper on the bench. They have face shapes (blinks, smile, a moving jaw for episode lines) and eleven clips that follow the simulation and the NPC mind: walk, hurry, sit, board, idle, wave, check-phone, watch-train, shelter, chat and stretch. A timber station shelter stands on the Momiji platform. All are made by Python build scripts in `asset-src/`; missing files fall back to the procedural figures and platform. See [asset sources](../asset-src/README.md).
 
 **Network** beside Places opens a schematic map of five other fictional lines with timetabled trains, a mission board and a company ledger. Missions (passengers, freight, express mail, connections) are played on the Maple Line: stop at the platform with the doors open to load and unload. An eight-step campaign unlocks the other lines. Only the Maple Line is drawn in 3D. See [regional network and missions](NETWORK-AND-MISSIONS.md).
@@ -190,7 +203,7 @@ turbo.json                 Task dependencies and caching
 
 ## Verification and limits
 
-Automated tests cover driving/braking, station outcomes, repeated terminal reversals, camera clearance, river bank continuity, fish containment, deer reactions, bird return paths, train geometry and doors, population routines, store behavior, inspector edits/undo, WebMCP argument validation/lifecycle, and director validation, fallbacks, and request limits. They do not establish visual quality or frame rate on a particular device.
+Automated tests cover driving/braking, station outcomes, repeated terminal reversals, camera clearance, river bank continuity, fish containment, deer reactions, bird return paths, train geometry and doors, population routines, store behavior, inspector edits/undo, WebMCP argument validation/lifecycle, director validation, fallbacks, and request limits, and deep-link parsing, shared-episode encoding, size caps and hostile payloads. They do not establish visual quality or frame rate on a particular device.
 
 The operating profile anticipates slower bridge, tunnel, passing-loop, and mountain sections. These are fictional game limits; the physics model is not railway operating instruction. See [physics and story](docs/research/PHYSICS-AND-STORY.md).
 
