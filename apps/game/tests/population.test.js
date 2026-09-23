@@ -75,7 +75,7 @@ test('doors closing cancels approaches without hiding passengers', () => {
   pop.update(0.1, { ...atStation, doorsOpen: false });
   for (const p of approaching) {
     assert.equal(p.visible, true);
-    assert.ok(['arriving', 'waiting'].includes(p.state));
+    assert.ok(['missed-door', 'arriving', 'waiting'].includes(p.state));
   }
 });
 

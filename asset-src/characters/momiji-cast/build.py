@@ -3,8 +3,11 @@
 One builder, one skeleton, one set of clips; each cast member is a row in PROFILES
 (height, width, clothing, hair, colours, props, posture). Everything is built from data so
 an agent can change a hat or a proportion and rebuild: body and face rings, a
-Mixamo-named game skeleton, weights written per ring, four face shape keys, and in-place
-clips named after the NPC minds' intents. Blender 5.2; see asset-src/lib/maple_assets.py.
+Mixamo-named game skeleton, weights written per ring, face and grip shape keys, and
+in-place clips named after the NPC minds' intents. Hand-held props (phone, radio, the
+reader's paper) are separate nodes in the canonical hand-socket frame, written into the
+character GLB and into props/<cast>.glb for other skeletons; the armature's extras carry a
+canonical bone map. Blender 5.2; see asset-src/lib/maple_assets.py.
 
     blender -b --factory-startup --python-exit-code 1 \\
       --python asset-src/characters/momiji-cast/build.py -- --cast sato
@@ -393,9 +396,16 @@ def build_body(b):
         b.tube(points, radii, 10, "jacket", weights, up=(0, -1, 0))
         hand_points = [(s * 0.215 * W, -0.01, 0.875), (s * 0.219 * W, -0.014, 0.81), (s * 0.222 * W, -0.018, 0.75), (s * 0.222 * W, -0.02, 0.715)]
         hand_radii = [(0.017, 0.028), (0.02, 0.041), (0.018, 0.037), (0.011, 0.02)]
+        first = len(b.bm.verts)
         b.tube(hand_points, hand_radii, 8, "skin", [blend((fore, 0.3), (hand, 0.7)), {hand: 1}, {hand: 1}, {hand: 1}], cap_end=True, up=(0, -1, 0))
+        thumb_first = len(b.bm.verts)
         thumb = [(s * 0.212 * W, -0.035, 0.835), (s * 0.207 * W, -0.052, 0.8), (s * 0.204 * W, -0.057, 0.78)]
         b.tube(thumb, [(0.01, 0.01), (0.009, 0.009), (0.006, 0.006)], 6, "skin", [{hand: 1}] * 3, cap_end=True, up=(1, 0, 0))
+        # The grip keys curl the finger rings below the knuckles and fold the thumb tip in.
+        key = "l" if side == "Left" else "r"
+        b.bm.verts.ensure_lookup_table()
+        b.sets[f"fingers-{key}"] = [i for i in range(first, thumb_first) if b.bm.verts[i].co.z < 0.8]
+        b.sets[f"thumb-{key}"] = [i for i in range(thumb_first, len(b.bm.verts)) if b.bm.verts[i].co.z < 0.82]
 
     # Neck.
     b.tube(
@@ -410,8 +420,9 @@ def build_body(b):
 
 
 def build_props(b):
+    """Worn props that stay in the body mesh. Hand-held props are separate nodes; see
+    build_hand_props and finalize_props."""
     props = PROFILE["props"]
-    hand_x = 0.222 * W
     if "shoulder-bag" in props:
         # Office bag at the right hip.
         box(b, Vector((-0.235 * W, 0.02, 0.94)), Vector((0.07, 0.26, 0.2)), "bag", {"Hips": 1})
@@ -419,14 +430,6 @@ def build_props(b):
         # A flat school bag worn at the right hip, with its strap across the back.
         box(b, Vector((-0.225 * W, 0.03, 0.9)), Vector((0.06, 0.3, 0.22)), "bag", {"Hips": 1})
         box(b, Vector((-0.2 * W, 0.045, 1.02)), Vector((0.02, 0.03, 0.14)), "bag", {"Hips": 0.5, "Spine": 0.5})
-    if "phone" in props:
-        box(b, Vector((-(hand_x + 0.013), -0.028, 0.78)), Vector((0.012, 0.04, 0.075)), "phone", {"RightHand": 1})
-    if "radio" in props:
-        # The repaired radio, carried by its handle in the left hand.
-        radio = Vector((hand_x + 0.012, -0.03, 0.64))
-        box(b, radio, Vector((0.06, 0.17, 0.1)), "radio", {"LeftHand": 1})
-        box(b, radio + Vector((0.031, -0.03, 0.0)), Vector((0.004, 0.07, 0.06)), "radio-grille", {"LeftHand": 1})
-        box(b, radio + Vector((0.0, 0.0, 0.065)), Vector((0.016, 0.1, 0.012)), "radio-grille", {"LeftHand": 1})
     if "ribbon" in props:
         # Uniform ribbon at the collar.
         box(b, Vector((0, -0.118, 1.365)), Vector((0.05, 0.012, 0.022)), "ribbon", {"Spine2": 1})
@@ -444,6 +447,41 @@ def box(b, center, size, color, weights, sets=()):
     corners = [b.vertex(center + Vector((x * hx, y * hy, z * hz)), weights, sets) for x in (-1, 1) for y in (-1, 1) for z in (-1, 1)]
     for quad in ((0, 1, 3, 2), (4, 6, 7, 5), (0, 4, 5, 1), (2, 3, 7, 6), (0, 2, 6, 4), (1, 5, 7, 3)):
         b.face([corners[i] for i in quad], color, smooth=False)
+
+
+# Hand-held props: (name, hand bone, pose they are authored in). Each becomes its own node,
+# re-expressed in that hand's socket frame (see socket_frame), so the game attaches it to a
+# socket on any skeleton instead of relying on skin weights.
+HAND_PROPS = {
+    "phone": {"bone": "RightHand", "hold": "one"},
+    "radio": {"bone": "LeftHand", "hold": "one"},
+    "newspaper": {"bone": "RightHand", "hold": "two", "pose": "sit", "second": "LeftHand"},
+}
+# Palm centre along the hand, as a fraction of forearm length. The game uses the same
+# number (world/character-motion.js PALM_FRACTION) to place sockets on other rigs.
+PALM_FRACTION = 0.3
+
+
+def build_hand_prop(name):
+    """Geometry for one hand-held prop in base (1.71 m) coordinates, weighted to its hand."""
+    b = Builder()
+    hand_x = 0.222 * W
+    palm = 0.788  # palm centre height of a hanging hand
+    if name == "phone":
+        # Across the palm (the right palm faces +X), the top showing past the thumb side of
+        # the closed fist the way a phone is carried between looks.
+        centre = Vector((-(hand_x - 0.022), -0.04, palm - 0.004))
+        box(b, centre, Vector((0.011, 0.078, 0.04)), "phone", {"RightHand": 1})
+    elif name == "radio":
+        # Carried by a handle bar that sits across the palm, the case hanging below the fist.
+        grip = Vector((hand_x - 0.012, -0.022, palm))
+        box(b, grip, Vector((0.018, 0.075, 0.016)), "radio-grille", {"LeftHand": 1})
+        for dy in (-0.034, 0.034):
+            box(b, grip + Vector((0.0, dy, -0.03)), Vector((0.012, 0.01, 0.05)), "radio-grille", {"LeftHand": 1})
+        case = grip + Vector((0.0, 0.0, -0.105))
+        box(b, case, Vector((0.06, 0.17, 0.1)), "radio", {"LeftHand": 1})
+        box(b, case + Vector((0.031, -0.03, 0.0)), Vector((0.004, 0.07, 0.06)), "radio-grille", {"LeftHand": 1})
+    return b
 
 
 def build_newspaper(b):
@@ -616,6 +654,21 @@ def add_shape_keys(obj, b):
         edge = abs(base[i].x) / 0.022
         smile[i] = Vector((math.copysign(0.0028 * edge, base[i].x), 0.001 * edge, 0.0055 * edge * edge))
     key("smile", smile)
+    # A closed hand for holding: the fingers roll in toward the palm about the knuckle line
+    # (front-to-back through z = 0.8), and the thumb tip folds over them. The palm faces the
+    # body, so the left fingers turn toward -X and the right toward +X.
+    for side, s in (("l", 1), ("r", -1)):
+        curl = {}
+        knuckles = [base[i] for i in b.sets[f"fingers-{side}"]]
+        pivot = Vector((sum(v.x for v in knuckles) / len(knuckles), -0.016, 0.806))
+        roll = Matrix.Rotation(math.radians(s * 105), 4, "Y")
+        for i in b.sets[f"fingers-{side}"]:
+            curl[i] = (pivot + roll @ (base[i] - pivot)) - base[i]
+        thumb_pivot = Vector((s * 0.212 * W, -0.035, 0.835))
+        fold = Matrix.Rotation(math.radians(-s * 35), 4, "Z") @ Matrix.Rotation(math.radians(-25), 4, "X")
+        for i in b.sets[f"thumb-{side}"]:
+            curl[i] = (thumb_pivot + fold @ (base[i] - thumb_pivot)) - base[i]
+        key(f"grip-{side}", curl)
 
 
 # ---- animation -------------------------------------------------------------------------
@@ -801,6 +854,29 @@ def clip_stretch(t):
     }
 
 
+def clip_turn(t):
+    """Small steps in place, for turning on the spot: each foot lifts and sets down where it
+    was, so the game can plant it and rotate the body over it."""
+    w = 2 * math.pi * t
+    lift_l = max(0.0, math.sin(w)) ** 1.5
+    lift_r = max(0.0, -math.sin(w)) ** 1.5
+    return {
+        "LeftUpLeg": [("x", -15 * lift_l)],
+        "RightUpLeg": [("x", -15 * lift_r)],
+        "LeftLeg": [("x", 28 * lift_l)],
+        "RightLeg": [("x", 28 * lift_r)],
+        "LeftFoot": [("x", -10 * lift_l)],
+        "RightFoot": [("x", -10 * lift_r)],
+        "Hips": [("z", 2.5 * math.sin(w))],
+        "Spine": [("z", -1.5 * math.sin(w))],
+        "LeftArm": [("y", -2), ("x", 3 * math.sin(w))],
+        "RightArm": [("y", 2), ("x", -3 * math.sin(w))],
+        "LeftForeArm": [("x", -10)],
+        "RightForeArm": [("x", -12)],
+        HIPS_OFFSET: (0, 0, -0.01 * (lift_l + lift_r)),
+    }
+
+
 def clip_board(t):
     """A single step up through a train door: right foot up, weight forward, left follows."""
     lift = ease(t / 0.35) * (1 - ease((t - 0.55) / 0.3))
@@ -834,8 +910,116 @@ CLIPS = [
     ("shelter", 90, clip_shelter, True),
     ("chat", 90, clip_chat, True),
     ("stretch", 120, clip_stretch, True),
+    ("turn", 24, clip_turn, True),
     ("board", 36, clip_board, False),
 ]
+
+# Canonical humanoid names (apps/game/src/characters/humanoid-bones.js) for this skeleton.
+# The game reads this from the armature's extras; a new rig only needs its own table.
+BONE_MAP = {
+    "hips": "Hips",
+    "spine": "Spine",
+    "chest": "Spine1",
+    "upperChest": "Spine2",
+    "neck": "Neck",
+    "head": "Head",
+    "eyeL": "eye-l",
+    "eyeR": "eye-r",
+    **{
+        f"{part}{s}": f"{side}{bone}"
+        for s, side in (("L", "Left"), ("R", "Right"))
+        for part, bone in (
+            ("shoulder", "Shoulder"),
+            ("upperArm", "Arm"),
+            ("lowerArm", "ForeArm"),
+            ("hand", "Hand"),
+            ("upperLeg", "UpLeg"),
+            ("lowerLeg", "Leg"),
+            ("foot", "Foot"),
+            ("toes", "ToeBase"),
+        )
+    },
+}
+
+
+def to_three(v):
+    """Blender (+Z up, facing -Y) to glTF/three.js (+Y up, facing +Z)."""
+    return Vector((v.x, v.z, -v.y))
+
+
+def to_blender(v):
+    return Vector((v.x, -v.z, v.y))
+
+
+def socket_frame(armature, bone_name, posed=False):
+    """World matrix (Blender space) of a hand socket, with the socket axes as columns.
+    The axes are defined in three.js space so the game can compute the same frame on any
+    rig: origin at the palm centre, +Y from wrist to fingers, +Z out of the palm (toward
+    the body when the arm hangs, downward in a T-pose), +X = Y x Z."""
+    bone = armature.data.bones[bone_name]
+    fore = bone.parent
+    hand, elbow = to_three(bone.head_local), to_three(fore.head_local)
+    along = (hand - elbow).normalized()
+    side = 1 if bone_name.startswith("Left") else -1
+    normal = Vector((-side, -1.0, 0.0))
+    normal = (normal - along * normal.dot(along)).normalized()
+    across = along.cross(normal)
+    origin = hand + along * (PALM_FRACTION * (hand - elbow).length)
+    frame = Matrix.Identity(4)
+    for column, axis in enumerate((across, along, normal)):
+        b_axis = to_blender(axis)
+        for row in range(3):
+            frame[row][column] = b_axis[row]
+    b_origin = to_blender(origin)
+    for row in range(3):
+        frame[row][3] = b_origin[row]
+    if posed:
+        pose = armature.pose.bones[bone_name].matrix @ bone.matrix_local.inverted()
+        frame = armature.matrix_world @ pose @ frame
+    return frame
+
+
+def frame_quaternion_three(matrix):
+    """A relative socket rotation as a three.js quaternion [x, y, z, w]."""
+    q = matrix.to_quaternion()
+    return [round(q.x, 5), round(q.y, 5), round(q.z, 5), round(q.w, 5)]
+
+
+def finalize_props(armature, props, scale):
+    """Turn skinned prop meshes into rigid nodes in their hand's socket frame. A prop held in
+    a pose (the reader's paper in `sit`) is captured in that pose; a second hand's grip is
+    stored as a point and rotation in the prop's frame for the game's arm IK."""
+    for obj in props:
+        spec = HAND_PROPS[obj.name]
+        pose_name = spec.get("pose")
+        if pose_name:
+            fn = dict((n, f) for n, _frames, f, _loop in CLIPS)[pose_name]
+            apply_pose(armature, evaluate(fn, 0.0), scale)
+        else:
+            reset_pose(armature)
+        bpy.context.view_layer.update()
+        evaluated = obj.evaluated_get(bpy.context.evaluated_depsgraph_get())
+        mesh = evaluated.to_mesh()
+        world = [obj.matrix_world @ v.co for v in mesh.vertices]
+        evaluated.to_mesh_clear()
+        frame = socket_frame(armature, spec["bone"], posed=True)
+        inverse = frame.inverted()
+        extras = {"prop": obj.name, "hand": "left" if spec["bone"].startswith("Left") else "right", "hold": spec["hold"]}
+        if spec.get("second"):
+            second = socket_frame(armature, spec["second"], posed=True)
+            relative = inverse @ second
+            extras["grip2"] = [round(c, 5) for c in relative.to_translation()] + frame_quaternion_three(relative)
+        reset_pose(armature)
+        obj.modifiers.clear()
+        obj.vertex_groups.clear()
+        obj.parent = None
+        obj.matrix_world = Matrix.Identity(4)
+        for vertex, point in zip(obj.data.vertices, world):
+            local = inverse @ point  # socket-frame coordinates
+            vertex.co = to_blender(local)  # exported back to exactly these coordinates
+        obj.data.update()
+        for key, value in extras.items():
+            obj[key] = value
 
 
 def with_posture(turns):
@@ -980,16 +1164,26 @@ def build(cast):
     skin(body, armature, builder, bones)
     add_shape_keys(body, builder)
     meshes = [body]
-    if "newspaper" in PROFILE["props"]:
-        paper_builder = Builder()
-        build_newspaper(paper_builder)
-        paper = ma.mesh_from_bmesh("newspaper", paper_builder.bm, paper_builder.colors, material)
-        skin(paper, armature, paper_builder, bones)
-        meshes.append(paper)
+    props = []
+    for prop_name in HAND_PROPS:
+        if prop_name not in PROFILE["props"]:
+            continue
+        prop_builder = Builder()
+        if prop_name == "newspaper":
+            build_newspaper(prop_builder)
+        else:
+            prop_builder = build_hand_prop(prop_name)
+        prop = ma.mesh_from_bmesh(prop_name, prop_builder.bm, prop_builder.colors, material)
+        for polygon in prop.data.polygons:
+            polygon.use_smooth = False
+        skin(prop, armature, prop_builder, bones)
+        props.append(prop)
+    meshes += props
 
     # Children first, so their parent inverse stays consistent, then the armature.
     apply_height([*meshes, armature], armature, scale)
     build_clips(armature, scale)
+    finalize_props(armature, props, scale)
 
     walk_speed = foot_speed(armature, clip_walk, 36, scale)
     hurry_speed = foot_speed(armature, clip_hurry, 27, scale)
@@ -999,6 +1193,7 @@ def build(cast):
     armature["walkSpeed"] = walk_speed
     armature["hurrySpeed"] = hurry_speed
     armature["seatHeight"] = seat
+    armature["boneMap"] = BONE_MAP
 
     height = max(v.co.z for v in body.data.vertices)
     lowest = min(v.co.z for v in body.data.vertices)
@@ -1010,6 +1205,8 @@ def build(cast):
         "triangles": sum(ma.triangle_count(m) for m in meshes),
         "vertices": sum(len(m.data.vertices) for m in meshes),
         "meshes": [m.name for m in meshes],
+        "props": {p.name: {k: (list(p[k]) if k == "grip2" else p[k]) for k in ("hand", "hold", "grip2") if k in p} for p in props},
+        "boneMap": BONE_MAP,
         "materials": len(body.data.materials),
         "bones": [bone for bone, *_ in bones],
         "boneCount": len(bones),
@@ -1030,6 +1227,12 @@ def build(cast):
     os.makedirs(os.path.dirname(out), exist_ok=True)
     ma.export_glb(out, [armature, *meshes], apply=False)
     report["glbBytes"] = os.path.getsize(out)
+    if props:
+        # The same hand props alone, in socket space, for other skeletons (the VRM cast).
+        props_out = os.path.join(os.path.dirname(out), "props", f"{cast}.glb")
+        os.makedirs(os.path.dirname(props_out), exist_ok=True)
+        ma.export_glb(props_out, props, apply=False)
+        report["propsGlbBytes"] = os.path.getsize(props_out)
     ma.write_report(report_path, report)
     if ARGS.render:
         render(os.path.join(ARGS.render, cast), armature, body, scale)

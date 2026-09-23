@@ -79,11 +79,19 @@ export function createVrmActor({ THREE, vrm, m, clipSet, mobile = false }) {
     face,
     rig,
     hipsHeight,
-    /** Advance clips, posture, face and springs. Call after the pose is chosen. */
-    update(dt) {
+    /**
+     * Advance clips, posture, face and springs. Call after the pose is chosen. `afterPose`
+     * runs on the finished normalized pose, before it is copied to the skinned joints, so
+     * procedural layers (look-at, IK, foot planting) are what the springs and skin see.
+     */
+    update(dt, { afterPose = null } = {}) {
       mixer.update(dt);
       // Clips set every bone each frame, so the stoop is added to a fresh pose each time.
       if (actions.size) for (const { node, q } of posture) node?.quaternion.multiply(q);
+      if (afterPose) {
+        root.updateMatrixWorld(true);
+        afterPose();
+      }
       face.flush();
       if (!settled) {
         // Springs start from the first animated pose, not from the T-pose.

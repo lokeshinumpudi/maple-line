@@ -109,7 +109,7 @@ The game needs locomotion clips chosen by speed, plus activity clips chosen by i
 | `chat`        | yes  | intent                            | Upper body only if layered over `idle`.                                                                                      |
 | `wave`        | no   | intent                            | Right arm. Can be additive over idle or walk.                                                                                |
 | `sit`         | yes  | intent                            | Needs a bench socket height. Current benches are about 2.5 m wide.                                                           |
-| `check-phone` | yes  | intent                            | Phone prop parented to a hand bone or a named socket.                                                                        |
+| `check-phone` | yes  | intent                            | Phone prop in the hand socket (built; see docs/CHARACTER-MOTION.md).                                                         |
 | `stretch`     | no   | intent                            |                                                                                                                              |
 | `watch-train` | yes  | intent                            | Head turn toward the train is better done in code (a head bone offset) than baked into the clip.                             |
 | `shelter`     | yes  | intent                            | Hunched, hand over head or umbrella.                                                                                         |

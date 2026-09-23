@@ -33,6 +33,7 @@ const CAST_CLIPS = [
   'shelter',
   'sit',
   'stretch',
+  'turn',
   'walk',
   'watch-train',
   'wave',
@@ -49,7 +50,14 @@ test('every Momiji cast GLB carries the clip, face, skeleton and gait contract',
     const { json, size } = glbJson(`apps/game/public/${path}`);
     assert.deepEqual(json.animations.map((a) => a.name).sort(), CAST_CLIPS, path);
     const face = json.meshes.find((mesh) => mesh.extras?.targetNames);
-    assert.deepEqual(face.extras.targetNames, ['blink-l', 'blink-r', 'jaw-open', 'smile']);
+    assert.deepEqual(face.extras.targetNames, [
+      'blink-l',
+      'blink-r',
+      'jaw-open',
+      'smile',
+      'grip-l',
+      'grip-r',
+    ]);
     // Morph weights must start neutral, or the face loads with closed eyes and an open jaw.
     assert.ok((face.weights ?? []).every((weight) => weight === 0));
     const joints = json.skins[0].joints.map((index) => json.nodes[index].name);
@@ -68,9 +76,35 @@ test('every Momiji cast GLB carries the clip, face, skeleton and gait contract',
   }
 });
 
-test('the reader carries a separate newspaper mesh for the seated pose', () => {
-  const { json } = glbJson('apps/game/public/models/characters/reader-ishida.glb');
-  assert.ok(json.nodes.some((node) => node.name === 'newspaper'));
+test('hand props are separate socket-space nodes, also shipped alone for other rigs', () => {
+  const expected = {
+    'commuter-hero': { phone: 'right' },
+    'student-riko': { phone: 'right', radio: 'left' },
+    'reader-ishida': { newspaper: 'right' },
+  };
+  for (const [asset, props] of Object.entries(expected)) {
+    const { json } = glbJson(`apps/game/public/models/characters/${asset}.glb`);
+    for (const [name, hand] of Object.entries(props)) {
+      const node = json.nodes.find((item) => item.name === name);
+      assert.ok(node, `${asset} has no ${name} node`);
+      // Rigid, not skinned: the game parents it to a hand socket.
+      assert.equal(node.skin, undefined, `${asset} ${name} is skinned`);
+      assert.equal(node.extras.prop, name);
+      assert.equal(node.extras.hand, hand);
+    }
+    const rig = json.nodes.find((node) => node.extras?.boneMap);
+    assert.equal(rig.extras.boneMap.handL, 'LeftHand');
+  }
+  const paper = glbJson('apps/game/public/models/characters/reader-ishida.glb').json.nodes.find(
+    (node) => node.name === 'newspaper',
+  );
+  assert.equal(paper.extras.hold, 'two');
+  assert.equal(paper.extras.grip2.length, 7);
+  for (const cast of ['sato', 'riko', 'ishida']) {
+    const { json, size } = glbJson(`apps/game/public/models/characters/props/${cast}.glb`);
+    assert.ok(size < 16 * 1024, `props/${cast}.glb is ${size} bytes`);
+    assert.ok(json.nodes.every((node) => node.extras?.prop));
+  }
 });
 
 test('the cast build reports meet the milestone budgets', () => {

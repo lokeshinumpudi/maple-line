@@ -2325,7 +2325,15 @@ function frame(now) {
     stationActivity: activeDirectorDecision()?.stationActivity ?? 'commute',
     minds,
   });
-  for (const hero of heroCasts) hero.update(state.paused ? 0 : dt, { paused: state.paused });
+  // Heroes look at a speaker, the train, or the camera when a portrait frames them.
+  const heroShot = view === 'director' ? filmDirector.getState().shot : null;
+  const heroContext = {
+    paused: state.paused,
+    trainPosition: train[0].position,
+    camera,
+    portrait: heroShot?.type === 'portrait' ? (heroShot.subject?.person ?? null) : null,
+  };
+  for (const hero of heroCasts) hero.update(state.paused ? 0 : dt, heroContext);
   mindsStop ??= nearestUpcomingStop();
   mindsStopAge += realDt;
   if (mindsStopAge > 0.5) {
