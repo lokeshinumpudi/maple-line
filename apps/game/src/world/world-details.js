@@ -1,5 +1,5 @@
 import { createSurfaceDetail } from '../rendering/surface-detail.js';
-import { createPopulation } from '../simulation/population.js';
+import { createPopulation, READING_BENCH_X } from '../simulation/population.js';
 // Authored countryside landmarks. All coordinates are relative to the winding river.
 export const worldClearings = [
   { minZ: -455, maxZ: -280, minU: -140, maxU: -21 },
@@ -362,10 +362,16 @@ export function addWorldDetails({
     const p = population.stationPoint(x, z, y);
     block(material, p.x, y, p.z, w, h, d, stationRotation);
   };
-  for (const z of [-31, -19, -7]) {
-    stationBlock(palette.wood, 6.1, 5.87, z, 1.1, 0.17, 3.5);
-    stationBlock(palette.wood, 6.65, 6.28, z, 0.13, 0.75, 3.5);
-    for (const end of [-1, 1]) stationBlock(palette.ink, 6.1, 5.58, z + end * 1.3, 0.8, 0.45, 0.14);
+  // The middle bench stands in front of the station building, whose wall is at x 5.5
+  // from z -20.5 to -9.5; at x 6.1 it (and the reader on it) would sit inside the wall.
+  for (const [x, z] of [
+    [6.1, -31],
+    [READING_BENCH_X, -19],
+    [6.1, -7],
+  ]) {
+    stationBlock(palette.wood, x, 5.87, z, 1.1, 0.17, 3.5);
+    stationBlock(palette.wood, x + 0.55, 6.28, z, 0.13, 0.75, 3.5);
+    for (const end of [-1, 1]) stationBlock(palette.ink, x, 5.58, z + end * 1.3, 0.8, 0.45, 0.14);
   }
   stationBlock(palette.red, 6.4, 6.45, 9, 1.05, 2.2, 0.9);
   stationBlock(palette.cream, 5.84, 6.7, 9, 0.05, 1.1, 0.69);
