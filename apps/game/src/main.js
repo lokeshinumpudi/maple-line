@@ -72,6 +72,7 @@ import {
 } from './share/episode-store.js';
 import { shareLink } from './share/share-link.js';
 import { createEpisodeVoice } from './drama/episode-voice.js';
+import { createManifestVoice } from './drama/voice-manifest.js';
 import { NARRATION_LANGUAGES } from '@maple-line/voice-score';
 import { createModelLoader, createGltfLoader } from './rendering/model-loader.js';
 import { createHeroCast, MOMIJI_CAST } from './world/hero-cast.js';
@@ -1387,6 +1388,8 @@ const episodeAudio = document.createElement('audio');
 episodeAudio.hidden = true;
 episodeAudio.dataset.source = 'sarvam-drama';
 document.body.append(episodeAudio);
+/** Set by render mode: holds each line for its pre-generated clip. */
+let renderVoice = null;
 const episodeVoice = createEpisodeVoice({
   audio: episodeAudio,
   fetchImpl: fetchDirector,
@@ -1459,7 +1462,10 @@ const episodeRunner = createEpisodeRunner(
       toggleDoors();
       return (action === 'open') === state.doorsOpen;
     },
-    voice: episodeVoice,
+    // Render mode can swap in a pre-generated voice manifest (see __mapleRender.play).
+    get voice() {
+      return renderVoice ?? episodeVoice;
+    },
     // At rest, below the 0.2 m/s door interlock, so a door cue after arrival is accepted.
     isStopped: () => Math.abs(state.speed) < 0.05,
     doorsClosed: () => !state.doorsOpen && !state.doorsClosing,
@@ -1527,7 +1533,7 @@ function watchEpisode(source) {
   episodeVoice.unblock();
   const result = episodeRunner.play(source);
   episodeHandoff?.showPlaying({ title: episodeHeading(episodeRunner.current()) });
-  const voice = episodeVoice.status();
+  const voice = (renderVoice ?? episodeVoice).status();
   if (voice.reason) filmCaptions.show({ kind: 'note', text: voice.reason, seconds: 6 });
   return result;
 }
@@ -3573,8 +3579,12 @@ function installRenderControl() {
         title: episode.title,
         number: episode.number,
       })),
-    /** Starts an episode by id, alias (the-1742-1) or number, or a draft object. */
-    play(source) {
+    /**
+     * Starts an episode by id, alias (the-1742-1) or number, or a draft object. A voice
+     * manifest from `pnpm voice:episode` holds each line for its clip and shows its
+     * translated subtitles; the audio itself is mixed in by the render script.
+     */
+    play(source, { voiceManifest = null } = {}) {
       const episode = typeof source === 'object' && source ? source : findEpisode(source);
       if (!episode) throw new TypeError(`Unknown episode ${JSON.stringify(source)}.`);
       renderTimeline.reset();
@@ -3583,6 +3593,7 @@ function installRenderControl() {
       endCardFrame = null;
       ended = false;
       renderEventTime = 0;
+      renderVoice = voiceManifest ? createManifestVoice(voiceManifest) : null;
       const playing = watchEpisode(episode);
       current = { ...episode, ...playing.episode };
       return { episode: playing.episode, plannedSeconds: playing.episode.plannedSeconds };

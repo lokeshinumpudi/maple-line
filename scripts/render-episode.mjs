@@ -99,8 +99,14 @@ async function loadAudio(path) {
   if (!path) return { clips: [] };
   const file = resolve(path);
   if (extname(file).toLowerCase() !== '.json') return { clips: [{ file, t: 0 }] };
-  const manifest = normalizeAudioManifest(JSON.parse(await readFile(file, 'utf8')));
+  const raw = JSON.parse(await readFile(file, 'utf8'));
+  const manifest = normalizeAudioManifest(
+    Array.isArray(raw) ? raw : { version: raw.version, clips: raw.clips },
+  );
   return {
+    // A `pnpm voice:episode` manifest also carries line lengths and translated text,
+    // which the page uses to hold each line for its clip.
+    voice: raw?.kind === 'maple-line-episode-voice' ? raw : null,
     clips: manifest.clips.map((clip) => ({
       ...clip,
       file: isAbsolute(clip.file) ? clip.file : resolve(dirname(file), clip.file),
@@ -202,8 +208,8 @@ async function renderAspect(browser, base, aspect) {
   await page.waitForFunction(() => window.__mapleRender, null, { timeout: 90000 });
   const ready = await page.evaluate(() => window.__mapleRender.ready());
   const played = await page.evaluate(
-    (source) => window.__mapleRender.play(source),
-    draft ?? args.episode,
+    ([source, voiceManifest]) => window.__mapleRender.play(source, { voiceManifest }),
+    [draft ?? args.episode, audio.voice ?? null],
   );
   const episodeId = played.episode.id;
   const tag = aspect.replace(':', 'x');
