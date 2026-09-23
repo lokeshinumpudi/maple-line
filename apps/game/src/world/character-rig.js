@@ -102,11 +102,9 @@ export function createClipBlender(
   };
 }
 
-const approach = (value, target, rate, dt) => value + (target - value) * (1 - Math.exp(-dt * rate));
-
 /**
  * A critically damped spring toward `target` (exact step, stable at any dt). Unlike a
- * first-order `approach`, its velocity is continuous, so a target that jumps or a layer that
+ * first-order approach, its velocity is continuous, so a target that jumps or a layer that
  * switches on does not kick the bones it drives. `omega` is the natural frequency (1/s).
  */
 export function spring(state, target, omega, dt) {
@@ -118,6 +116,11 @@ export function spring(state, target, omega, dt) {
   return state.x;
 }
 const springState = (x = 0) => ({ x, v: 0 });
+
+/** Grip spring (1/s): about 95% of the way in 0.25 s. */
+const GRIP_OMEGA = 4.7 / 0.25;
+/** Cradle letting go (1/s): about 95% down in 0.6 s. */
+const CRADLE_RELEASE = 4.7 / 0.6;
 
 /** Layers the rig applies; all on by default. Switched off one by one for measurement. */
 export const RIG_LAYERS = Object.freeze(['life', 'look', 'hands', 'grip', 'feet']);
@@ -223,7 +226,8 @@ export function createCharacterRig(
     R: { lock: null, weight: 0, ramp: 0, release: 0 },
   };
   const holds = { L: 0, R: 0 };
-  const grips = { L: 0.3, R: 0.3 };
+  // Grip weight per hand: 0 leaves the clip's own fingers, 1 is the closed grip.
+  const grips = { L: springState(), R: springState() };
   const second = new Map();
   const cradles = new Map();
   const rootQ = new THREE.Quaternion();
@@ -421,7 +425,12 @@ export function createCharacterRig(
       if (prop.cradle && sockets[prop.side]) {
         const cradleState = cradleSprings.get(prop) ?? springState();
         cradleSprings.set(prop, cradleState);
-        const w = Math.min(1, Math.max(0, spring(cradleState, cradle ? 1 : 0, 3.5, dt)));
+        // Up gently; down quicker, so a clip that takes the hands (board, a gesture) is not
+        // fought for a second and a half by a cradle that is still letting go.
+        const w = Math.min(
+          1,
+          Math.max(0, spring(cradleState, cradle ? 1 : 0, cradle ? 3.5 : CRADLE_RELEASE, dt)),
+        );
         cradles.set(prop, w);
         if (w > 0.002) {
           const at = prop.cradle.at;
@@ -447,36 +456,49 @@ export function createCharacterRig(
     }
   }
 
-  /** Rotation of a bone away from its rest orientation, in radians. */
-  const bentBy = (bone) => {
-    const r = rest.get(bone);
-    return r ? 2 * Math.acos(Math.min(1, Math.abs(r.q.dot(bone.quaternion)))) : 0;
-  };
   /**
-   * Grip: a holding hand closes. Clips with finger tracks (UAL) already curl or relax the
-   * fingers, so each joint is only topped up to the grip's angle, never bent past it: a fist
-   * in the clip stays a fist, and a flat hand from a clip without fingers relaxes a little.
+   * Grip poses: each finger joint of a hand bent about the palm's across axis (socket X at
+   * bind), 0.55 rad a joint (0.3 on the thumb). Built once from the bind pose, so the target
+   * never depends on what the clip's fingers are doing.
+   */
+  const gripPose = {};
+  for (const side of ['L', 'R']) {
+    if (!sockets[side] || !handOffset[side] || !bones[`hand${side}`]) continue;
+    const across = new THREE.Vector3(1, 0, 0).applyQuaternion(
+      new THREE.Quaternion().setFromRotationMatrix(socketWorld(side)),
+    );
+    gripPose[side] = [];
+    for (const finger of FINGERS)
+      for (let joint = 1; joint <= 3; joint++) {
+        const bone = bones[`${finger}${side}${joint}`];
+        if (!bone || !rest.has(bone)) continue;
+        const axis = across
+          .clone()
+          .applyQuaternion(bone.getWorldQuaternion(new THREE.Quaternion()).invert())
+          .normalize();
+        const bend = new THREE.Quaternion().setFromAxisAngle(axis, finger === 'thumb' ? 0.3 : 0.55);
+        gripPose[side].push({ bone, q: rest.get(bone).q.clone().multiply(bend) });
+      }
+  }
+  /**
+   * Grip: a hand holding something closes on it. The grip owns a hand's fingers only while
+   * it holds a prop, and takes them over (and gives them back) along a critically damped
+   * spring, about 0.25 s, from whatever the clip is doing. An empty hand keeps the clip's own
+   * finger motion (UAL animates fingers), so hands stay alive. The old rule, which topped
+   * each joint up to a minimum bend, kinked the finger curves every time a clip's finger
+   * crossed that bend and snapped them (up to 470 rad/s^2 in sit-enter and check-phone).
    */
   function curlFingers(dt) {
     for (const side of ['L', 'R']) {
-      grips[side] = approach(grips[side], holds[side] > 0.5 ? 1 : 0.3, 10, dt);
-      holds[side] = 0;
-      const index = face?.morphTargetDictionary?.[`grip-${side.toLowerCase()}`];
-      if (index !== undefined) face.morphTargetInfluences[index] = grips[side];
-      // Rigs with finger bones: roll each finger chain about the palm's across axis.
-      if (!sockets[side] || !handOffset[side]) continue;
-      const across = new THREE.Vector3(1, 0, 0).applyQuaternion(
-        new THREE.Quaternion().setFromRotationMatrix(socketWorld(side)),
+      const w = Math.min(
+        1,
+        Math.max(0, spring(grips[side], holds[side] > 0.5 ? 1 : 0, GRIP_OMEGA, dt)),
       );
-      for (const finger of FINGERS) {
-        const angle = (finger === 'thumb' ? 0.3 : 0.55) * grips[side];
-        for (let joint = 1; joint <= 3; joint++) {
-          const bone = bones[`${finger}${side}${joint}`];
-          if (!bone) continue;
-          const more = angle - bentBy(bone);
-          if (more > 0.002) rotateAbout(bone, across, more);
-        }
-      }
+      // The Blender figures have no finger bones: a grip shape key, relaxed at 0.3.
+      const index = face?.morphTargetDictionary?.[`grip-${side.toLowerCase()}`];
+      if (index !== undefined) face.morphTargetInfluences[index] = 0.3 + 0.7 * w;
+      if (!(w > 0.001) || !gripPose[side]) continue;
+      for (const { bone, q } of gripPose[side]) bone.quaternion.slerp(q, w);
     }
   }
 
@@ -491,6 +513,8 @@ export function createCharacterRig(
     return start + span * (1 - Math.exp(-(distance - start) / span));
   };
   let stance = null;
+  // 1 standing, 0 walking: how much a planted foot also keeps its orientation.
+  const standing = springState(1);
   let pelvisDrop = 0;
   const pelvis = springState();
   /** Seconds a foot takes to plant fully or to let go; eased with smoothstep. */
@@ -504,6 +528,7 @@ export function createCharacterRig(
    */
   function plantFeet(dt, enabled, groundY, moving) {
     const legs = [];
+    const still = Math.min(1, Math.max(0, spring(standing, moving ? 0 : 1, 6, dt)));
     for (const side of ['L', 'R']) {
       const foot = bones[`foot${side}`];
       const upper = bones[`upperLeg${side}`];
@@ -515,7 +540,8 @@ export function createCharacterRig(
         ? Math.hypot(position.x - f.previous.x, position.z - f.previous.z) / Math.max(dt, 1e-3)
         : 0;
       f.previous = position.clone();
-      legs.push({ side, foot, upper, lower, position, speed, f });
+      const turn = foot.getWorldQuaternion(new THREE.Quaternion());
+      legs.push({ side, foot, upper, lower, position, turn, speed, f });
     }
     const floorOf = (leg) => groundY + footRest[leg.side];
     const lift = (leg) => leg.position.y - floorOf(leg);
@@ -533,22 +559,33 @@ export function createCharacterRig(
       const floor = floorOf(leg);
       const bearing = enabled && (moving ? leg.side === stance : lift(leg) < 0.06 * heightScale);
       f.release = Math.max(0, f.release - dt);
-      if (
-        f.lock &&
-        !f.release &&
-        Math.hypot(f.lock.x - leg.position.x, f.lock.z - leg.position.z) > 0.3 * heightScale
-      ) {
-        // Left far behind (a turn on the spot, a stop): let the foot go smoothly and plant
-        // it again where the animation has it, instead of snapping it across.
-        f.release = LIFT_SECONDS;
+      const behind = f.lock ? Math.hypot(f.lock.x - leg.position.x, f.lock.z - leg.position.z) : 0;
+      if (f.lock && !f.release && behind > 0.3 * heightScale) {
+        // Left far behind (a turn on the spot, a stop, a clip that steps): let the foot go
+        // smoothly and plant it again where the animation has it, instead of snapping it
+        // across. The farther it has to go, the longer it takes (at most 0.6 m/s), so a
+        // standing figure's leg does not whip across in 0.2 s.
+        f.lift = Math.min(0.6, Math.max(LIFT_SECONDS, behind / 0.6));
+        f.release = f.lift;
       }
+      if (!f.release && f.ramp <= 0) f.lift = LIFT_SECONDS;
       const planting = bearing && !f.release;
       leg.planting = planting;
-      if (planting && !f.lock) f.lock = leg.position.clone();
+      if (planting && !f.lock) {
+        f.lock = leg.position.clone();
+        f.lockTurn = leg.turn.clone();
+      } else if (planting && !f.planting && f.lock) {
+        // Landing again before the last plant has let go (a quick cadence: hurrying steps
+        // outrun the 0.2 s release). The old lock is a stride behind; pin where the foot is
+        // drawn now instead, so the foot is not pulled back to it.
+        f.lock = leg.position.clone().lerp(f.lock, f.weight);
+        f.lockTurn = leg.turn.clone().slerp(f.lockTurn, f.weight);
+      }
+      f.planting = planting;
       // A linear ramp shaped by smoothstep: the weight starts and ends with zero velocity.
       f.ramp = Math.min(
         1,
-        Math.max(0, f.ramp + (planting ? dt / PLANT_SECONDS : -dt / LIFT_SECONDS)),
+        Math.max(0, f.ramp + (planting ? dt / PLANT_SECONDS : -dt / (f.lift ?? LIFT_SECONDS))),
       );
       f.weight = smoothstep(f.ramp);
       if (!planting && f.ramp <= 0) f.lock = null;
@@ -586,7 +623,10 @@ export function createCharacterRig(
       const distance = toTarget.length();
       const eased = softReach(distance, legLength[leg.side]);
       if (eased < distance) leg.target.copy(hip).addScaledVector(toTarget, eased / distance);
-      const keep = leg.foot.getWorldQuaternion(new THREE.Quaternion());
+      // The foot keeps the clip's world orientation; standing, a planted foot also keeps the
+      // orientation it landed with, so the IK's small leg corrections do not rock it.
+      const keep = leg.turn.clone();
+      if (leg.f.lock && leg.f.lockTurn) keep.slerp(leg.f.lockTurn, leg.f.weight * still);
       const knee = leg.lower.getWorldPosition(v()).addScaledVector(axes.z, 0.4);
       applyTwoBoneIK(THREE, leg.upper, leg.lower, leg.foot, leg.target, knee, 1, s);
       setBoneWorldQuaternion(leg.foot, keep, 1, s);
@@ -618,6 +658,7 @@ export function createCharacterRig(
       axes.y.set(0, 1, 0).applyQuaternion(rootQ);
       axes.z.set(0, 0, 1).applyQuaternion(rootQ);
       const on = (layer) => o.layers?.[layer] !== false;
+      holds.L = holds.R = 0;
       if (on('life')) life(dt, o.idle ?? 0, o.breath ?? 1);
       if (on('look'))
         lookAt(dt, o.lookTarget ?? null, {
@@ -644,7 +685,7 @@ export function createCharacterRig(
           L: { planted: Boolean(feet.L.lock), weight: round(feet.L.weight) },
           R: { planted: Boolean(feet.R.lock), weight: round(feet.R.weight) },
         },
-        grips: { L: round(grips.L), R: round(grips.R) },
+        grips: { L: round(Math.max(0, grips.L.x)), R: round(Math.max(0, grips.R.x)) },
         props: props.map((prop) => ({
           name: prop.name,
           hand: prop.side,

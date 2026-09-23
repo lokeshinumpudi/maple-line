@@ -358,6 +358,9 @@ export function createSteering(options = {}) {
           filtered.x = target.x;
           filtered.z = target.z;
           lastFiltered = { ...filtered };
+          // The walk that led here is over: a stale velocity would lead the body off when the
+          // hold ends (standing up, the studio switching steering back on).
+          targetVelocity.x = targetVelocity.z = 0;
           return state;
         }
         snap(target);
@@ -431,6 +434,88 @@ export function createSteering(options = {}) {
 }
 
 // ---- playback -----------------------------------------------------------------------------
+
+/**
+ * Monotone cubic (Fritsch-Carlson) tangents at key k of one component, for keys at times
+ * `t` with values `p` (k-1, k, k+1; missing neighbours are null).
+ */
+function monotoneTangent(tPrev, pPrev, t, p, tNext, pNext) {
+  const left = pPrev === null ? null : (p - pPrev) / (t - tPrev);
+  const right = pNext === null ? null : (pNext - p) / (tNext - t);
+  if (left === null) return right ?? 0;
+  if (right === null) return left;
+  // A turning point or a hold: flat, so a held pose stays exactly held.
+  if (left * right <= 0) return 0;
+  // Harmonic mean of the two slopes: never overshoots between keys.
+  return (2 * left * right) / (left + right);
+}
+
+/**
+ * Replace a clip's linear quaternion interpolation with a smooth one. Retargeted clips are
+ * keyed at 30 fps and then thinned, and linear interpolation turns every key into a step in
+ * angular velocity: at a 60 Hz frame that step reads as an acceleration spike (the jitter
+ * metric doubled on every fast joint, and finger curls snapped). A monotone cubic through the
+ * same keys has continuous velocity, never overshoots a key and keeps holds exactly still.
+ * Components are interpolated in the first key's hemisphere and normalised. `loop` clips
+ * take their end tangents across the seam, so a loop does not kink where it wraps.
+ */
+export function smoothQuaternionTracks(THREE, clip, { loop = true } = {}) {
+  const duration = clip.duration;
+  class SmoothQuaternion extends THREE.Interpolant {
+    interpolate_(i1, t0, t, t1) {
+      const times = this.parameterPositions;
+      const values = this.sampleValues;
+      const out = this.resultBuffer;
+      const n = times.length;
+      const i0 = i1 - 1;
+      const wraps = loop && Math.abs(times[n - 1] - duration) < 1e-4 && times[0] < 1e-4;
+      // Neighbours of the segment's two keys, across the seam for loops.
+      const prevIndex = i0 > 0 ? i0 - 1 : wraps && n > 2 ? n - 2 : -1;
+      const prevTime = i0 > 0 ? times[i0 - 1] : prevIndex >= 0 ? times[prevIndex] - duration : 0;
+      const nextIndex = i1 < n - 1 ? i1 + 1 : wraps && n > 2 ? 1 : -1;
+      const nextTime =
+        i1 < n - 1 ? times[i1 + 1] : nextIndex >= 0 ? times[nextIndex] + duration : 0;
+      const sign = (index) => {
+        if (index < 0) return 1;
+        let dot = 0;
+        for (let c = 0; c < 4; c++) dot += values[i0 * 4 + c] * values[index * 4 + c];
+        return dot < 0 ? -1 : 1;
+      };
+      const s1 = sign(i1);
+      const sp = sign(prevIndex);
+      const sn = sign(nextIndex);
+      const h = t1 - t0;
+      const u = (t - t0) / h;
+      const u2 = u * u;
+      const u3 = u2 * u;
+      const h00 = 2 * u3 - 3 * u2 + 1;
+      const h10 = u3 - 2 * u2 + u;
+      const h01 = -2 * u3 + 3 * u2;
+      const h11 = u3 - u2;
+      let length = 0;
+      for (let c = 0; c < 4; c++) {
+        const p0 = values[i0 * 4 + c];
+        const p1 = values[i1 * 4 + c] * s1;
+        const pp = prevIndex >= 0 ? values[prevIndex * 4 + c] * sp : null;
+        const pn = nextIndex >= 0 ? values[nextIndex * 4 + c] * sn : null;
+        const m0 = monotoneTangent(prevTime, pp, t0, p0, t1, p1);
+        const m1 = monotoneTangent(t0, p0, t1, p1, nextTime, pn);
+        out[c] = h00 * p0 + h10 * h * m0 + h01 * p1 + h11 * h * m1;
+        length += out[c] * out[c];
+      }
+      length = Math.sqrt(length) || 1;
+      for (let c = 0; c < 4; c++) out[c] /= length;
+      return out;
+    }
+  }
+  for (const track of clip.tracks) {
+    if (track.ValueTypeName !== 'quaternion' || track.times.length < 3) continue;
+    track.createInterpolant = function (result) {
+      return new SmoothQuaternion(this.times, this.values, this.getValueSize(), result);
+    };
+  }
+  return clip;
+}
 
 /** Clip timeScale that makes the feet travel at the body's actual speed. */
 export function strideTimeScale(speed, clipSpeed, { min = 0.3, max = 1.6 } = {}) {

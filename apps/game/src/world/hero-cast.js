@@ -3,6 +3,7 @@ import { createVrmActor } from '../characters/vrm-actor.js';
 import { humanoidRigFor } from '../characters/humanoid-bones.js';
 import { gripOverrides } from '../characters/cast-tuning.js';
 import {
+  GAITS,
   attachProps,
   createHandSockets,
   createSteering,
@@ -56,7 +57,16 @@ export const MOMIJI_CAST = Object.freeze([
     pocketed: ['phone'],
     // Walking with the radio: the carry walk holds both hands in front without an arm swing,
     // and the radio stays in her left hand. No arm IK runs against that clip.
-    carry: { prop: 'radio', walk: 'walk-carry', hurry: 'walk-carry' },
+    // Standing, the radio is cradled in both hands, so the folded-arms clips (watch-train,
+    // shelter) and the stretch, which want the same arms, play as the idle under the cradle.
+    carry: {
+      prop: 'radio',
+      walk: 'walk-carry',
+      hurry: 'walk-carry',
+      'watch-train': 'idle',
+      shelter: 'idle',
+      stretch: 'idle',
+    },
   },
   // The Momiji reading bench is 0.61 m above the reader's figure origin, matching the
   // instanced figure's seated thighs (population.js reading pose).
@@ -111,6 +121,13 @@ const IDLE_LIFE = {
 };
 /** m/s either side of the walk/hurry boundary before the gait changes. */
 export const GAIT_HYSTERESIS = 0.1;
+/**
+ * The walk/hurry boundary is never below this (m/s). UAL's walk is slow for a short figure
+ * (0.9 m/s for Riko, 0.95 for Mr. Ishida), so the midpoint of the model's walk and hurry
+ * speeds fell inside the residents' ordinary 1.05-1.3 m/s pace and an unhurried Mr. Ishida
+ * hurried. Ordinary walking stays a walk, played up to 1.7 times its authored cadence.
+ */
+export const HURRY_FROM = 1.35;
 /** Clips that are a sitting pose: the feet are not planted and idle life rests. */
 const SIT_CLIPS = new Set(['sit', 'sit-enter', 'sit-exit']);
 /** A mind's intent must hold this long before the body changes gesture: no flicker. */
@@ -147,13 +164,15 @@ export function heroClip({
   if (seat === 'exit') return { clip: 'sit-exit', timeScale: 1, once: true };
   if (SEATED_POSES.has(pose)) return { clip: 'sit', timeScale: 1 };
   if (speed > 0.25) {
-    const boundary = (walkSpeed + hurrySpeed) / 2 + (hurrying ? -GAIT_HYSTERESIS : GAIT_HYSTERESIS);
+    const boundary =
+      Math.max(HURRY_FROM, (walkSpeed + hurrySpeed) / 2) +
+      (hurrying ? -GAIT_HYSTERESIS : GAIT_HYSTERESIS);
     if (speed > boundary)
       return {
         clip: 'hurry',
         timeScale: strideTimeScale(speed, hurrySpeed, { min: 0.8, max: 1.5 }),
       };
-    return { clip: 'walk', timeScale: strideTimeScale(speed, walkSpeed) };
+    return { clip: 'walk', timeScale: strideTimeScale(speed, walkSpeed, { max: 1.7 }) };
   }
   if (turning) return { clip: 'turn', timeScale: 1 };
   if (INTENT_CLIPS.has(intent)) return { clip: intent, timeScale: 1 };
@@ -240,6 +259,9 @@ export function createHeroCast({
   let seatClipTime = 0;
   let seatShift = 0;
   let hipsRestY = null;
+  // Stood up in front of the seat: the body stays where its feet are ({ x, z } offset from the
+  // simulation's seat point) until the simulation moves the person on.
+  let standOffset = null;
   // The intent the body is showing, held for INTENT_HOLD_SECONDS before it may change.
   let shownIntent = null;
   let shownFor = Infinity;
@@ -433,6 +455,14 @@ export function createHeroCast({
         // `debug.steering === false` (studio) follows the simulation exactly.
         hold: seated || boarding || debug.steering === false,
       };
+      if (
+        standOffset &&
+        !seated &&
+        Math.hypot(target.x - standOffset.x0, target.z - standOffset.z0) < 0.05
+      ) {
+        target.x += standOffset.x;
+        target.z += standOffset.z;
+      } else standOffset = null;
       // Reappearing (alighting at a door, a Places jump): start where the simulation is.
       const before = { x: steering.state.x, z: steering.state.z };
       if (!wasVisible) steering.snap(target);
@@ -456,6 +486,16 @@ export function createHeroCast({
         hasTransitions: actions.has('sit-enter') && actions.has('sit-exit'),
       });
       if (nextSeat !== seat) seatClipTime = 0;
+      if (seat === 'exit' && nextSeat === 'none' && seatShift && !jumped) {
+        // Risen: sit-exit ends standing over the feet, seatBack in front of the seat. Move the
+        // body there (the drawn root does not move) instead of easing the root back onto the
+        // seat point, which dragged the planted feet 0.3 m across the ground.
+        const x = Math.sin(body.heading) * seatShift;
+        const z = Math.cos(body.heading) * seatShift;
+        standOffset = { x, z, x0: target.x, z0: target.z };
+        steering.snap({ ...target, x: body.x + x, z: body.z + z, heading: body.heading });
+        seatShift = 0;
+      }
       seat = nextSeat;
       root.position.set(body.x, body.y, body.z);
       root.rotation.y = body.heading;
@@ -521,6 +561,8 @@ export function createHeroCast({
         choice.clip = hurryName;
         choice.timeScale = strideTimeScale(body.speed, gait.speeds[hurryName] ?? gait.walkSpeed);
       }
+      // Gestures a carried prop does not allow (see MOMIJI_CAST carry).
+      if (carrying && !GAITS.has(choice.clip)) choice.clip = variantOf(choice.clip, true);
       if (debug.clip && actions.has(debug.clip)) {
         choice.clip = debug.clip;
         choice.timeScale = debug.timeScale ?? choice.timeScale;
