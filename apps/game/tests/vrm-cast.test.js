@@ -16,7 +16,6 @@ import {
   MOMIJI_TO_CANONICAL,
   REQUIRED_CANONICAL,
   vrmHumanoidRig,
-  momijiHumanoidRig,
 } from '../src/characters/humanoid-bones.js';
 import {
   MORPH_TO_EXPRESSION,
@@ -117,7 +116,7 @@ test('the canonical bone map covers every VRM humanoid bone the rigs use, both w
     assert.equal(VRM_TO_CANONICAL[vrm], canonical);
   // Every VRM-required bone has a canonical name.
   for (const bone of VRM_REQUIRED) assert.ok(VRM_TO_CANONICAL[bone], bone);
-  // The Blender cast GLBs answer the same required names.
+  // Mixamo-style rigs (the Momiji names) answer the same required names.
   const momiji = new Set(Object.values(MOMIJI_TO_CANONICAL));
   for (const name of REQUIRED_CANONICAL) assert.ok(momiji.has(name), name);
 });
@@ -274,15 +273,4 @@ test('a VRM loads in three-vrm with canonical bones, clips, springs and a sensib
   actor.update(1 / 30);
   assert.equal(vrm.expressionManager.getValue('blinkLeft'), 1);
   actor.dispose();
-});
-
-test('the Blender GLB rigs answer the same canonical names', async () => {
-  const bytes = readFileSync(new URL(MOMIJI_CAST[0].path, publicDir));
-  const loader = new GLTFLoader();
-  loader.setMeshoptDecoder(MeshoptDecoder);
-  const gltf = await loader.parseAsync(
-    bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.length),
-    '',
-  );
-  assert.deepEqual(momijiHumanoidRig(gltf.scene).missing, []);
 });

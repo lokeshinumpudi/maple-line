@@ -138,7 +138,8 @@ export function characterStudioServer({
             const characters = [];
             for (const path of files) {
               const ext = extname(path).toLowerCase();
-              if (!['.vrm', '.glb'].includes(ext)) continue;
+              // hero-cast draws VRMs only; props and clip files are listed separately.
+              if (ext !== '.vrm') continue;
               const r = rel(path);
               if (!r.startsWith('models/characters/') || r.includes('/props/')) continue;
               characters.push({ path: r, kind: ext.slice(1), bytes: (await stat(path)).size });

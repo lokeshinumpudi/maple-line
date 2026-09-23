@@ -2,13 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import * as THREE from 'three';
-import {
-  heroClip,
-  moodSmile,
-  HERO_WALK_SPEED,
-  HERO_HURRY_SPEED,
-  MOMIJI_CAST,
-} from '../src/world/hero-cast.js';
+import { heroClip, moodSmile } from '../src/world/hero-cast.js';
 import { createModelLoader, modelUrl } from '../src/rendering/model-loader.js';
 import { createStationModules, MODULE_PLACEMENTS } from '../src/world/station-modules.js';
 import { INTENTS } from '../src/simulation/npc-minds.js';
@@ -38,68 +32,7 @@ const CAST_CLIPS = [
   'watch-train',
   'wave',
 ];
-const castReports = Object.fromEntries(
-  ['sato', 'riko', 'ishida'].map((cast) => [
-    cast,
-    report(`asset-src/characters/momiji-cast/${cast}.report.json`),
-  ]),
-);
-
-test('every Momiji cast GLB carries the clip, face, skeleton and gait contract', () => {
-  for (const { personId, path } of MOMIJI_CAST) {
-    const { json, size } = glbJson(`apps/game/public/${path}`);
-    assert.deepEqual(json.animations.map((a) => a.name).sort(), CAST_CLIPS, path);
-    const face = json.meshes.find((mesh) => mesh.extras?.targetNames);
-    assert.deepEqual(face.extras.targetNames, [
-      'blink-l',
-      'blink-r',
-      'jaw-open',
-      'smile',
-      'grip-l',
-      'grip-r',
-    ]);
-    // Morph weights must start neutral, or the face loads with closed eyes and an open jaw.
-    assert.ok((face.weights ?? []).every((weight) => weight === 0));
-    const joints = json.skins[0].joints.map((index) => json.nodes[index].name);
-    for (const bone of ['Hips', 'Head', 'LeftArm', 'RightHand', 'LeftUpLeg', 'eye-l'])
-      assert.ok(joints.includes(bone), `${path} is missing bone ${bone}`);
-    assert.equal(json.materials.length, 1);
-    assert.ok(json.extensionsUsed.includes('EXT_meshopt_compression'));
-    assert.ok(size <= 600 * 1024, `${path} is ${size} bytes`);
-    // hero-cast.js reads the gait from the armature node's extras.
-    const rig = json.nodes.find((node) => Number.isFinite(node.extras?.walkSpeed));
-    const built = castReports[rig.extras.cast];
-    assert.equal(built.person, personId);
-    assert.equal(rig.extras.walkSpeed, built.walkFootSpeed);
-    assert.equal(rig.extras.hurrySpeed, built.hurryFootSpeed);
-    assert.equal(rig.extras.seatHeight, built.seatHeight);
-  }
-});
-
-test('hand props are separate socket-space nodes, also shipped alone for other rigs', () => {
-  const expected = {
-    'commuter-hero': { phone: 'right' },
-    'student-riko': { phone: 'right', radio: 'left' },
-    'reader-ishida': { newspaper: 'right' },
-  };
-  for (const [asset, props] of Object.entries(expected)) {
-    const { json } = glbJson(`apps/game/public/models/characters/${asset}.glb`);
-    for (const [name, hand] of Object.entries(props)) {
-      const node = json.nodes.find((item) => item.name === name);
-      assert.ok(node, `${asset} has no ${name} node`);
-      // Rigid, not skinned: the game parents it to a hand socket.
-      assert.equal(node.skin, undefined, `${asset} ${name} is skinned`);
-      assert.equal(node.extras.prop, name);
-      assert.equal(node.extras.hand, hand);
-    }
-    const rig = json.nodes.find((node) => node.extras?.boneMap);
-    assert.equal(rig.extras.boneMap.handL, 'LeftHand');
-  }
-  const paper = glbJson('apps/game/public/models/characters/reader-ishida.glb').json.nodes.find(
-    (node) => node.name === 'newspaper',
-  );
-  assert.equal(paper.extras.hold, 'two');
-  assert.equal(paper.extras.grip2.length, 7);
+test('hand props ship as socket-space nodes for the VRM hand sockets', () => {
   // Riko's radio carries a small painted texture (asset-src/characters/concept-cast/props.py).
   const propBudget = { sato: 16, riko: 64, ishida: 16 };
   for (const cast of ['sato', 'riko', 'ishida']) {
@@ -107,35 +40,6 @@ test('hand props are separate socket-space nodes, also shipped alone for other r
     assert.ok(size < propBudget[cast] * 1024, `props/${cast}.glb is ${size} bytes`);
     assert.ok(json.nodes.every((node) => node.extras?.prop));
   }
-});
-
-test('the cast build reports meet the milestone budgets', () => {
-  for (const [cast, built] of Object.entries(castReports)) {
-    assert.ok(built.triangles <= 8000, `${cast} has ${built.triangles} triangles`);
-    assert.ok(built.boneCount <= 32);
-    assert.equal(built.materials, 1);
-    assert.ok(built.heightWithinTwoCentimetres, `${cast} is ${built.heightMetres} m`);
-    assert.ok(built.lowestZ >= 0 && built.lowestZ < 0.02, `${cast}'s feet rest on the ground`);
-    for (const [name, clip] of Object.entries(built.clips)) {
-      if (!clip.loop) continue;
-      assert.ok(clip.loopErrorDegrees <= 0.5, `${cast} ${name} loop gap ${clip.loopErrorDegrees}°`);
-      assert.ok(
-        clip.loopErrorMetres <= 0.001,
-        `${cast} ${name} loop gap ${clip.loopErrorMetres} m`,
-      );
-    }
-    for (const gait of ['walk', 'hurry']) {
-      const measured = built[`${gait}FootSpeed`];
-      const target = built[`${gait}TargetSpeed`];
-      assert.ok(
-        Math.abs(measured - target) / target <= 0.05,
-        `${cast} ${gait} feet move at ${measured} m/s, target ${target}`,
-      );
-    }
-    assert.ok(built.seatHeight > 0.3 && built.seatHeight < 0.5, `${cast} seat ${built.seatHeight}`);
-  }
-  assert.equal(castReports.sato.walkTargetSpeed, HERO_WALK_SPEED);
-  assert.equal(castReports.sato.hurryTargetSpeed, HERO_HURRY_SPEED);
 });
 
 test('the station shelter GLB has two detail levels and a bench socket', () => {

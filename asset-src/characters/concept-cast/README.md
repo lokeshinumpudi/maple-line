@@ -1,6 +1,6 @@
 # Concept cast
 
-Builds a game character from three painted views of approved concept art. Riko is the first; her output replaces `apps/game/public/models/characters/vrm/riko.vrm`. The older test figure stays at `riko-test.vrm` and loads with `?vrm=test` in the game or `cast=riko-test` in the character lab.
+Builds a game character from three painted views of approved concept art. Riko is the first; her output replaces `apps/game/public/models/characters/vrm/riko.vrm`. The older test figure (`riko-test.vrm`, `?vrm=test`) is retired.
 
 Everything runs in Blender (5.2, `blender -b`) except the last step, which is the shared `make-vrm.mjs`:
 

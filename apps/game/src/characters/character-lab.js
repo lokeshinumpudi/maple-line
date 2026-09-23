@@ -4,19 +4,16 @@
  * the production build. Query parameters:
  *
  *   cast=riko,sato,ishida   who stands in the row (default: all three); any other name loads
- *                           models/characters/vrm/<name>.vrm (riko-test: the older test Riko)
+ *                           models/characters/vrm/<name>.vrm
  *   clip=idle               clip to play (any hero-cast clip name)
  *   expr=happy:1,aa:0.6     VRM expressions to hold
  *   view=full|face|three|side|back    camera framing
- *   compare=1               add the older Blender GLB of each person beside them
  *   t=1.2                   seconds into the clip, then freeze (for stills)
  */
 import * as THREE from 'three';
-import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 import { createVrmLoader } from './vrm-loader.js';
 import { createVrmActor } from './vrm-actor.js';
 import { MOMIJI_CAST, VRM_CLIPS } from '../world/hero-cast.js';
-import { createGltfLoader } from '../rendering/model-loader.js';
 
 const params = new URLSearchParams(location.search);
 const names = (params.get('cast') ?? 'riko,sato,ishida').split(',');
@@ -74,7 +71,6 @@ const camera = new THREE.PerspectiveCamera(
 const spacing = 0.9;
 const loader = createVrmLoader();
 const actors = [];
-const mixers = [];
 
 async function addVrm(name, x) {
   const member = MOMIJI_CAST.find((m) => m.vrm.endsWith(`/${name}.vrm`));
@@ -94,39 +90,9 @@ async function addVrm(name, x) {
   return actor;
 }
 
-async function addGlb(member, x) {
-  const load = await createGltfLoader();
-  const gltf = await load(member.path);
-  const root = SkeletonUtils.clone(gltf.scene);
-  root.position.x = x;
-  root.traverse((node) => {
-    if (node.isMesh) {
-      node.castShadow = true;
-      node.frustumCulled = false;
-    }
-  });
-  const paper = root.getObjectByName('newspaper');
-  if (paper) paper.visible = clipName === 'sit';
-  scene.add(root);
-  const mixer = new THREE.AnimationMixer(root);
-  const clip = gltf.animations.find((c) => c.name === clipName) ?? gltf.animations[0];
-  mixer.clipAction(clip).play();
-  mixers.push(mixer);
-}
-
-const compare = params.get('compare') === '1';
-const slots = compare ? names.length * 2 : names.length;
+const slots = names.length;
 const start = -((slots - 1) * spacing) / 2;
-await Promise.all(
-  names.map(async (name, i) => {
-    const x = start + (compare ? i * 2 : i) * spacing;
-    await addVrm(name, x);
-    if (compare) {
-      const member = MOMIJI_CAST.find((m) => m.vrm.endsWith(`/${name}.vrm`));
-      if (member) await addGlb(member, x + spacing);
-    }
-  }),
-);
+await Promise.all(names.map((name, i) => addVrm(name, start + i * spacing)));
 
 function frame() {
   const tallest = Math.max(1.6, ...actors.map((a) => a.heightY));
@@ -167,12 +133,11 @@ function tick() {
     actor.mixer.update(step);
     actor.vrm.update(step);
   }
-  for (const mixer of mixers) mixer.update(step);
   renderer.render(scene, camera);
   requestAnimationFrame(tick);
 }
 tick();
-info.textContent = `${names.join(', ')} · ${clipName} · ${view}${compare ? ' · with Blender GLBs' : ''}`;
+info.textContent = `${names.join(', ')} · ${clipName} · ${view}`;
 addEventListener('resize', () => {
   camera.aspect = innerWidth / innerHeight;
   camera.updateProjectionMatrix();

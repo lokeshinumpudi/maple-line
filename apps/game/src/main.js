@@ -78,7 +78,7 @@ import { createEpisodeVoice } from './drama/episode-voice.js';
 import { createManifestVoice } from './drama/voice-manifest.js';
 import { NARRATION_LANGUAGES } from '@maple-line/voice-score';
 import { createModelLoader, createGltfLoader } from './rendering/model-loader.js';
-import { castMember, createHeroCast, MOMIJI_CAST } from './world/hero-cast.js';
+import { createHeroCast, MOMIJI_CAST } from './world/hero-cast.js';
 import { createDramaStage } from './drama/drama-stage.js';
 import { STAGED_CAST } from './drama/drama-roles.js';
 import { clockMinutes } from './drama/drama-props.js';
@@ -1029,11 +1029,8 @@ const heroWorld = {
 const heroMinds = {
   expressionFor: (id) => dramaStage.expressionFor(id) ?? minds.expressionFor(id),
 };
-// VRM (anime) cast first; `?cast=blender` keeps the older Blender GLBs for comparison and
-// `?vrm=test` the older primitive-built test VRMs where a cast member has one.
-const castQuery = new URLSearchParams(location.search);
-const vrmLoader = castQuery.get('cast') === 'blender' ? null : createVrmLoader();
-const useTestVrm = castQuery.get('vrm') === 'test';
+// VRM (anime) cast; a person whose VRM cannot load keeps the instanced figure.
+const vrmLoader = createVrmLoader();
 const heroCasts = [...MOMIJI_CAST, ...STAGED_CAST].map((member) =>
   createHeroCast({
     THREE,
@@ -1043,7 +1040,7 @@ const heroCasts = [...MOMIJI_CAST, ...STAGED_CAST].map((member) =>
     mobile: mobilePlay,
     worldDetails: heroWorld,
     minds: heroMinds,
-    ...castMember(member, { useTest: useTestVrm }),
+    ...member,
   }),
 );
 // Drama props: readable timetables and clocks, and the Aonuma village bus and its stop.

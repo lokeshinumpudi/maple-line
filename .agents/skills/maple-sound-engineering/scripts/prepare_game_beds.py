@@ -6,11 +6,16 @@ these edits do not certify subjective quality or suitability for release.
 import hashlib
 import json
 import math
+import os
 from pathlib import Path
 import subprocess
 
 ROOT = Path(__file__).resolve().parents[4]
-LIBRARY = ROOT / 'assets/audio-library'
+# The collection is not in git; a worktree can point at the main checkout's copy.
+LIBRARY = Path(os.environ.get('MAPLE_AUDIO_LIBRARY', ROOT / 'assets/audio-library'))
+# Mono beds band-limited to 8.5 kHz or less: 96 kbit/s kept every octave band within
+# 0.8 dB of the 128 kbit/s encode (September 2026) and saves a quarter of the bytes.
+BITRATE_KBPS = 96
 OUTPUT = ROOT / 'apps/game/public/audio'
 RECIPES = [
     ('forest-wind', 'forest-wind.mp3', 20, 18, 'highpass=f=100,lowpass=f=6500'),
@@ -51,7 +56,7 @@ def main():
         chain = base + f',volume={gain}dB,afade=t=in:d=0.01,afade=t=out:st={duration - 0.01}:d=0.01'
         target = OUTPUT / filename
         subprocess.run(['ffmpeg', '-v', 'error', '-y', *args, '-af', chain, '-ar', '44100',
-                        '-ac', '1', '-codec:a', 'libmp3lame', '-b:a', '128k', str(target)], check=True)
+                        '-ac', '1', '-codec:a', 'libmp3lame', '-b:a', f'{BITRATE_KBPS}k', str(target)], check=True)
         encoded = measure(['-i', str(target)], 'anull')
         if encoded['input_tp'] > -2:
             raise ValueError(f'Insufficient headroom: {filename}')
@@ -59,7 +64,7 @@ def main():
             'id', 'title', 'author', 'source_page', 'license', 'license_url', 'source_sha256', 'source_kind']}
             | {'file': filename, 'sha256': digest(target), 'bytes': target.stat().st_size,
                'start_seconds': start, 'duration_seconds': duration, 'filters': chain,
-               'sample_rate': 44100, 'channels': 1, 'encoding': 'MP3 128 kbit/s',
+               'sample_rate': 44100, 'channels': 1, 'encoding': f'MP3 {BITRATE_KBPS} kbit/s',
                'measurements': encoded, 'listening_review': 'pending'})
     (OUTPUT / 'field-recordings.json').write_text(json.dumps(report, indent=2) + '\n')
     print(json.dumps({'files': len(report['assets']), 'bytes': sum(a['bytes'] for a in report['assets'])}))

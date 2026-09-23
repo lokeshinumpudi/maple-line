@@ -6,15 +6,15 @@ This page covers four things: what is built now, the art direction, how each cha
 
 ## Status
 
-| Part                                                                                   | State                                                                                               |
-| -------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
-| VRM loading, MToon house tone, spring bones, expressions and visemes in `hero-cast.js` | Built. Momiji's Mr. Sato, Riko and Mr. Ishida load as VRMs.                                         |
-| Canonical humanoid bone map for IK, foot planting and look-at                          | Built (`apps/game/src/characters/humanoid-bones.js`).                                               |
-| Shared clip set retargeted offline to VRM Animation (`.vrma`)                          | Built, from Quaternius UAL 1 and 2 (CC0). See [character motion](../CHARACTER-MOTION.md).           |
-| Test VRMs for the three Momiji people                                                  | Built by our own script (`asset-src/characters/vrm-cast/build.py`). No outside assets.              |
-| Riko built from the approved concept art                                               | Built (`asset-src/characters/concept-cast/`). Replaces her test VRM; `?vrm=test` shows the old one. |
-| Final cast from VRoid samples edited with the VRM Add-on for Blender                   | Planned. Waits on the approvals listed below.                                                       |
-| Route-story cast (Haru, Emi, Nao, Fumi, Jun, Yuta, Mika, Keiko)                        | Planned. The story cast still uses `story-cast.js` figures.                                         |
+| Part                                                                                   | State                                                                                     |
+| -------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| VRM loading, MToon house tone, spring bones, expressions and visemes in `hero-cast.js` | Built. Momiji's Mr. Sato, Riko and Mr. Ishida load as VRMs.                               |
+| Canonical humanoid bone map for IK, foot planting and look-at                          | Built (`apps/game/src/characters/humanoid-bones.js`).                                     |
+| Shared clip set retargeted offline to VRM Animation (`.vrma`)                          | Built, from Quaternius UAL 1 and 2 (CC0). See [character motion](../CHARACTER-MOTION.md). |
+| Test VRMs for the three Momiji people                                                  | Built by our own script (`asset-src/characters/vrm-cast/build.py`). No outside assets.    |
+| Riko built from the approved concept art                                               | Built (`asset-src/characters/concept-cast/`). Replaces her test VRM, which is retired.    |
+| Final cast from VRoid samples edited with the VRM Add-on for Blender                   | Planned. Waits on the approvals listed below.                                             |
+| Route-story cast (Haru, Emi, Nao, Fumi, Jun, Yuta, Mika, Keiko)                        | Planned. The story cast still uses `story-cast.js` figures.                               |
 
 Riko is now built from the approved concept art: her body and clothes are carved from the painted front and side silhouettes, the painted views are projected onto the meshes as one texture, and the face, hair locks and rig are drawn by the Blender scripts. See the [concept cast README](../../asset-src/characters/concept-cast/README.md) for the steps and the known gaps. Mr. Sato and Mr. Ishida still use test VRMs.
 
@@ -66,7 +66,7 @@ The final cast starts from pixiv's CC0 VRoid sample avatars. It is edited in Ble
 5. **Add accessories** as separate meshes skinned to one bone: glasses and a newspaper for Ishida, a ribbon for Riko, a tie and bag for Sato. A newspaper or phone that shows only in some clips is its own node, named as `hero-cast` expects (`newspaper`).
 6. **Age the face.** Adjust the eye shape keys and brows for age. Elders get a smaller iris and softer upper lid, and a posture stoop in the scene extras (`posture.stoop`, degrees).
 7. **Reduce to budget.** Remove body faces hidden under clothes. Decimate hair and clothes. Bake the atlas at 1024 px and compress it (KTX2). Merge materials.
-8. **Check in the lab and the game.** Run the character lab (`/character-lab.html` on the dev server; add `?compare=1` to see the Blender GLBs beside them), and the [character studio](../CHARACTER-STUDIO.md) (`/character-studio.html`) to match the body to the concept views and check motion layers, grips and the face. Then take director portraits at Momiji at daylight and sunset.
+8. **Check in the lab and the game.** Run the character lab (`/character-lab.html` on the dev server), and the [character studio](../CHARACTER-STUDIO.md) (`/character-studio.html`) to match the body to the concept views and check motion layers, grips and the face. Then take director portraits at Momiji at daylight and sunset.
 
 Clips do not come with the avatars. `asset-src/characters/vrm-cast/retarget.mjs` turns the Quaternius UAL packs into one `.vrma` file with the `hero-cast` clip names (`node asset-src/characters/vrm-cast/retarget.mjs`, packs from `--ual <folder>` or `$MAPLE_UAL_DIR`). The clip table and the measurements are in [character motion](../CHARACTER-MOTION.md). A new VRoid-based character needs no new clips: the file is in normalized VRM bones.
 

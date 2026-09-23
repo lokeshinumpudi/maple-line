@@ -283,7 +283,7 @@ test('grips serialise with rounded offsets and a canonical quaternion', () => {
 
 test('setGrip keys by model file, round-trips through JSON and removes cleanly', () => {
   assert.equal(tuningKey('models/characters/vrm/riko.vrm'), 'vrm/riko');
-  assert.equal(tuningKey('models/characters/student-riko.glb'), 'student-riko');
+  assert.equal(tuningKey('models/characters/crowd/resident.glb'), 'crowd/resident');
   let tuning = { version: 1, grips: {} };
   tuning = setGrip(tuning, 'models/characters/vrm/riko.vrm', 'radio', {
     offset: [0, 0.01, -0.02],

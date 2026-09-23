@@ -2,8 +2,10 @@
 
 The project uses two original generated illustrations created with the built-in image-generation tool. The tool did not expose a model selector, so these assets are not labelled as a verified GPT Image 2.5 output. These are raster illustrations and modelling references, not rigged 3D meshes.
 
-- `apps/game/public/story/haru-emi.png`: welcome artwork and CSS-cropped dialogue portraits. Haru and Emi sit on a rural station bench with a notebook, spanner, and field recorder.
-- `apps/game/public/story/character-reference.png`: lazily loaded character study, with front/back views and prop details.
+- `apps/game/public/story/haru-emi.webp`: welcome artwork and CSS-cropped dialogue portraits. Haru and Emi sit on a rural station bench with a notebook, spanner, and field recorder.
+- `apps/game/public/story/character-reference.webp`: lazily loaded character study, with front/back views and prop details.
+
+Both ship as WebP at their native 1536 × 1024 (cwebp `-q 78 -m 6 -sharp_yuv`, about 180 KB each). The source PNGs were about 2.9 MB each and remain in git history. The largest display is about 940 CSS px wide, so a larger file would add nothing visible. `haru-emi-portraits.jpg` holds the small dialogue crops.
 
 The local procedural character models are authored in `apps/game/src/narrative/story-cast.js`; they follow the wardrobe and props in the artwork. Their current stylized geometry does not reproduce the illustration’s painterly face detail.
 

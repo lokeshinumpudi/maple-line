@@ -1,6 +1,4 @@
-import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 import { createVrmActor } from '../characters/vrm-actor.js';
-import { humanoidRigFor } from '../characters/humanoid-bones.js';
 import { gripOverrides } from '../characters/cast-tuning.js';
 import {
   attachProps,
@@ -13,9 +11,8 @@ import { createCharacterRig, createClipBlender } from './character-rig.js';
 /**
  * A skinned character standing in for one simulated person. The person's movement,
  * boarding and routines stay in the population simulation; this module only replaces how
- * they are drawn. Two model kinds share the behaviour: a VRM (anime style, MToon, spring
- * hair, VRM expressions and visemes) loads first when the cast entry names one; the older
- * Blender GLB is the next fallback, and the instanced figure stays visible if both fail.
+ * they are drawn: a VRM (anime style, MToon, spring hair, VRM expressions and visemes). If the
+ * VRM is missing or fails to load, the instanced figure stays visible.
  *
  * Between the simulation and the body sits a steering layer (character-motion.js): the body
  * walks only forward, turns in arcs or on the spot, accelerates within limits and ignores
@@ -23,7 +20,7 @@ import { createCharacterRig, createClipBlender } from './character-rig.js';
  * character-rig.js adds breathing and weight shift, a clamped look-at (a speaker, the train,
  * or the camera in a portrait), props held in hand sockets with a closed grip and second-hand
  * IK, and planted feet. It works through canonical bones (characters/humanoid-bones.js), so
- * the same layers drive both model kinds. Blinks run on their own clock, the smile follows
+ * the layers do not depend on one skeleton. Blinks run on their own clock, the smile follows
  * mood, and the mouth moves while an episode line attributed to this person is on screen.
  */
 export const HERO_WALK_SPEED = 1.15;
@@ -32,14 +29,12 @@ export const HERO_HURRY_SPEED = 1.75;
 /**
  * Momiji people who have a model. `vrm` files are built by asset-src/characters/vrm-cast,
  * except Riko's, which asset-src/characters/concept-cast builds from the approved concept
- * art (her radio and phone props too); `path` GLBs and the other `props` GLBs come from
- * asset-src/characters/momiji-cast. `testVrm` is the older primitive-built test figure,
- * kept for comparison behind `?vrm=test`.
+ * art (her radio and phone props too). Mr. Sato's and Mr. Ishida's `props` GLBs were built
+ * by the retired Blender cast script (asset-src/README.md says where to find it).
  */
 export const MOMIJI_CAST = Object.freeze([
   {
     personId: 'commuter-1',
-    path: 'models/characters/commuter-hero.glb',
     vrm: 'models/characters/vrm/sato.vrm',
     props: 'models/characters/props/sato.glb',
     // The office commuter walks upright, arms close (UAL Walk_Formal_Loop).
@@ -47,9 +42,7 @@ export const MOMIJI_CAST = Object.freeze([
   },
   {
     personId: 'commuter-2',
-    path: 'models/characters/student-riko.glb',
     vrm: 'models/characters/vrm/riko.vrm',
-    testVrm: 'models/characters/vrm/riko-test.vrm',
     props: 'models/characters/props/riko.glb',
     // Riko keeps her phone in a pocket and takes it out to check it; her hands are for the
     // radio she is carrying home.
@@ -62,23 +55,15 @@ export const MOMIJI_CAST = Object.freeze([
   // instanced figure's seated thighs (population.js reading pose).
   {
     personId: 'reader-1',
-    path: 'models/characters/reader-ishida.glb',
     vrm: 'models/characters/vrm/ishida.vrm',
     props: 'models/characters/props/ishida.glb',
     seatHeight: 0.61,
   },
 ]);
 
-/** A cast entry with its older test VRM swapped in when `useTest` is set and it has one. */
-export function castMember(member, { useTest = false } = {}) {
-  const { testVrm, ...rest } = member;
-  return useTest && testVrm ? { ...rest, vrm: testVrm } : rest;
-}
-
 /**
  * The shared clip set for every VRM: Quaternius UAL 1 and 2, retargeted offline by
- * asset-src/characters/vrm-cast/retarget.mjs. The Blender cast's own clips stay inside the
- * Blender GLBs (`?cast=blender`) and are not used on VRMs.
+ * asset-src/characters/vrm-cast/retarget.mjs.
  */
 export const VRM_CLIPS = 'models/characters/vrm/cast-clips.vrma';
 
@@ -163,7 +148,7 @@ export function heroClip({
 /**
  * The next sit-transition phase: 'enter' plays sit-enter, 'seated' the sit loop, 'exit'
  * sit-exit, 'none' standing. `clipDone` says the current one-shot has finished. Without
- * transition clips (the Blender GLBs) a person goes straight between 'none' and 'seated'.
+ * transition clips a person goes straight between 'none' and 'seated'.
  */
 export function seatPhase(phase, { seated, clipDone = false, jumped = false, hasTransitions }) {
   if (jumped || !hasTransitions) return seated ? 'seated' : 'none';
@@ -189,16 +174,16 @@ export function createHeroCast({
   worldDetails,
   minds,
   personId = 'commuter-1',
-  path = 'models/characters/commuter-hero.glb',
   // Height of this person's bench surface above their figure's origin, when seated.
   // Defaults to the model's own seat height, which places it without an offset.
   seatHeight = null,
-  // VRM file and the loader from characters/vrm-loader.js; without both, the GLB is used.
+  // VRM file and the loader from characters/vrm-loader.js; without both, the instanced
+  // figure stays.
   vrm = null,
   clips = VRM_CLIPS,
   vrmLoader = null,
   mobile = false,
-  // Hand props for a VRM (the GLB carries its own): a GLB of socket-space prop nodes.
+  // Hand props: a GLB of socket-space prop nodes, parented to the VRM's hand sockets.
   props: propsPath = null,
   // Props kept out of sight except while their clip needs them (a phone in a pocket).
   pocketed = [],
@@ -212,7 +197,6 @@ export function createHeroCast({
   let kind = null;
   let root = null;
   let mixer = null;
-  let face = null;
   let actor = null;
   let actions = new Map();
   let blender = null;
@@ -279,48 +263,13 @@ export function createHeroCast({
     return true;
   }
 
-  async function loadGlb() {
-    // Staged drama roles have only a VRM; without it nothing stands in.
-    if (!path) return false;
-    const gltf = await loader.get(path);
-    if (!gltf || status === 'disposed') return false;
-    root = SkeletonUtils.clone(gltf.scene);
-    root.traverse((node) => {
-      if (Number.isFinite(node.userData?.walkSpeed))
-        gait = {
-          ...gait,
-          walkSpeed: node.userData.walkSpeed,
-          hurrySpeed: node.userData.hurrySpeed ?? HERO_HURRY_SPEED,
-          seatHeight: node.userData.seatHeight ?? 0,
-        };
-      if (node.isMesh) {
-        node.castShadow = true;
-        node.receiveShadow = true;
-        // Skinned bounds come from the bind pose; animated limbs can leave them.
-        node.frustumCulled = false;
-        if (node.morphTargetDictionary && node.isSkinnedMesh) face = node;
-      }
-    });
-    mixer = new THREE.AnimationMixer(root);
-    for (const clip of gltf.animations) actions.set(clip.name, mixer.clipAction(clip));
-    humanoid = humanoidRigFor(root);
-    kind = 'glb';
-    return true;
-  }
-
   function buildRig() {
     root.updateMatrixWorld(true);
     const bounds = new THREE.Box3().setFromObject(root);
     const height = Math.max(1, bounds.max.y - bounds.min.y);
     sockets = createHandSockets(THREE, root, humanoid.raw);
     // Grips tuned in the character studio (characters/cast-tuning.json), per model file.
-    props = attachProps(
-      THREE,
-      root,
-      sockets,
-      undefined,
-      gripOverrides(kind === 'vrm' ? vrm : path),
-    );
+    props = attachProps(THREE, root, sockets, undefined, gripOverrides(vrm));
     rig = humanoid.missing.length
       ? null
       : createCharacterRig(THREE, root, {
@@ -328,13 +277,12 @@ export function createHeroCast({
           raw: humanoid.raw,
           sockets,
           props,
-          face,
           random,
           heightScale: height / 1.7,
         });
     // A VRM's clips run inside actor.update(), after the blender sets the fade weights.
-    blender = createClipBlender(THREE, mixer, actions, { random, drive: !actor });
-    if (actor?.vrm.lookAt) scene.add(eyeTarget);
+    blender = createClipBlender(THREE, mixer, actions, { random, drive: false });
+    if (actor.vrm.lookAt) scene.add(eyeTarget);
     hipsRestY = humanoid.bones.hips?.position.y ?? null;
   }
 
@@ -353,7 +301,7 @@ export function createHeroCast({
   }
 
   const ready = (async () => {
-    const loaded = (await loadVrm()) || (await loadGlb());
+    const loaded = await loadVrm();
     if (status === 'disposed') return;
     if (!loaded || !root) {
       status = 'fallback';
@@ -368,12 +316,7 @@ export function createHeroCast({
   })();
 
   function morph(name, value) {
-    if (actor) {
-      actor.face.set(name, value);
-      return;
-    }
-    const index = face?.morphTargetDictionary[name];
-    if (index !== undefined) face.morphTargetInfluences[index] = value;
+    actor.face.set(name, value);
   }
 
   /** Someone else talking nearby, the person this one is talking to, the camera or the train. */
@@ -480,12 +423,10 @@ export function createHeroCast({
         if (typeof debug.props?.[prop.name] === 'boolean')
           prop.node.visible = debug.props[prop.name];
       }
-      if (actor) {
-        // A VRM's own skinned paper is shown only while seated, like the GLB's prop.
-        const paper = root.getObjectByName('newspaper');
-        if (paper && !props.some((prop) => prop.node === paper)) paper.visible = seated;
-      }
-      if (jumped && actor) {
+      // A VRM's own skinned paper is shown only while seated, like the hand prop.
+      const paper = root.getObjectByName('newspaper');
+      if (paper && !props.some((prop) => prop.node === paper)) paper.visible = seated;
+      if (jumped) {
         root.updateMatrixWorld(true);
         actor.resetSprings();
       }
@@ -563,13 +504,12 @@ export function createHeroCast({
           layers: debug.layers,
         });
         humanoid.bones.head.getWorldPosition(head);
-        if (actor?.vrm.lookAt) {
+        if (actor.vrm.lookAt) {
           // The VRM's eyes follow the same target as the head.
           if (look) eyeTarget.position.copy(look.point);
           actor.vrm.lookAt.target = look ? eyeTarget : null;
         }
       };
-      if (!actor) layers();
 
       // Blink every few seconds: 70 ms closing, 90 ms opening.
       blinkIn -= step;
@@ -597,11 +537,9 @@ export function createHeroCast({
             Math.min(1, talkFor * 4)
           : 0;
       morph('jaw-open', jaw);
-      if (actor) {
-        actor.face.setSyllable(Math.floor(talkT * SYLLABLE_RATE));
-        // Clips, posture, then these layers on the normalized bones, then vrm.update().
-        actor.update(step, { afterPose: layers });
-      }
+      actor.face.setSyllable(Math.floor(talkT * SYLLABLE_RATE));
+      // Clips, posture, then these layers on the normalized bones, then vrm.update().
+      actor.update(step, { afterPose: layers });
     },
     /** Move the jaw for a line on screen; `seconds` is the subtitle's reading time. */
     talk(seconds) {
@@ -635,7 +573,6 @@ export function createHeroCast({
         humanoid,
         sockets,
         props,
-        face,
         gait,
         steering,
         kind,
@@ -659,7 +596,7 @@ export function createHeroCast({
         clips: [...actions.keys()],
         gait: { ...gait },
         kind,
-        morphs: actor ? actor.face.names() : face ? Object.keys(face.morphTargetDictionary) : [],
+        morphs: actor ? actor.face.names() : [],
         steering: {
           heading: Number(body.heading.toFixed(3)),
           turning: body.turning,
