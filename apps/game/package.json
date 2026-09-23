@@ -15,10 +15,12 @@
     "drama:script": "node scripts/write-drama-script.mjs && prettier --write ../../docs/drama/THE-1742.md"
   },
   "dependencies": {
+    "@maple-line/voice-score": "workspace:*",
     "@maple-line/world-spec": "workspace:*",
+    "@pixiv/three-vrm": "3.5.5",
+    "@pixiv/three-vrm-animation": "3.5.5",
     "three": "0.180.0",
-    "zustand": "^5.0.15",
-    "@maple-line/voice-score": "workspace:*"
+    "zustand": "^5.0.15"
   },
   "devDependencies": {
     "oxlint": "1.83.0",

@@ -23,3 +23,6 @@ dist-embed/
 
 __pycache__/
 *.pyc
+
+# Intermediate Blender exports; the committed outputs live in apps/game/public/models.
+asset-src/**/build/
