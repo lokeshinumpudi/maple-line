@@ -76,6 +76,7 @@ import { createManifestVoice } from './drama/voice-manifest.js';
 import { NARRATION_LANGUAGES } from '@maple-line/voice-score';
 import { createModelLoader, createGltfLoader } from './rendering/model-loader.js';
 import { createHeroCast, MOMIJI_CAST } from './world/hero-cast.js';
+import { createVrmLoader } from './characters/vrm-loader.js';
 import { createStationModules } from './world/station-modules.js';
 import { createMindsClient, mindRegion } from './agent/minds-client.js';
 import { registerMindTools } from './agent/mind-tools.js';
@@ -918,8 +919,20 @@ const heroWorld = {
   setStandIn: (id, enabled) => worldDetails.setStandIn?.(id, enabled),
   figureOf: (id) => worldDetails.figureOf?.(id) ?? null,
 };
+// VRM (anime) cast first; `?cast=blender` keeps the older Blender GLBs for comparison.
+const vrmLoader =
+  new URLSearchParams(location.search).get('cast') === 'blender' ? null : createVrmLoader();
 const heroCasts = MOMIJI_CAST.map((member) =>
-  createHeroCast({ THREE, scene, loader: modelLoader, worldDetails: heroWorld, minds, ...member }),
+  createHeroCast({
+    THREE,
+    scene,
+    loader: modelLoader,
+    vrmLoader,
+    mobile: mobilePlay,
+    worldDetails: heroWorld,
+    minds,
+    ...member,
+  }),
 );
 const stationModules = createStationModules({ THREE, loader: modelLoader, parent: station });
 // The Blender train replaces the procedural exterior once its GLB loads. `?train=procedural`

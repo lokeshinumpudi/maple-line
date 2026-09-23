@@ -26,3 +26,5 @@ __pycache__/
 
 # Rendered episode videos, posters and timelines (docs/VIDEO.md).
 media/renders/
+# Intermediate Blender exports; the committed outputs live in apps/game/public/models.
+asset-src/**/build/

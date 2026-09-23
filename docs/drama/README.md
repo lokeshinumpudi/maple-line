@@ -177,7 +177,7 @@ Checked against Sarvam's documentation on 23 September 2026:
 
 ## Limits
 
-- Only Momiji's `commuter-1` (Mr. Sato), `commuter-2` (Riko in episode 1) and `reader-1` (Mr. Ishida) have Blender models with faces and a jaw that moves on their lines. Everyone else, including the Aonuma cast, is still a low-poly figure without a face. The [Blender asset skill](../../.agents/skills/maple-blender-assets/SKILL.md) covers adding more.
+- Only Momiji's `commuter-1` (Mr. Sato), `commuter-2` (Riko in episode 1) and `reader-1` (Mr. Ishida) have character models with faces; their mouths move on their lines (VRM vowel shapes, or a jaw on the older Blender GLBs). Everyone else, including the Aonuma cast, is still a low-poly figure without a face. The [Blender asset skill](../../.agents/skills/maple-blender-assets/SKILL.md) covers adding more.
 - Voices need the local director and a Sarvam key; everywhere else dialogue is subtitles. Haru's campaign keeps its own narration. The jaw of a modelled figure moves for the length of the line, not in step with the words. A rendered video carries voice clips through an audio manifest.
 - Voice casting and the Telugu translations have been checked by reading, not by a listening review.
 - A part may be played by different figures in different scenes (Riko is a Momiji student in episode 1 and a standing Aonuma resident in episode 3).
