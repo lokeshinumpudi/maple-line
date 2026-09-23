@@ -12,7 +12,16 @@
  * the bus driver Aoi are staged people with their own models. Every key time is also on
  * screen as words (a timetable insert, captions), so the story reads with the sound off.
  */
+/** The narrator carries the setup and the turns, in few words; the same words are captions. */
+const narrate = (text, te) => ({
+  cast: 'narrator',
+  text,
+  emotion: 'warm',
+  translations: { 'te-IN': te },
+});
+
 const CAST = {
+  narrator: { name: 'Narrator', note: 'Tells the story in a few warm words between the scenes.' },
   riko: { name: 'Riko', note: '17. Carrying Grandpa’s radio home, freshly repaired.' },
   sato: {
     name: 'Mr. Sato',
@@ -69,10 +78,12 @@ export const THE_1742 = Object.freeze({
               shot: { type: 'establishing', aperture: 'deep' },
               caption: 'Momiji',
               subtitle: 'sunset · 16:51',
-              line: 'Tomorrow, Grandma Fusae moves to a care home in the city.',
-              lineTranslations: {
-                'te-IN': 'రేపు ఫుసాయే బామ్మ పట్నంలోని వృద్ధాశ్రమానికి మారిపోతోంది.',
-              },
+              dialogue: [
+                narrate(
+                  'Tomorrow, Grandma Fusae moves to a care home in the city.',
+                  'రేపు ఫుసాయే బామ్మ పట్నంలోని వృద్ధాశ్రమానికి మారిపోతోంది.',
+                ),
+              ],
               hold: 6,
               cues: [
                 {
@@ -85,16 +96,22 @@ export const THE_1742 = Object.freeze({
             },
             {
               shot: { type: 'portrait', subject: { cast: 'riko' }, lens: 60 },
-              line: 'Tonight she wants to hear Grandpa’s radio one last time, at home.',
-              lineTranslations: {
-                'te-IN': 'ఈ రాత్రి సొంత ఇంట్లో, తాతయ్య రేడియోని ఆఖరిసారి వినాలనుకుంటోంది.',
-              },
+              dialogue: [
+                narrate(
+                  'Tonight she wants to hear Grandpa’s radio one last time, at home.',
+                  'ఈ రాత్రి సొంత ఇంట్లో, తాతయ్య రేడియోని ఆఖరిసారి వినాలనుకుంటోంది.',
+                ),
+              ],
               hold: 6,
             },
             {
               shot: { type: 'insert', subject: { prop: 'momiji-timetable' } },
-              line: 'Arrives Aonuma 17:42 · Last bus 17:40',
-              lineTranslations: { 'te-IN': 'అఓనుమా చేరేది 17:42 · ఆఖరి బస్సు 17:40' },
+              dialogue: [
+                narrate(
+                  'The last bus up the hill leaves at 17:40. Riko’s train gets in at 17:42.',
+                  'కొండ మీదికి ఆఖరి బస్సు సాయంత్రం 5:40కి బయలుదేరుతుంది. రికో రైలు 5:42కి చేరుతుంది.',
+                ),
+              ],
               hold: 6,
             },
             {
@@ -180,8 +197,7 @@ export const THE_1742 = Object.freeze({
             {
               // Riko hurries to the front car and gets in; Sato boards with the commuters.
               shot: { type: 'portrait', subject: { cast: 'riko' }, lens: 35 },
-              line: 'Riko takes the front car.',
-              lineTranslations: { 'te-IN': 'రికో ముందు బోగీ ఎక్కుతుంది.' },
+              dialogue: [narrate('Riko takes the front car.', 'రికో ముందు బోగీ ఎక్కింది.')],
               hold: 7,
               cues: [
                 { after: 0, move: { cast: 'riko', to: 'front-car-door', pace: 'run' } },
@@ -199,6 +215,12 @@ export const THE_1742 = Object.freeze({
               waitFor: 'doors-closed',
               hold: 9,
               cues: [{ after: 0.5, release: true }],
+              dialogue: [
+                narrate(
+                  'The train left Momiji on time. It would not stay on time.',
+                  'రైలు మొమిజి నుంచి సరైన సమయానికే బయలుదేరింది. కానీ దారిలో ఆలస్యం ఎదురైంది.',
+                ),
+              ],
             },
           ],
         },
@@ -238,6 +260,12 @@ export const THE_1742 = Object.freeze({
               caption: 'The evening train',
               subtitle: '17:09',
               hold: 8,
+              dialogue: [
+                narrate(
+                  'On the train, Riko calls her grandmother.',
+                  'రైలులోంచి రికో బామ్మకు ఫోన్ చేసింది.',
+                ),
+              ],
             },
             {
               shot: { type: 'portrait', subject: { cast: 'riko' } },
@@ -300,10 +328,12 @@ export const THE_1742 = Object.freeze({
                 lens: 32,
               },
               caption: 'Sakuragawa farm road',
-              line: 'The train is held at the crossing. Now five minutes late.',
-              lineTranslations: {
-                'te-IN': 'రైలుని రైల్వే గేటు దగ్గర ఆపేశారు. ఇప్పుడు ఐదు నిమిషాలు ఆలస్యం.',
-              },
+              dialogue: [
+                narrate(
+                  'At the Sakuragawa farm road, the train is held. Now it is five minutes late.',
+                  'సకురగావా పొలం దారి దగ్గర రైలును ఆపేశారు. ఇప్పుడు ఐదు నిమిషాలు ఆలస్యం.',
+                ),
+              ],
               waitFor: 'stopped',
               hold: 8,
             },
@@ -316,6 +346,7 @@ export const THE_1742 = Object.freeze({
                 },
               ],
               dialogue: [
+                narrate('Mr. Sato has heard every word.', 'సాటో గారు ప్రతి మాటా విన్నారు.'),
                 {
                   cast: 'sato',
                   text: 'Aoi? It’s Dad. The 17:40 from Aonuma. Can you wait tonight?',
@@ -350,6 +381,12 @@ export const THE_1742 = Object.freeze({
               shot: { type: 'trackside', aperture: 'shallow' },
               hold: 9,
               cues: [{ after: 0.5, release: true }],
+              dialogue: [
+                narrate(
+                  'At Aonuma, a bus driver looks at the clock.',
+                  'అఓనుమాలో, ఒక బస్సు డ్రైవర్ గడియారం వైపు చూసింది.',
+                ),
+              ],
             },
           ],
         },
@@ -389,6 +426,12 @@ export const THE_1742 = Object.freeze({
               caption: 'Aonuma · 17:47',
               subtitle: 'blue hour · rain',
               hold: 6,
+              dialogue: [
+                narrate(
+                  'Aonuma. Seven minutes after the last bus should have gone.',
+                  'అఓనుమా. ఆఖరి బస్సు వెళ్ళాల్సిన సమయం దాటి ఏడు నిమిషాలైంది.',
+                ),
+              ],
               cues: [
                 { after: 0, bus: { state: 'wait' } },
                 {
@@ -421,15 +464,13 @@ export const THE_1742 = Object.freeze({
             },
             {
               shot: { type: 'portrait', subject: { cast: 'riko' }, lens: 32 },
-              line: 'Riko runs.',
-              lineTranslations: { 'te-IN': 'రికో పరిగెడుతుంది.' },
+              dialogue: [narrate('Riko runs.', 'రికో పరిగెడుతుంది.')],
               hold: 4,
             },
             {
               // The bus is still there: headlights on, doors open.
               shot: { type: 'insert', subject: { prop: 'aonuma-bus' } },
-              line: 'The bus is still there.',
-              lineTranslations: { 'te-IN': 'బస్సు ఇంకా అక్కడే ఉంది.' },
+              dialogue: [narrate('The bus is still there.', 'బస్సు ఇంకా అక్కడే ఉంది.')],
               hold: 5,
             },
             {
@@ -475,6 +516,7 @@ export const THE_1742 = Object.freeze({
                 partner: { cast: 'fusae' },
                 framing: 'two',
               },
+              dialogue: [narrate('Riko turns the radio on.', 'రికో రేడియో ఆన్ చేసింది.')],
               line: '(Static. Then soft music.)',
               lineTranslations: { 'te-IN': '(గరగర శబ్దం. ఆ తర్వాత మెల్లని సంగీతం.)' },
               hold: 5,
@@ -506,6 +548,12 @@ export const THE_1742 = Object.freeze({
                 { after: 0.8, move: { cast: 'riko', to: 'aonuma-bus-aboard' } },
                 { after: 4.2, move: { cast: 'aoi', to: 'aonuma-bus-aboard' } },
                 { after: 5.5, bus: { state: 'leave' } },
+              ],
+              dialogue: [
+                narrate(
+                  'She waited seven minutes. Somebody asked her to.',
+                  'ఆమె ఏడు నిమిషాలు ఆగింది. ఎవరో ఆగమని అడిగారు.',
+                ),
               ],
             },
           ],

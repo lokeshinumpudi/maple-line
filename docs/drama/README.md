@@ -4,6 +4,8 @@ Maple Line can perform short dramas inside the running game. An episode is data:
 
 The first series is [_The 17:42_](THE-1742.md). Tomorrow Grandma Fusae moves to a care home in the city; tonight she wants to hear Grandpa's old radio one last time, at home up the valley. Riko has it, freshly repaired. The last bus up the hill leaves Aonuma at 17:40, and Riko's train gets in at 17:42. Mr. Sato, on the same train, asks his daughter Aoi, who drives that bus, to wait. The series stays on the passenger side of the timetable problem in Haru's campaign and does not use or change the campaign's characters, dialogue or saves.
 
+A narrator (the shared `narrator` voice part, `shubh`, as in Haru's notebook) carries the setup and the turns in four to six short lines an episode. Narration is an ordinary dialogue line with cast `narrator`, so the runner, the render timeline and the voice manifest all list it with the characters; it is shown as a caption without a speaker label and never plays over a character's line.
+
 The story is written to read with the sound off: every key time is on screen as words (the timetable insert, captions, the clock), and the want is set up in two plain on-screen lines before anyone speaks.
 
 To watch, open **Places** and choose an episode under **Watch a short drama**. Pausing the ride pauses the episode.

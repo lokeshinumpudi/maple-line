@@ -185,7 +185,15 @@ test('the story reads with the sound off: key times are on screen as text', () =
   const [one, two, three] = THE_1742.episodes;
   const screen = (episode) =>
     episode.scenes
-      .flatMap((scene) => scene.beats.flatMap((beat) => [beat.caption, beat.subtitle, beat.line]))
+      .flatMap((scene) =>
+        scene.beats.flatMap((beat) => [
+          beat.caption,
+          beat.subtitle,
+          beat.line,
+          // Narration is voiced and shown as a caption with the same words.
+          ...(beat.dialogue ?? []).filter((line) => line.cast === 'narrator').map((l) => l.text),
+        ]),
+      )
       .filter(Boolean)
       .join(' | ');
   assert.match(screen(one), /17:42/);

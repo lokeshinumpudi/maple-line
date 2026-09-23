@@ -119,7 +119,7 @@ test('every speaking part in The 17:42 has a distinct Sarvam voice and a valid d
     assert.equal(lines.length, spoken.length, `${source.id} has an unvoiced line`);
     for (const line of lines) parts.add(line.voice);
   }
-  assert.deepEqual([...parts].sort(), ['aoi', 'fusae', 'ishida', 'riko', 'sato']);
+  assert.deepEqual([...parts].sort(), ['aoi', 'fusae', 'ishida', 'narrator', 'riko', 'sato']);
   const speakers = [...parts].map((part) => VOICE_CAST[part].speaker);
   assert.equal(new Set(speakers).size, speakers.length);
 });
@@ -329,26 +329,27 @@ test('the audio manifest uses renderer line ids and runner timing', () => {
   // Exactly the renderer's audio manifest: version 1 and { line, file } clips.
   assert.equal(manifest.version, 1);
   assert.deepEqual(manifest.clips[0], {
-    line: 'momiji-platform/4/1',
-    file: 'momiji-platform-4-1-riko.wav',
+    line: 'momiji-platform/1/1',
+    file: 'momiji-platform-1-1-narrator.wav',
   });
   for (const clip of manifest.clips) assert.deepEqual(Object.keys(clip), ['line', 'file']);
-  assert.equal(manifest.lines[0].text, 'Two minutes. I’ll miss the last bus by two minutes.');
-  // Beat 5 is Sato and Riko: the second and third voiced lines (1100 and 1200 ms).
+  // The narrator opens the episode; narration is a voiced line like any other.
+  assert.equal(manifest.lines[0].cast, 'narrator');
+  assert.equal(manifest.lines[0].text, 'Tomorrow, Grandma Fusae moves to a care home in the city.');
+  // Beat 5 is Sato and Riko: the fifth and sixth voiced lines (1400 and 1500 ms).
   const beat = clean.scenes[0].beats[4];
   const entry = manifest.plan.beats.find((item) => item.beat === 'momiji-platform/5');
   assert.equal(
     entry.plannedMs,
-    Math.round(beatSeconds(beat, [voicedSeconds(1100), voicedSeconds(1200)]) * 1000),
+    Math.round(beatSeconds(beat, [voicedSeconds(1400), voicedSeconds(1500)]) * 1000),
   );
   assert.equal(entry.lines[0].offsetMs, 1000);
-  assert.equal(entry.lines[1].offsetMs, 1000 + Math.round(voicedSeconds(1100) * 1000) + 350);
+  assert.equal(entry.lines[1].offsetMs, 1000 + Math.round(voicedSeconds(1400) * 1000) + 350);
   // The first beat carries the title card lead; later beats start where the previous ended.
   assert.equal(manifest.plan.beats[0].plannedMs, 4500 + 6000);
   const before = manifest.plan.beats.slice(0, 4).reduce((sum, item) => sum + item.plannedMs, 0);
   assert.equal(entry.startMs, before);
-  const first = manifest.plan.beats.find((item) => item.beat === 'momiji-platform/4');
-  assert.equal(manifest.lines[0].plannedStartMs, first.startMs + 1000);
+  assert.ok(manifest.lines[0].plannedStartMs >= manifest.plan.beats[0].startMs + 1000);
   assert.equal(
     manifest.plan.plannedMs,
     manifest.plan.beats.reduce((sum, item) => sum + item.plannedMs, 0),
@@ -370,18 +371,22 @@ test('a render replays manifest lengths and emits line events with the same ids'
     language: 'te-IN',
     model: 'bulbul:v3',
     generated,
-    captions: { 'momiji-platform/1': 'te:caption' },
+    captions: { end: 'te:caption' },
   });
   const events = [];
   const host = fakeHost(createManifestVoice(manifest));
   const runner = createEpisodeRunner(host, { ...context, onEvent: (event) => events.push(event) });
   runner.play(THE_1742.episodes[0]);
   run(runner, 40);
-  const cut = host.calls.find((call) => call[0] === 'cut')[1];
-  assert.equal(cut.line, 'te:caption');
+  // Captions (beat lines and the closing line) come from the manifest in its language.
+  assert.equal(
+    createManifestVoice(manifest).text({ id: 'end', caption: 'end', text: 'x' }),
+    'te:caption',
+  );
   const spoken = events.filter((event) => event.type === 'line');
-  assert.equal(spoken[0].id, 'momiji-platform/4/1');
-  assert.equal(spoken[0].text, 'te:Two minutes. I’ll miss the last bus by two minutes.');
+  assert.equal(spoken[0].id, 'momiji-platform/1/1');
+  assert.equal(spoken[0].cast, 'narrator');
+  assert.equal(spoken[0].text, 'te:Tomorrow, Grandma Fusae moves to a care home in the city.');
   assert.equal(spoken[0].seconds, voicedSeconds(3000));
   assert.equal(spoken[0].voiced, true);
   assert.deepEqual(

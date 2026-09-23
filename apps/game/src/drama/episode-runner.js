@@ -317,8 +317,11 @@ export function createEpisodeRunner(host, { stops = [], crossings = [], onEvent 
       phone: Boolean(spoken.phone),
       voiced: Boolean(handle),
     });
+    // Narration reads as a caption, without a speaker label over it.
+    const narration = spoken.cast === 'narrator';
     host.say({
-      speaker: speakerOf(spoken),
+      speaker: narration ? '' : speakerOf(spoken),
+      narration,
       text,
       seconds,
       phone: Boolean(spoken.phone),
