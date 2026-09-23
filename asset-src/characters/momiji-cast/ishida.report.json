@@ -2,6 +2,29 @@
   "asset": "reader-ishida",
   "blender": "5.2.2 LTS",
   "boneCount": 24,
+  "boneMap": {
+    "chest": "Spine2",
+    "footL": "LeftFoot",
+    "footR": "RightFoot",
+    "handL": "LeftHand",
+    "handR": "RightHand",
+    "head": "Head",
+    "hips": "Hips",
+    "lowerArmL": "LeftForeArm",
+    "lowerArmR": "RightForeArm",
+    "lowerLegL": "LeftLeg",
+    "lowerLegR": "RightLeg",
+    "neck": "Neck",
+    "shoulderL": "LeftShoulder",
+    "shoulderR": "RightShoulder",
+    "spine": "Spine",
+    "toesL": "LeftToeBase",
+    "toesR": "RightToeBase",
+    "upperArmL": "LeftArm",
+    "upperArmR": "RightArm",
+    "upperLegL": "LeftUpLeg",
+    "upperLegR": "RightUpLeg"
+  },
   "bones": [
     "Hips",
     "Spine",
@@ -86,6 +109,13 @@
       "loopErrorMetres": 0.0,
       "seconds": 4.0
     },
+    "turn": {
+      "frames": 24,
+      "loop": true,
+      "loopErrorDegrees": 0.0,
+      "loopErrorMetres": 0.0,
+      "seconds": 0.8
+    },
     "walk": {
       "frames": 36,
       "loop": true,
@@ -109,7 +139,7 @@
     }
   },
   "facing": "-Y in Blender, +Z in three.js",
-  "glbBytes": 274492,
+  "glbBytes": 301936,
   "heightMetres": 1.6592,
   "heightWithinTwoCentimetres": true,
   "hurryFootSpeed": 1.697,
@@ -121,10 +151,27 @@
     "newspaper"
   ],
   "person": "reader-1",
+  "props": {
+    "newspaper": {
+      "grip2": [
+        0.04716,
+        0.01926,
+        0.14949,
+        0.0,
+        -0.94656,
+        0.12195,
+        0.29859
+      ],
+      "hand": "right",
+      "hold": "two"
+    }
+  },
   "seatHeight": 0.4,
   "shapeKeyDefaults": {
     "blink-l": 0.0,
     "blink-r": 0.0,
+    "grip-l": 0.0,
+    "grip-r": 0.0,
     "jaw-open": 0.0,
     "smile": 0.0
   },
@@ -132,7 +179,9 @@
     "blink-l",
     "blink-r",
     "jaw-open",
-    "smile"
+    "smile",
+    "grip-l",
+    "grip-r"
   ],
   "targetHeightMetres": 1.66,
   "triangles": 2403,

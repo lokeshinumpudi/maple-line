@@ -2,6 +2,29 @@
   "asset": "commuter-hero",
   "blender": "5.2.2 LTS",
   "boneCount": 24,
+  "boneMap": {
+    "chest": "Spine2",
+    "footL": "LeftFoot",
+    "footR": "RightFoot",
+    "handL": "LeftHand",
+    "handR": "RightHand",
+    "head": "Head",
+    "hips": "Hips",
+    "lowerArmL": "LeftForeArm",
+    "lowerArmR": "RightForeArm",
+    "lowerLegL": "LeftLeg",
+    "lowerLegR": "RightLeg",
+    "neck": "Neck",
+    "shoulderL": "LeftShoulder",
+    "shoulderR": "RightShoulder",
+    "spine": "Spine",
+    "toesL": "LeftToeBase",
+    "toesR": "RightToeBase",
+    "upperArmL": "LeftArm",
+    "upperArmR": "RightArm",
+    "upperLegL": "LeftUpLeg",
+    "upperLegR": "RightUpLeg"
+  },
   "bones": [
     "Hips",
     "Spine",
@@ -86,6 +109,13 @@
       "loopErrorMetres": 0.0,
       "seconds": 4.0
     },
+    "turn": {
+      "frames": 24,
+      "loop": true,
+      "loopErrorDegrees": 0.0,
+      "loopErrorMetres": 0.0,
+      "seconds": 0.8
+    },
     "walk": {
       "frames": 36,
       "loop": true,
@@ -109,7 +139,7 @@
     }
   },
   "facing": "-Y in Blender, +Z in three.js",
-  "glbBytes": 260288,
+  "glbBytes": 287332,
   "heightMetres": 1.7114,
   "heightWithinTwoCentimetres": true,
   "hurryFootSpeed": 1.75,
@@ -117,13 +147,22 @@
   "lowestZ": 0.0043,
   "materials": 1,
   "meshes": [
-    "commuter-hero-body"
+    "commuter-hero-body",
+    "phone"
   ],
   "person": "commuter-1",
+  "props": {
+    "phone": {
+      "hand": "right",
+      "hold": "one"
+    }
+  },
   "seatHeight": 0.412,
   "shapeKeyDefaults": {
     "blink-l": 0.0,
     "blink-r": 0.0,
+    "grip-l": 0.0,
+    "grip-r": 0.0,
     "jaw-open": 0.0,
     "smile": 0.0
   },
@@ -131,7 +170,9 @@
     "blink-l",
     "blink-r",
     "jaw-open",
-    "smile"
+    "smile",
+    "grip-l",
+    "grip-r"
   ],
   "targetHeightMetres": 1.71,
   "triangles": 2295,
