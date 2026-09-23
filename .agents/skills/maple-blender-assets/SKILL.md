@@ -9,7 +9,7 @@ Resolve the repository root three directories above this skill. Read [Maple Line
 
 ## Why Blender
 
-The terrain, trees and track are generated in code and should stay that way. The weakest part of the picture is hand-made form: people are stacked boxes with no faces or animation, and close director shots expose that. Blender assets fill that gap. They arrive as glTF files, load with Three.js's glTF loader, and are driven by the existing game systems (NPC minds pick intents; intents name animation clips).
+The terrain, trees and track are generated in code and should stay that way. The weakest part of the picture is hand-made form: most people are stacked boxes with no faces or animation, and close director shots expose that. Blender assets fill that gap. They arrive as glTF files, load with Three.js's glTF loader, and are driven by the existing game systems (NPC minds pick intents; intents name animation clips).
 
 ## Tooling
 
@@ -43,6 +43,12 @@ Check what already exists before adding a folder. Search for `GLTFLoader` in `ap
 - **Animation clips:** one action per clip, named after the NPC minds intents so behaviour maps to motion without a lookup table: `idle`, `walk`, `hurry`, `linger`, `chat`, `wave`, `sit`, `check-phone`, `stretch`, `watch-train`, `shelter`, plus `board`. Read the current intent list from `simulation/npc-minds.js` (`INTENTS`) instead of copying it. Loop clips start and end on the same pose.
 - **Naming:** objects and actions in lowercase with hyphens. The scene inspector lists names, and agents find objects by them.
 - **Instancing:** crowds are drawn with instanced meshes. Skinned characters are for a small number of hero roles or close shots; do not replace the whole crowd with individual skinned meshes without measuring.
+
+## Adding a person
+
+People share one cast builder under the asset-source characters folder: search it for `PROFILES`. A new cast member is a new profile row (height, width, lower garment, hair, colours, props, stoop), not a new script, so every clip and fix reaches everyone. Then add the person to the game's cast list (search `apps/game/src/world/` for `MOMIJI_CAST`); pick a person id from `get_drama_catalog` or `get_npc_minds`. A seated person also needs their bench height above the figure's origin, since the model's own seat height is measured from its `sit` clip.
+
+Review renders before exporting: build with `--render` into the scratchpad and look at every clip. Props that hang from a hand (a radio, a newspaper) follow that hand in every clip, so check the poses that swing or fold the arms.
 
 ## Workflow
 

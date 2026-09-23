@@ -1,0 +1,141 @@
+{
+  "asset": "student-riko",
+  "blender": "5.2.2 LTS",
+  "boneCount": 24,
+  "bones": [
+    "Hips",
+    "Spine",
+    "Spine1",
+    "Spine2",
+    "Neck",
+    "Head",
+    "LeftShoulder",
+    "LeftArm",
+    "LeftForeArm",
+    "LeftHand",
+    "LeftUpLeg",
+    "LeftLeg",
+    "LeftFoot",
+    "LeftToeBase",
+    "RightShoulder",
+    "RightArm",
+    "RightForeArm",
+    "RightHand",
+    "RightUpLeg",
+    "RightLeg",
+    "RightFoot",
+    "RightToeBase",
+    "eye-l",
+    "eye-r"
+  ],
+  "cast": "riko",
+  "clips": {
+    "board": {
+      "frames": 36,
+      "loop": false,
+      "loopErrorDegrees": 12.0,
+      "loopErrorMetres": 0.1887,
+      "seconds": 1.2
+    },
+    "chat": {
+      "frames": 90,
+      "loop": true,
+      "loopErrorDegrees": 0.0,
+      "loopErrorMetres": 0.0,
+      "seconds": 3.0
+    },
+    "check-phone": {
+      "frames": 90,
+      "loop": true,
+      "loopErrorDegrees": 0.0,
+      "loopErrorMetres": 0.0,
+      "seconds": 3.0
+    },
+    "hurry": {
+      "frames": 27,
+      "loop": true,
+      "loopErrorDegrees": 0.0,
+      "loopErrorMetres": 0.0,
+      "seconds": 0.9
+    },
+    "idle": {
+      "frames": 120,
+      "loop": true,
+      "loopErrorDegrees": 0.0,
+      "loopErrorMetres": 0.0,
+      "seconds": 4.0
+    },
+    "shelter": {
+      "frames": 90,
+      "loop": true,
+      "loopErrorDegrees": 0.0,
+      "loopErrorMetres": 0.0,
+      "seconds": 3.0
+    },
+    "sit": {
+      "frames": 150,
+      "loop": true,
+      "loopErrorDegrees": 0.0,
+      "loopErrorMetres": 0.0,
+      "seconds": 5.0
+    },
+    "stretch": {
+      "frames": 120,
+      "loop": true,
+      "loopErrorDegrees": 0.0,
+      "loopErrorMetres": 0.0,
+      "seconds": 4.0
+    },
+    "walk": {
+      "frames": 36,
+      "loop": true,
+      "loopErrorDegrees": 0.0,
+      "loopErrorMetres": 0.0,
+      "seconds": 1.2
+    },
+    "watch-train": {
+      "frames": 120,
+      "loop": true,
+      "loopErrorDegrees": 0.0,
+      "loopErrorMetres": 0.0,
+      "seconds": 4.0
+    },
+    "wave": {
+      "frames": 60,
+      "loop": true,
+      "loopErrorDegrees": 0.0,
+      "loopErrorMetres": 0.0,
+      "seconds": 2.0
+    }
+  },
+  "facing": "-Y in Blender, +Z in three.js",
+  "glbBytes": 268392,
+  "heightMetres": 1.5849,
+  "heightWithinTwoCentimetres": true,
+  "hurryFootSpeed": 1.613,
+  "hurryTargetSpeed": 1.617,
+  "lowestZ": 0.0077,
+  "materials": 1,
+  "meshes": [
+    "student-riko-body"
+  ],
+  "person": "commuter-2",
+  "seatHeight": 0.392,
+  "shapeKeyDefaults": {
+    "blink-l": 0.0,
+    "blink-r": 0.0,
+    "jaw-open": 0.0,
+    "smile": 0.0
+  },
+  "shapeKeys": [
+    "blink-l",
+    "blink-r",
+    "jaw-open",
+    "smile"
+  ],
+  "targetHeightMetres": 1.58,
+  "triangles": 2543,
+  "vertices": 1768,
+  "walkFootSpeed": 1.068,
+  "walkTargetSpeed": 1.063
+}

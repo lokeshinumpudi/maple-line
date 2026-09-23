@@ -20,12 +20,15 @@ from mathutils import Vector
 from mathutils.bvhtree import BVHTree
 
 
-def parse_args(defaults):
+def parse_args(defaults, extra=None):
+    """`extra` maps an option name such as "--cast" to argparse keyword arguments."""
     argv = sys.argv[sys.argv.index("--") + 1 :] if "--" in sys.argv else []
     parser = argparse.ArgumentParser()
-    parser.add_argument("--out", default=defaults["out"])
-    parser.add_argument("--report", default=defaults["report"])
+    parser.add_argument("--out", default=defaults.get("out"))
+    parser.add_argument("--report", default=defaults.get("report"))
     parser.add_argument("--render", default=None, help="Optional folder for review renders.")
+    for name, options in (extra or {}).items():
+        parser.add_argument(name, **options)
     return parser.parse_args(argv)
 
 
