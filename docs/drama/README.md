@@ -49,10 +49,14 @@ pnpm --filter @maple-line/game drama:script
 
 A test fails if a line the game plays is missing from the committed script.
 
+## Sharing an episode as a video
+
+`pnpm render:episode --episode the-1742-1 --aspect 9:16` renders an episode to an MP4 for phones, with a poster image and a timeline of when each line is spoken. The timeline's line ids (`momiji-platform/2/1`) are what an audio manifest uses to place voice lines. [Episode videos](../VIDEO.md) covers the options, render mode and the manifest format.
+
 ## Limits
 
 - Only Momiji's `commuter-1` (Mr. Sato), `commuter-2` (Riko in episode 1) and `reader-1` (Mr. Ishida) have Blender models with faces and a jaw that moves on their lines. Everyone else, including the Aonuma cast, is still a low-poly figure without a face. The [Blender asset skill](../../.agents/skills/maple-blender-assets/SKILL.md) covers adding more.
-- Dialogue is subtitles. It is not voiced; Haru's campaign keeps its own narration.
+- Dialogue is subtitles. It is not voiced in the game; Haru's campaign keeps its own narration. A rendered video can carry voice clips through an audio manifest.
 - A part may be played by different figures in different scenes (Riko is a Momiji student in episode 1 and a standing Aonuma resident in episode 3).
 - Shots are planned when they start. A character who walks far can leave the frame; portraits follow them but do not re-plan the angle.
 - The episode tools, like the other WebMCP tools, are registered only in development builds. The Places entry works in every build.
