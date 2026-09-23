@@ -1,0 +1,81 @@
+{
+  "asset": "village-bus",
+  "blender": "5.2.2 LTS",
+  "bounds": {
+    "bus-body": [
+      [
+        -1.48,
+        0.24,
+        -3.67
+      ],
+      [
+        1.48,
+        3.21,
+        3.79
+      ]
+    ],
+    "bus-door-front": [
+      [
+        -0.042,
+        0.37,
+        -0.0
+      ],
+      [
+        0.023,
+        2.33,
+        0.43
+      ]
+    ],
+    "bus-wheel": [
+      [
+        -0.13,
+        -0.43,
+        -0.43
+      ],
+      [
+        0.13,
+        0.43,
+        0.43
+      ]
+    ]
+  },
+  "busTriangles": 8382,
+  "facing": "front at +Z in three.js (Blender -Y); door on the left, +X",
+  "glbBytes": 164080,
+  "layout": {
+    "axles": [
+      -2.05,
+      1.75
+    ],
+    "door": [
+      2.38,
+      3.26
+    ],
+    "doorX": 1.1199999999999999,
+    "floorY": 0.62,
+    "halfLength": 3.55,
+    "halfWidth": 1.15,
+    "roofY": 2.98,
+    "stepY": 0.36,
+    "wheelRadius": 0.43,
+    "wheelX": 0.93
+  },
+  "materials": [
+    "bus-paint",
+    "bus-trim",
+    "bus-metal",
+    "bus-glass",
+    "bus-interior",
+    "bus-seat",
+    "bus-lamp",
+    "bus-tail",
+    "bus-sign",
+    "bus-light",
+    "bus-rubber"
+  ],
+  "parts": {
+    "bus-body": 6922,
+    "bus-door-front": 122,
+    "bus-wheel": 304
+  }
+}

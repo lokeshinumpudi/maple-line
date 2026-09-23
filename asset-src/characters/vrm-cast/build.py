@@ -130,6 +130,75 @@ PROFILES = {
             "print": "#8a847a",
         },
     },
+    # Grandma Fusae, 80, The 17:42. A staged drama role (apps/game/src/drama/drama-roles.js):
+    # grey hair in a bun, round glasses, a knitted cardigan over a long blue dress.
+    "fusae": {
+        "person": "fusae",
+        "title": "Grandma Fusae (test)",
+        "height": 1.47,
+        "shoulders": 1.02,
+        "hips": 1.12,
+        "chest": 1.08,
+        "limbs": 1.04,
+        "head": 0.97,
+        "hair": "bun",
+        "outfit": "cardigan",
+        "skirt": True,
+        "hem": 0.4,
+        "brows": 1.0,
+        "blush": False,
+        "glasses": True,
+        "posture": {"stoop": 7},
+        "eyes": {"height": 0.62, "iris": "#3e3028", "irisLight": "#6a5448", "lash": "#3a302c"},
+        "colors": {
+            "skin": "#eac6a6",
+            "hair": "#bdb8b0",
+            "top": "#8c4b37",
+            "shirt": "#3e5f93",
+            "ribbon": "#6b3a2a",
+            "lower": "#34518a",
+            "socks": "#5a4e46",
+            "shoes": "#3a2a22",
+            "mouth": "#a0625a",
+            "blush": "#e4a490",
+            "brow": "#aca69e",
+            "glasses": "#8a6a3a",
+        },
+    },
+    # Aoi, 24, drives the Aonuma bus in The 17:42 (drama-roles.js `aoi`): ponytail, teal
+    # uniform jacket over a cream shirt, a peaked cap.
+    "aoi": {
+        "person": "aoi",
+        "title": "Aoi (test)",
+        "height": 1.6,
+        "shoulders": 1.04,
+        "hips": 1.0,
+        "chest": 1.02,
+        "limbs": 1.03,
+        "head": 0.98,
+        "hair": "ponytail",
+        "outfit": "suit",
+        "cap": True,
+        "brows": 0.3,
+        "eyes": {"height": 0.95, "iris": "#4a3024", "irisLight": "#9a6a44", "lash": "#261a1a"},
+        "colors": {
+            "skin": "#f2d4bc",
+            "hair": "#2e2220",
+            "hairTie": "#1f8a86",
+            "top": "#1f7d79",
+            "shirt": "#efe6cf",
+            "ribbon": "#145c5a",
+            "lower": "#2c3a48",
+            "socks": "#22242a",
+            "shoes": "#1c1a1a",
+            "mouth": "#b8505a",
+            "blush": "#f08a8a",
+            "brow": "#3a2828",
+            "cap": "#1f7d79",
+            "capBand": "#efe6cf",
+            "capBrim": "#1b1f1f",
+        },
+    },
 }
 
 ARGS = ma.parse_args({}, {"--cast": {"default": "riko"}})
@@ -141,6 +210,11 @@ def use_profile(name):
     global P, S
     P = PROFILES[name]
     S = P["height"] / 1.58
+
+
+def has_skirt():
+    """School uniforms and dresses have a skirt part; everything else has trousers."""
+    return P.get("skirt", P["outfit"] == "school")
 
 
 def smoothstep(a, b, x):
@@ -236,7 +310,7 @@ def body_graph(j):
     s = S
     p0 = node((0, 0.005 * s, 0.8 * s), (0.112 * s * hw, 0.088 * s))
     p1 = node((0, 0.005 * s, 0.9 * s), (0.128 * s * hw, 0.094 * s), p0)
-    waist = 0.09 if P["outfit"] == "school" else 0.1
+    waist = 0.09 if has_skirt() else 0.1
     p2 = node((0, 0, 1.03 * s), (waist * s * max(1, sw * 0.92), 0.072 * s * ch), p1)
     p3 = node((0, -0.005 * s, 1.15 * s), (0.106 * s * sw * 0.97, 0.082 * s * ch), p2)
     p4 = node((0, 0, 1.235 * s), (0.11 * s * sw, 0.072 * s * ch), p3)
@@ -244,7 +318,7 @@ def body_graph(j):
     node((0, 0.01 * s, 1.37 * s), (0.029 * s * lw, 0.031 * s * lw), p5)
     for side, sx in (("left", 1), ("right", -1)):
         up, low, foot = j[f"{side}UpperLeg"], j[f"{side}LowerLeg"], j[f"{side}Foot"]
-        trousers = P["outfit"] != "school"
+        trousers = not has_skirt()
         tk = 1.08 if trousers else 1.0
         l0 = node(up[0] + Vector((0, 0, -0.04 * s)), 0.07 * s * lw * tk, p0)
         l1 = node(up[0].lerp(up[1], 0.45), 0.06 * s * lw * tk, l0)
@@ -359,7 +433,7 @@ def body_materials():
         "skin": material("skin", c["skin"], mtoon="skin"),
         "top": material("top", c["top"]),
         "shirt": material("shirt", c["shirt"]),
-        "lower": material("lower", c["lower"], double=P["outfit"] == "school"),
+        "lower": material("lower", c["lower"], double=has_skirt()),
         "socks": material("socks", c["socks"]),
         "shoes": material("shoes", c["shoes"], mtoon="shoes"),
         "ribbon": material("ribbon", c["ribbon"]),
@@ -399,6 +473,9 @@ def region(co, bone, t):
             if z < 0.43:
                 return "socks"
             return "skin" if z < 0.66 else "lower"
+        if has_skirt():
+            # Stockings below a long dress.
+            return "socks" if z < P.get("hem", 0.61) + 0.04 else "lower"
         return "lower"
     # Torso.
     front = co.y < 0
@@ -479,8 +556,9 @@ def ring_loft(bm, rings, closed=True):
 
 def build_skirt():
     bm = bmesh.new()
-    pleats, rows = 32, 7
-    top, hem = 1.0 * S, 0.61 * S
+    pleats = 32
+    top, hem = 1.0 * S, P.get("hem", 0.61) * S
+    rows = 7 if hem > 0.55 * S else 10
     rings = []
     for r in range(rows + 1):
         t = r / rows
@@ -596,6 +674,42 @@ def build_glasses(head_bvh):
     q = [bm.verts.new((x * 0.0205 * k, fy - 0.001 * k, ez + dz * k)) for x, dz in ((-1, 0.004), (1, 0.004), (1, 0.0015), (-1, 0.0015))]
     bm.faces.new(q)
     return add_part(bm, material("glasses", P["colors"]["glasses"], double=True, mtoon="line"), "glasses")
+
+
+def build_cap(head_bvh):
+    """A peaked uniform cap: crown, a cream band and a dark brim over the forehead."""
+    C, R = head_center(), head_radii()
+    k = S * P["head"]
+    colors = P["colors"]
+    n = 28
+    base = C.z + 0.018 * k
+    rings = []
+    # Band, then a crown that flares a little toward its flat top, like a uniform cap.
+    for z, grow in ((base, 1.08), (base + 0.02 * k, 1.09), (C.z + 0.09 * k, 1.13), (C.z + 0.116 * k, 1.15)):
+        rings.append([Vector((math.sin(2 * math.pi * i / n) * R.x * grow, C.y - math.cos(2 * math.pi * i / n) * R.y * grow, z)) for i in range(n)])
+    crown = bmesh.new()
+    verts = [[crown.verts.new(p) for p in ring] for ring in rings[1:]]
+    ring_loft(crown, verts)
+    top = crown.verts.new(Vector((0, C.y, C.z + 0.126 * k)))
+    for i in range(n):
+        crown.faces.new((verts[-1][i], verts[-1][(i + 1) % n], top))
+    band = bmesh.new()
+    band_verts = [[band.verts.new(p) for p in ring] for ring in rings[:2]]
+    ring_loft(band, band_verts)
+    brim = bmesh.new()
+    arc_pts = []
+    for i in range(13):
+        a = math.radians(lerp(-80, 80, i / 12))
+        inner = Vector((math.sin(a) * R.x * 1.08, C.y - math.cos(a) * R.y * 1.08, base))
+        outer = Vector((math.sin(a) * R.x * 1.14, C.y - math.cos(a) * (R.y * 1.08 + 0.06 * k), base - 0.024 * k))
+        arc_pts.append((brim.verts.new(inner), brim.verts.new(outer)))
+    for (a0, b0), (a1, b1) in zip(arc_pts, arc_pts[1:]):
+        brim.faces.new((a0, a1, b1, b0))
+    return [
+        add_part(crown, material("cap", colors["cap"], double=True), "cap"),
+        add_part(band, material("cap-band", colors["capBand"], double=True), "cap-band"),
+        add_part(brim, material("cap-brim", colors["capBrim"], double=True), "cap-brim"),
+    ]
 
 
 def build_newspaper():
@@ -933,7 +1047,7 @@ def build_hair_shell(style):
     C, R = head_center(), head_radii()
     bm = bmesh.new()
     bmesh.ops.create_uvsphere(bm, u_segments=40, v_segments=24, radius=1.0)
-    lift = {"ponytail": 0.012, "short": 0.01, "elder": 0.004}[style] * S
+    lift = {"ponytail": 0.012, "short": 0.01, "elder": 0.004, "bun": 0.008}[style] * S
     kill = []
     for vert in bm.verts:
         d = vert.co.normalized()
@@ -944,7 +1058,7 @@ def build_hair_shell(style):
             front_line = 40 + 30 * (abs(phi) / 180)
         else:
             front_line = 40 + 44 * smoothstep(20, 95, abs(phi))
-        back_line = {"ponytail": 124, "short": 116, "elder": 112}[style]
+        back_line = {"ponytail": 124, "short": 116, "elder": 112, "bun": 120}[style]
         if abs(phi) < 100:
             limit = front_line if abs(phi) < 80 else lerp(front_line, back_line, (abs(phi) - 80) / 20)
         else:
@@ -963,7 +1077,7 @@ def build_hair(head_bvh, j):
     # Push the shell out to the true scalp plus lift.
     for vert in bm.verts:
         d = (vert.co - C).normalized()
-        lift = {"ponytail": 0.011, "short": 0.009, "elder": 0.003}[style] * S * (0.7 + 0.5 * max(0, d.z))
+        lift = {"ponytail": 0.011, "short": 0.009, "elder": 0.003, "bun": 0.007}[style] * S * (0.7 + 0.5 * max(0, d.z))
         vert.co = scalp(head_bvh, d, lift)
     shell_count = len(bm.verts)
     chains = []  # (bone prefix, points, vertex range, params)
@@ -986,6 +1100,11 @@ def build_hair(head_bvh, j):
             strands.append(dict(phi=phi, t0=30, t1=96, hang=0.0, lift=0.01 * k, w=0.036 * k, th=0.006 * k))
         for phi in range(100, 261, 26):
             strands.append(dict(phi=phi, t0=24, t1=114, hang=0.006 * k, lift=0.011 * k, w=0.045 * k, th=0.007 * k))
+    elif style == "bun":
+        # Pulled back from the hairline all round, gathered into a bun high at the back.
+        for phi in range(-160, 181, 20):
+            t1 = lerp(44, 112, smoothstep(0, 180, abs(phi)))
+            strands.append(dict(phi=phi, t0=12, t1=t1, hang=0.0, lift=0.009 * k, w=0.046 * k, th=0.006 * k, taper=1.3))
     else:  # elder: short, thinning, swept back
         for phi in (-70, 70, -95, 95):
             strands.append(dict(phi=phi, t0=58, t1=104, hang=0.0, lift=0.006 * k, w=0.03 * k, th=0.005 * k))
@@ -1024,6 +1143,16 @@ def build_hair(head_bvh, j):
         chains.append(("hairTail", tail_pts, {"hang": 0.2 * k}))
     else:
         tie_bm = None
+    if style == "bun":
+        # The bun: a flattened ball on the upper back of the head, in the hair material.
+        centre = scalp(head_bvh, direction(180, 64), 0.03 * k)
+        before = len(bm.verts)
+        ball = bmesh.ops.create_uvsphere(bm, u_segments=16, v_segments=10, radius=1.0)
+        for vert in ball["verts"]:
+            x, y, z = vert.co
+            vert.co = centre + Vector((x * 0.05 * k, y * 0.04 * k, z * 0.045 * k))
+        params.extend([0.0] * (len(bm.verts) - before))
+        owners.extend([None] * (len(bm.verts) - before))
     mesh = bpy.data.meshes.new("Hair")
     bm.to_mesh(mesh)
     bm.free()
@@ -1197,13 +1326,15 @@ def build(cast):
     head_mesh.materials.append(mats["skin"])
     body_bvh = BVHTree.FromObject(body, bpy.context.evaluated_depsgraph_get())
     parts = []
-    if P["outfit"] == "school":
+    if has_skirt():
         parts.append(build_skirt())
     parts += build_collar_and_tie(body_bvh)
     face = build_face(head_bvh)
     hair, chains, hair_params, hair_owners, hair_extra = build_hair(head_bvh, j)
     if P.get("glasses"):
         hair_extra.append(build_glasses(head_bvh))
+    if P.get("cap"):
+        hair_extra += build_cap(head_bvh)
     newspaper = build_newspaper() if P.get("newspaper") else None
     chain_j, springs = chain_bones(chains, j)
     all_j = {**j, **chain_j}
