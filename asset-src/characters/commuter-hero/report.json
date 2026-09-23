@@ -1,0 +1,79 @@
+{
+  "asset": "commuter-hero",
+  "blender": "5.2.2 LTS",
+  "boneCount": 24,
+  "bones": [
+    "Hips",
+    "Spine",
+    "Spine1",
+    "Spine2",
+    "Neck",
+    "Head",
+    "LeftShoulder",
+    "LeftArm",
+    "LeftForeArm",
+    "LeftHand",
+    "LeftUpLeg",
+    "LeftLeg",
+    "LeftFoot",
+    "LeftToeBase",
+    "RightShoulder",
+    "RightArm",
+    "RightForeArm",
+    "RightHand",
+    "RightUpLeg",
+    "RightLeg",
+    "RightFoot",
+    "RightToeBase",
+    "eye-l",
+    "eye-r"
+  ],
+  "clips": {
+    "check-phone": {
+      "frames": 90,
+      "loop": true,
+      "loopErrorDegrees": 0.0,
+      "seconds": 3.0
+    },
+    "idle": {
+      "frames": 120,
+      "loop": true,
+      "loopErrorDegrees": 0.0,
+      "seconds": 4.0
+    },
+    "walk": {
+      "frames": 36,
+      "loop": true,
+      "loopErrorDegrees": 0.0,
+      "seconds": 1.2
+    },
+    "wave": {
+      "frames": 60,
+      "loop": true,
+      "loopErrorDegrees": 0.0,
+      "seconds": 2.0
+    }
+  },
+  "facing": "-Y in Blender, +Z in three.js",
+  "glbBytes": 130664,
+  "heightMetres": 1.7114,
+  "heightWithinTwoCentimetres": true,
+  "lowestZ": 0.0043,
+  "materials": 1,
+  "shapeKeyDefaults": {
+    "blink-l": 0.0,
+    "blink-r": 0.0,
+    "jaw-open": 0.0,
+    "smile": 0.0
+  },
+  "shapeKeys": [
+    "blink-l",
+    "blink-r",
+    "jaw-open",
+    "smile"
+  ],
+  "triangles": 2295,
+  "vertices": 1648,
+  "walkFootSpeed": 1.148,
+  "walkTargetSpeed": 1.15
+}

@@ -101,6 +101,8 @@ export function createEpisodeRunner(host, { stops = [], crossings = [] } = {}) {
         text: item.line.text,
         seconds: item.seconds,
         phone: Boolean(item.line.phone),
+        // The character playing the speaker in this scene, if any (for mouth movement).
+        entity: item.line.cast ? (scene().actors[item.line.cast] ?? null) : null,
       });
       return;
     }

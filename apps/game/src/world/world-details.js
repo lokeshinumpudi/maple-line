@@ -28,6 +28,8 @@ export function addWorldDetails({
     geometries = new Set(),
     materials = new Set(),
     pedestrians = [];
+  // People drawn by a loaded model instead of the instanced parts (see world/hero-cast.js).
+  const standIns = new Set();
   const homes = [];
   let area = 'Countryside',
     signTexture;
@@ -724,6 +726,25 @@ export function addWorldDetails({
   return {
     root,
     getPopulationState: () => population.getState(),
+    /** Hide or show one person's instanced figure while a model stands in for them. */
+    setStandIn(id, enabled) {
+      if (enabled) standIns.add(id);
+      else standIns.delete(id);
+    },
+    /** Live placement of one person's figure, for a stand-in model to follow. */
+    figureOf(id) {
+      const person = pedestrians.find((item) => item.agent.id === id);
+      if (!person) return null;
+      const agent = person.agent;
+      return {
+        position: person.group.position,
+        heading: agent.heading,
+        visible: agent.visible,
+        walking: Boolean(agent.walking),
+        pose: agent.pose ?? 'standing',
+        state: agent.state,
+      };
+    },
     update(dt, context = {}) {
       elapsed += dt;
       surfaceDetail.update(dt || 1 / 60, context.weather);
@@ -797,6 +818,7 @@ export function addWorldDetails({
         for (const part of person.parts) {
           if (
             !agent.visible ||
+            standIns.has(agent.id) ||
             (part.weatherOnly && (!wet || agent.pose === 'reading')) ||
             (part.poseOnly && agent.pose !== part.poseOnly)
           )

@@ -79,6 +79,8 @@ The express tuning reaches 60 km/h in about 11 seconds and 120 km/h in about 23 
 
 **Places → Watch a short drama** plays episodes of _The 17:42_, a three-part companion series staged with the director, NPC acting notes, auto drive, doors and weather. Episodes are data that agents can write, validate and play through WebMCP; see [writing episodes](drama/README.md).
 
+The first Blender-built assets are in the game: a hero commuter at Momiji (a rigged character with face shapes and walk, idle, wave and check-phone clips that follow the NPC mind) and a timber station shelter on the Momiji platform. Both are made by Python build scripts in `asset-src/`; missing files fall back to the procedural figure and platform. See [asset sources](../asset-src/README.md).
+
 Seven level crossings between Sakuragawa and Minato have warning lamps, a procedural two-tone bell, lowering arms and small cars. Cars make the legally required stop at the line, queue while the arms are down and cross once they rise. Crossings stay closed until the whole train has cleared.
 
 Background characters carry a persona, mood, needs and an intent chosen by local rules with seeded randomness. With AI life on, a few characters near the camera are sent to Jev at most once every 25 seconds for a bounded mood and intent choice; an agent's acting note overrides both for a set time. Minds can delay a waiting passenger by at most two seconds and never block boarding. See the NPC minds section of [AI director](AI-DIRECTOR.md).

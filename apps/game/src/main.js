@@ -57,6 +57,9 @@ import { createEpisodeRunner } from './drama/episode-runner.js';
 import { THE_1742 } from './drama/series/the-1742.js';
 import { registerDramaTools, createEpisodeLibrary } from './agent/drama-tools.js';
 import { installEpisodePicker } from './ui/episode-picker.js';
+import { createModelLoader, createGltfLoader } from './rendering/model-loader.js';
+import { createHeroCast } from './world/hero-cast.js';
+import { createStationModules } from './world/station-modules.js';
 import { createMindsClient, mindRegion } from './agent/minds-client.js';
 import { registerMindTools } from './agent/mind-tools.js';
 import { PLACE_LINES } from './presentation/place-lines.js';
@@ -827,6 +830,29 @@ const mindsClient = createMindsClient({
   },
 });
 mindsClient.setEnabled(gameStore.getState().director.enabled);
+// Blender-built assets (asset-src/). Missing files keep the procedural figure and station.
+const gltfLoader = createGltfLoader();
+const modelLoader = createModelLoader({
+  load: (path) => gltfLoader.then((load) => load(path)),
+  onError: (path) => controlMessage(`${path} could not load; showing the simple version.`),
+});
+const heroCast = createHeroCast({
+  THREE,
+  scene,
+  loader: modelLoader,
+  // worldDetails is replaced when a generated valley is built, so resolve it each call.
+  worldDetails: {
+    setStandIn: (id, enabled) => worldDetails.setStandIn?.(id, enabled),
+    figureOf: (id) => worldDetails.figureOf?.(id) ?? null,
+  },
+  minds,
+});
+const stationModules = createStationModules({ THREE, loader: modelLoader, parent: station });
+if (import.meta.hot)
+  import.meta.hot.dispose(() => {
+    heroCast.dispose();
+    stationModules.dispose();
+  });
 if (import.meta.hot) import.meta.hot.dispose(() => mindsClient.dispose());
 directorButton.onclick = () => {
   const enabled = !gameStore.getState().director.enabled;
@@ -1304,7 +1330,10 @@ const episodeRunner = createEpisodeRunner(
       if (id === null && episodeRunner.playing) ensureAutoDrive();
     },
     cut: (shot) => filmDirector.cut(shot),
-    say: (line) => filmCaptions.show({ kind: 'dialogue', ...line }),
+    say(line) {
+      if (line.entity && line.entity === heroCast.personId) heroCast.talk(line.seconds);
+      filmCaptions.show({ kind: 'dialogue', ...line });
+    },
     card: (caption) => filmCaptions.show(caption),
     direct: (entity, note) => minds.setDirective(entity, note),
     event: (type) => minds.observe({ type }),
@@ -1991,6 +2020,7 @@ function frame(now) {
     stationActivity: activeDirectorDecision()?.stationActivity ?? 'commute',
     minds,
   });
+  heroCast.update(state.paused ? 0 : dt, { paused: state.paused });
   mindsStop ??= nearestUpcomingStop();
   mindsStopAge += realDt;
   if (mindsStopAge > 0.5) {
@@ -2639,6 +2669,11 @@ if (import.meta.env.DEV) {
           },
           getContext: () => ({
             ...directorContext(),
+            models: {
+              hero: heroCast.getState(),
+              modules: stationModules.getState(),
+              files: modelLoader.getState(),
+            },
             people: worldDetails
               .getPopulationState()
               .people.filter((person) => person.visible && person.state !== 'onboard')

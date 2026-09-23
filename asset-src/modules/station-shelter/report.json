@@ -1,0 +1,18 @@
+{
+  "asset": "station-shelter",
+  "blender": "5.2.2 LTS",
+  "facing": "open front -Y in Blender, +Z in three.js",
+  "glbBytes": 29316,
+  "lod0Triangles": 900,
+  "lod1Triangles": 84,
+  "lowestZ": 0.0,
+  "materials": 1,
+  "sizeMetres": [
+    6.52,
+    2.824,
+    2.85
+  ],
+  "sockets": [
+    "socket.bench-seat-1"
+  ]
+}
