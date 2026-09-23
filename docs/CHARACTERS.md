@@ -1,6 +1,6 @@
 # Haru and Emi
 
-![Character and prop reference](../apps/game/public/story/character-reference.png)
+![Character and prop reference](../apps/game/public/story/character-reference.webp)
 
 The approved illustration is the visual reference: a navy work jacket and railway cap for Haru, a rust jacket and cream knit for Emi, worn useful possessions, and faces that show attention to each other. The current Three.js figures translate these features into small procedural models. They do not reproduce the illustration’s painted fabric, expressive faces, or seated pose.
 

@@ -33,7 +33,7 @@ export function mountStoryPanel({
     node.addEventListener('click', handler);
     return node;
   };
-  const artworkUrl = './story/haru-emi.png';
+  const artworkUrl = './story/haru-emi.webp';
   const staticPreview = ['static', 'signal'].includes(document.documentElement?.dataset.hosting);
   const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)');
   const root = element('div', 'ml-story-root');
@@ -671,7 +671,7 @@ export function mountStoryPanel({
     head.append(title, close);
     // The full reference sheet is requested only after the player opens it.
     const artwork = element('img', 'ml-story-study-image');
-    artwork.src = './story/character-reference.png';
+    artwork.src = './story/character-reference.webp';
     artwork.alt =
       'Watercolor character study: Haru in his blue railway uniform and Emi in her rust-colored jacket, with their notebook, spanner, recorder, satchel, and tickets.';
     artwork.decoding = 'async';

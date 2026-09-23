@@ -13,7 +13,9 @@ Three short edits now play in the local game: tree rustle, sheltered roof rain a
 
 ## Preparation and provenance
 
-Run `python3 .agents/skills/maple-sound-engineering/scripts/prepare_game_beds.py` from the workspace root. It checks each source hash against the collection, trims and filters a mono excerpt, calculates a constant gain with headroom, encodes 44.1 kHz MP3 at 128 kbit/s, and measures the result. It requires FFmpeg and writes only these three assets and their manifest.
+Run `python3 .agents/skills/maple-sound-engineering/scripts/prepare_game_beds.py` from the workspace root. It checks each source hash against the collection, trims and filters a mono excerpt, calculates a constant gain with headroom, encodes 44.1 kHz MP3 at 96 kbit/s, and measures the result. It requires FFmpeg and writes only these three assets and their manifest. Set `MAPLE_AUDIO_LIBRARY` to the collection folder when running from a worktree that lacks it.
+
+Size pass, September 2026: the three mono beds moved from 128 to 96 kbit/s (803 KB to 603 KB; integrated loudness within 0.03 LU, every octave band within 0.8 dB). `river.mp3` stores two identical channels, so it was re-encoded at 96 kbit/s joint stereo with a 0.44 dB gain that restores its -22.5 LUFS level; it still decodes to identical channels, so the StereoPanner behaves as before (433 KB to 325 KB). `forest.mp3`, `people.mp3` and `rain.mp3` are true stereo (channel correlation 0.19 to 0.58) and stay at 128 kbit/s, since a lower bitrate or mono would change their width.
 
 [Field recording metadata](../../apps/game/public/audio/field-recordings.json) contains exact source, licence, edit, hash, size and measurement records. [Player-facing credits](../../apps/game/public/audio/credits.html) name Joseph SARDIN's CC0 tree/roof recordings and xserra's CC BY 4.0 Tokyo cicadas, with changes and source links. Original source files remain unchanged.
 
