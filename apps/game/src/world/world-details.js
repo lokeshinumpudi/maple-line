@@ -624,6 +624,7 @@ export function addWorldDetails({
       agent,
       phase: index * 2.4,
       onPlatform,
+      lookTurn: 0,
     });
   }
   population.people.forEach(person);
@@ -647,12 +648,99 @@ export function addWorldDetails({
     mesh.computeBoundingSphere();
     mesh.boundingSphere.radius += 55;
   }
+  // Mind cues on existing parts: body/head turn, posture, and one-arm gestures. No allocations.
+  function expressPerson(person, expression, context, dt) {
+    if (!expression) return;
+    const agent = person.agent;
+    let target = NaN;
+    if (expression.lookAt === 'train' && context.trainPosition) {
+      target = Math.atan2(
+        context.trainPosition[0] - agent.position.x,
+        context.trainPosition[2] - agent.position.z,
+      );
+    } else if (expression.lookAt === 'neighbour') {
+      let best = 16;
+      for (const other of pedestrians) {
+        if (other === person || !other.agent.visible) continue;
+        const dx = other.agent.position.x - agent.position.x,
+          dz = other.agent.position.z - agent.position.z,
+          d = dx * dx + dz * dz;
+        if (d < best) {
+          best = d;
+          target = Math.atan2(dx, dz);
+        }
+      }
+    }
+    let turn = Number.isFinite(target)
+      ? Math.atan2(Math.sin(target - agent.heading), Math.cos(target - agent.heading))
+      : expression.headTurn * 0.5;
+    turn = Math.max(agent.walking ? -0.35 : -1.3, Math.min(agent.walking ? 0.35 : 1.3, turn));
+    person.lookTurn += (turn - person.lookTurn) * (1 - Math.exp(-(dt || 0) * 3));
+    // Standing people turn their whole body; walkers only glance, shown by the hair offset.
+    if (!agent.walking) person.group.rotation.y = agent.heading + person.lookTurn;
+    const glance = agent.walking ? person.lookTurn : 0;
+    person.hair.position.x += Math.sin(glance) * -0.03;
+    if (expression.lookAt === 'sky') {
+      person.head.position.z -= 0.02;
+      person.hair.position.set(person.hair.position.x, 1.63, -0.07);
+    } else if (expression.lookAt === 'ground') {
+      person.head.position.z += 0.05;
+      person.head.position.y -= 0.03;
+      person.hair.position.set(person.hair.position.x, 1.64, 0.03);
+    }
+    if (expression.posture === 'slumped') {
+      person.torso.rotation.x = 0.12;
+      person.head.position.y -= 0.04;
+      person.head.position.z += 0.04;
+      person.hair.position.y -= 0.04;
+      person.hair.position.z += 0.04;
+    } else if (expression.posture === 'eager') {
+      person.torso.rotation.x = -0.05;
+      person.head.position.y += 0.02;
+      person.hair.position.y += 0.02;
+    }
+    if (agent.walking) return;
+    const wave = Math.sin(elapsed * 7 + person.phase);
+    const arm = person.arms[1];
+    // Arm boxes rotate about their centres, so raised arms are also moved up beside the head.
+    if (expression.intent === 'wave') {
+      arm.position.set(0.42, 1.5, 0);
+      arm.rotation.z = 2.75 + wave * 0.2;
+    } else if (expression.intent === 'check-phone') {
+      arm.position.set(0.2, 1.05, 0.2);
+      arm.rotation.x = -1.2;
+    } else if (expression.intent === 'stretch') {
+      const reach = Math.sin(elapsed * 1.5 + person.phase) * 0.12;
+      person.arms[0].position.set(-0.36, 1.52, 0);
+      person.arms[0].rotation.z = -2.9 - reach;
+      arm.position.set(0.36, 1.52, 0);
+      arm.rotation.z = 2.9 + reach;
+    } else {
+      const sway = Math.sin(elapsed * 2.2 + person.phase) * expression.gestureRate;
+      person.arms[0].rotation.z = sway * 0.08;
+      arm.rotation.z = expression.intent === 'chat' ? -0.45 - sway * 0.2 : -sway * 0.08;
+    }
+  }
   return {
     root,
     getPopulationState: () => population.getState(),
     update(dt, context = {}) {
       elapsed += dt;
       surfaceDetail.update(dt || 1 / 60, context.weather);
+      // Optional NPC minds: report where each person is, then let movement read expressions.
+      const minds = context.minds;
+      if (minds)
+        for (const agent of population.people)
+          minds.sense(
+            agent.id,
+            agent.role,
+            agent.position.x,
+            agent.position.z,
+            agent.walking,
+            population.platformAt(agent.position.x, agent.position.z),
+            agent.visible,
+            agent.state,
+          );
       population.update(dt, context);
       const wet = context.weather === 'rain' || context.weather === 'snow';
       const snow = context.weather === 'snow' ? 1 : 0;
@@ -703,6 +791,8 @@ export function addWorldDetails({
           person.arms[1].position.y = 1.13;
         }
         if (agent.bagDropped) person.bag.position.set(0.28, 0.18, 0.58);
+        if (minds && agent.visible && (agent.pose ?? 'standing') === 'standing')
+          expressPerson(person, minds.expressionFor(agent.id), context, dt);
         person.group.updateMatrix();
         for (const part of person.parts) {
           if (

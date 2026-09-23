@@ -50,6 +50,7 @@ export function createGameStore(startDistance = 0) {
         narrationEnabled: false,
         trainWipers: 'auto',
         powerFlow: true,
+        filmLook: 'auto',
       },
       revision: 0,
       presentation: { menuOpen: false, sceneViewBeatId: null },
@@ -119,7 +120,8 @@ export function createGameStore(startDistance = 0) {
     setPreferences(patch) {
       const allowed = {
         mode: ['explore', 'challenge'],
-        view: ['scenic', 'follow', 'cab', 'passenger', 'vista', 'orbit'],
+        view: ['scenic', 'follow', 'cab', 'passenger', 'vista', 'director', 'orbit'],
+        filmLook: ['auto', 'full', 'lite', 'off'],
         weather: ['clear', 'rain', 'snow'],
         trainLights: ['auto', 'on', 'off'],
         narrationLanguage: [

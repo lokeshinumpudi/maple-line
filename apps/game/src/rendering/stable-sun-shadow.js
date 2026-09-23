@@ -17,13 +17,19 @@ export function createStableSunShadow({
   const texelSize = frustumSize / mapSize;
   const offsetVec = new Vector3(offset.x, offset.y, offset.z);
   const worldUp = new Vector3(0, 1, 0);
-  const zCam = new Vector3().copy(offsetVec);
-  if (zCam.lengthSq() === 0) zCam.set(0, 1, 0);
-  zCam.normalize();
-  const xCam = new Vector3().crossVectors(worldUp, zCam);
-  if (xCam.lengthSq() < 1e-12) xCam.set(1, 0, 0).cross(zCam);
-  xCam.normalize();
-  const yCam = new Vector3().crossVectors(zCam, xCam).normalize();
+  const zCam = new Vector3();
+  const xCam = new Vector3();
+  const yCam = new Vector3();
+  function computeBasis() {
+    zCam.copy(offsetVec);
+    if (zCam.lengthSq() === 0) zCam.set(0, 1, 0);
+    zCam.normalize();
+    xCam.crossVectors(worldUp, zCam);
+    if (xCam.lengthSq() < 1e-12) xCam.set(1, 0, 0).cross(zCam);
+    xCam.normalize();
+    yCam.crossVectors(zCam, xCam).normalize();
+  }
+  computeBasis();
   const snapped = new Vector3();
   const previousFocus = new Vector3(Number.NaN, Number.NaN, Number.NaN);
 
@@ -40,6 +46,15 @@ export function createStableSunShadow({
     frustumSize,
     basis: { x: xCam, y: yCam, z: zCam },
     offset: offsetVec,
+    /** Moves the sun (for example low and warm at dusk). Returns true when it changed. */
+    setOffset(next) {
+      if (!finiteVec(next)) return false;
+      if (offsetVec.distanceToSquared(next) < 1e-6) return false;
+      offsetVec.set(next.x, next.y, next.z);
+      computeBasis();
+      previousFocus.set(Number.NaN, Number.NaN, Number.NaN);
+      return true;
+    },
     snap(worldTarget, out = snapped) {
       return snapTo(worldTarget, out);
     },

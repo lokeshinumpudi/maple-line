@@ -73,6 +73,14 @@ For a quick visit, choose **Places → Every stop & viewpoint → Kawasemi route
 
 The express tuning reaches 60 km/h in about 11 seconds and 120 km/h in about 23 seconds at full power on level, dry track. A synthesized electric traction tone follows power and speed; coasting leaves wheel texture and air rush. The speedometer covers 0–160 km/h. These are fictional game settings and synthesized sounds, not a reproduction of a specific Japanese train. See [express tuning and audio checks](docs/EXPRESS-TRAIN.md).
 
+## Film look, director camera and staging tools
+
+**Settings → Weather & sound → Film look** adds a finish pass: 4× MSAA, bloom on bright values, sun shafts through open sky, depth of field for director shots, and a per-weather colour grade. Automatic chooses it on desktop and keeps phones on the plain render. Dusk lowers the sun to about 12°, so shadows run long. **Camera → Director · film** cuts between thirteen shot types (trackside passes, long-lens telephoto, drone pull-backs, chase, bogie-level, cab, window, platform, under-bridge and portrait shots) in a 2.39:1 frame, with a place card and a one-line narration at each stop. The HUD fades until the pointer moves. Agents can cut to shots, play scripted sequences with captions and scene settings, and give background characters acting notes through WebMCP. See [film director and agent staging tools](DIRECTOR.md).
+
+Seven level crossings between Sakuragawa and Minato have warning lamps, a procedural two-tone bell, lowering arms and small cars. Cars make the legally required stop at the line, queue while the arms are down and cross once they rise. Crossings stay closed until the whole train has cleared.
+
+Background characters carry a persona, mood, needs and an intent chosen by local rules with seeded randomness. With AI life on, a few characters near the camera are sent to Jev at most once every 25 seconds for a bounded mood and intent choice; an agent's acting note overrides both for a set time. Minds can delay a waiting passenger by at most two seconds and never block boarding. See the NPC minds section of [AI director](AI-DIRECTOR.md).
+
 ## Current world and rendering
 
 The scenery presentation pass replaces abrupt grass/cliff color boundaries with continuous meadow, moss and stone tones, without changing terrain heights. Seeded region fields create groves and gaps in the original valley, generated worlds and regional forests. Daylight, rain, snow and dusk share their palettes with six cached reflection environments. A small pool of golden motes appears above dry ground on clear, non-winter evenings in the original valley; it fades out in precipitation and tunnels, and its motion stops while paused. Leaf textures include edge filtering and color bleed to reduce dark fringes. See the [implementation record](docs/graphics-research/presentation-pass.md) for scope and validation.

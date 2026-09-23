@@ -26,7 +26,7 @@ const triple = (minimum, maximum) => ({
   items: numberSchema(minimum, maximum),
 });
 const controlSchemas = {
-  camera: enumSchema(['scenic', 'follow', 'cab', 'passenger', 'vista', 'orbit']),
+  camera: enumSchema(['scenic', 'follow', 'cab', 'passenger', 'vista', 'director', 'orbit']),
   weather: enumSchema(['clear', 'rain', 'snow']),
   timeOfDay: enumSchema(['daylight', 'dusk']),
   location: {
@@ -172,6 +172,7 @@ export function registerGameWebMCP({
   railway,
   routes,
   storyLevels,
+  extensions = [],
   environment = globalThis,
 }) {
   if (!inspector || typeof getGameState !== 'function')
@@ -304,6 +305,8 @@ export function registerGameWebMCP({
   if (building) registerBuildTools({ tool, ...building });
   if (story) registerStoryTools({ tool, ...story });
   if (routes) registerRouteTools({ tool, ...routes });
+  // Feature modules (director, network, minds) register through the same validated tool().
+  for (const register of extensions) register({ tool });
   if (railway) registerRailwayTools({ tool, ...railway });
   if (storyLevels) registerStoryLevelTools({ tool, ...storyLevels });
 

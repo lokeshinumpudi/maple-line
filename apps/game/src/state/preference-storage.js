@@ -2,7 +2,8 @@ export const PREFERENCE_STORAGE_KEY = 'maple-line:preferences:v1';
 const VERSION = 1;
 const MAX_CHARS = 16384;
 const ENUMS = {
-  view: ['scenic', 'follow', 'cab', 'passenger', 'vista', 'orbit'],
+  view: ['scenic', 'follow', 'cab', 'passenger', 'vista', 'director', 'orbit'],
+  filmLook: ['auto', 'full', 'lite', 'off'],
   weather: ['clear', 'rain', 'snow'],
   trainLights: ['auto', 'on', 'off'],
   trainWipers: ['auto', 'on', 'off'],

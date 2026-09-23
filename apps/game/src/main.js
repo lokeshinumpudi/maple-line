@@ -1,6 +1,6 @@
 import { createEmbedVisuals } from './embed/visuals.js';
 import { installEmbedBridge } from './embed/bridge.js';
-import { createStableSunShadow } from './rendering/stable-sun-shadow.js';
+import { createStableSunShadow, SUN_SHADOW_OFFSET } from './rendering/stable-sun-shadow.js';
 import { sceneSoundContext } from './audio/scene-context.js';
 import { createRegionalRailTraffic } from './world/regional-rail-traffic.js';
 import { TOKYO_PASSAGE } from './world/tokyo-passage.js';
@@ -43,6 +43,16 @@ import { createSkyReflections } from './rendering/sky-reflections.js';
 import { createSurfaceDetail, smoothTerrainNormals } from './rendering/surface-detail.js';
 import { createCedarGeometry, createWeatheredRockGeometry } from './world/nature-geometry.js';
 import { createFrameBudget } from './rendering/frame-budget.js';
+import { createFilmPipeline } from './rendering/film-pipeline.js';
+import { createDirector } from './camera/director.js';
+import { registerDirectorTools } from './agent/director-tools.js';
+import { mountFilmCaptions } from './ui/film-captions.js';
+import { createLevelCrossings } from './world/level-crossings.js';
+import { createCrossingBell } from './audio/crossing-bell.js';
+import { createNpcMinds } from './simulation/npc-minds.js';
+import { createMindsClient, mindRegion } from './agent/minds-client.js';
+import { registerMindTools } from './agent/mind-tools.js';
+import { PLACE_LINES } from './presentation/place-lines.js';
 import { createWorldAuthoring } from './agent/world-authoring.js';
 import { createArtDirection } from './agent/build-tools.js';
 import * as THREE from 'three';
@@ -150,6 +160,17 @@ sun.shadow.bias = -0.001;
 sun.shadow.normalBias = 0.4;
 scene.add(sun, sun.target);
 const stableSunShadow = createStableSunShadow();
+// Linear HDR scene target with bloom, sun shafts, focus and grade; 'off' is the plain render.
+const filmPipeline = createFilmPipeline({ renderer, scene, camera, quality: 'off' });
+const filmQuality = (preference) =>
+  preference === 'auto' ? (mobilePlay ? 'off' : 'full') : preference;
+const filmCaptions = mountFilmCaptions();
+let forcedLetterbox = 0;
+if (import.meta.hot)
+  import.meta.hot.dispose(() => {
+    filmPipeline.dispose();
+    filmCaptions.dispose();
+  });
 let seed = 431;
 function random() {
   seed = (seed * 1664525 + 1013904223) >>> 0;
@@ -512,6 +533,15 @@ const openingSequence = createOpeningSequence({
 for (const material of [leaves.material, pines.material, ground.material])
   openingSequence.tintMaterial(material);
 const extendedWorld = createExtendedWorld({ THREE, scene, railPoint, center, wind });
+// Road crossings whose lamps, arms and queued cars react to the approaching train.
+const levelCrossings = createLevelCrossings({
+  THREE,
+  scene,
+  railPoint,
+  center,
+  terrainAt: (x, z) => scenicTerrain(x, z),
+});
+if (import.meta.hot) import.meta.hot.dispose(() => levelCrossings.dispose());
 const regionalTraffic = createRegionalRailTraffic({
   THREE,
   scene,
@@ -726,6 +756,8 @@ const preferenceStorage = attachPreferenceStorage({
 });
 let state = gameStore.getState().drive;
 let { mode, view, dusk, sound, weather } = gameStore.getState().preferences;
+filmPipeline.setQuality(filmQuality(gameStore.getState().preferences.filmLook));
+let crossingBell;
 let audioCtx,
   soundscape,
   audioElapsed = 0,
@@ -744,6 +776,8 @@ gameStore.subscribe(
   (value) => value.preferences,
   (next) => {
     ({ mode, view, dusk, sound, weather } = next);
+    filmPipeline.setQuality(filmQuality(next.filmLook));
+    if ($('film-look')) $('film-look').value = next.filmLook;
     document.body.classList.toggle('hud-hidden', !next.hudVisible);
     $('restore-hud').hidden = next.hudVisible;
     if ($('camera-view')) $('camera-view').value = view;
@@ -779,10 +813,31 @@ const director = createDirectorClient({
   onDecision: (decision) => gameStore.updateDirector(decision),
   onStatus: (status) => gameStore.updateDirector({ status }),
 });
+// Every background character carries a mood, needs and an intent. Local rules run each
+// frame; AI life also sends a few salient characters to Jev for bounded mood/intent picks.
+const minds = createNpcMinds({ seed: gameStore.getState().worldBuilder.active?.plan.seed ?? 1 });
+const mindsClient = createMindsClient({
+  minds,
+  offline: ['signal', 'static'].includes(document.documentElement.dataset.hosting),
+  fetcher: fetchDirector,
+  getContext: () =>
+    state.started && !state.done
+      ? {
+          paused: state.paused || Boolean(document.querySelector('dialog[open]')),
+          camera: camera.position,
+        }
+      : null,
+  onStatus: (status) => {
+    directorButton.dataset.minds = status;
+  },
+});
+mindsClient.setEnabled(gameStore.getState().director.enabled);
+if (import.meta.hot) import.meta.hot.dispose(() => mindsClient.dispose());
 directorButton.onclick = () => {
   const enabled = !gameStore.getState().director.enabled;
   gameStore.updateDirector({ enabled });
   director.setEnabled(enabled);
+  mindsClient.setEnabled(enabled);
 };
 gameStore.subscribe(
   (value) => value.director,
@@ -978,12 +1033,22 @@ function selectCamera(value) {
   gameStore.setPreferences({ view: value });
   if (view === 'scenic') controlMessage('Drag to look around the train. Scroll to zoom.');
   if (['cab', 'passenger'].includes(view)) controlMessage('Drag to look around inside the train.');
+  if (view === 'director')
+    controlMessage(
+      'Director: the camera cuts between shots on its own. Pick another view to take over.',
+    );
   updateCamera(1, true);
 }
 $('camera-view').onchange = () => selectCamera($('camera-view').value);
 const daylight = document.createElement('button');
 daylight.textContent = 'Dusk';
 daylight.id = 'daylight';
+// Dusk lowers the sun to about 12 degrees so shadows lengthen and light turns warm.
+const DUSK_SUN_OFFSET = Object.freeze({ x: -205, y: 52, z: -130 });
+function applySunHeight() {
+  if (stableSunShadow.setOffset(dusk ? DUSK_SUN_OFFSET : SUN_SHADOW_OFFSET))
+    renderer.shadowMap.needsUpdate = true;
+}
 daylight.onclick = () => {
   gameStore.setPreferences({ dusk: !dusk });
   daylight.textContent = dusk ? 'Daylight' : 'Dusk';
@@ -1022,6 +1087,7 @@ async function setSound(enabled) {
     if (enabled && !audioCtx) {
       audioCtx = new AudioContext();
       soundscape = createSoundscape(audioCtx);
+      crossingBell = createCrossingBell(audioCtx);
     }
     if (enabled) await audioCtx.resume();
     gameStore.setPreferences({ sound: enabled });
@@ -1054,6 +1120,7 @@ $('sound-volume').oninput = () => {
 if (import.meta.hot)
   import.meta.hot.dispose(() => {
     soundscape?.dispose();
+    crossingBell?.dispose();
     void audioCtx?.close();
   });
 window.addEventListener('keydown', (e) => {
@@ -1073,7 +1140,7 @@ window.addEventListener('keydown', (e) => {
   if (action === 'emergency') toggleEmergency();
   if (action === 'hud') toggleHUD();
   if (action === 'camera') {
-    const views = ['scenic', 'follow', 'cab', 'passenger', 'vista'];
+    const views = ['scenic', 'follow', 'cab', 'passenger', 'vista', 'director'];
     selectCamera(views[(views.indexOf(view) + 1) % views.length]);
   }
 });
@@ -1092,13 +1159,78 @@ const cameraRig = createCameraRig({
   vistaAt: (z) => lakeVista(z, center, routeElevation),
   foliageHeight: (x, z) => Math.max(activeCanopy.heightAt(x, z), extendedWorld.foliageHeight(x, z)),
 });
+const filmDirector = createDirector({
+  THREE,
+  camera,
+  track,
+  getTrackLength: () => track.getLength?.() ?? trackLength,
+  groundAt: (x, z) => terrain(x - center(z), z),
+  canopyAt: (x, z) => Math.max(activeCanopy.heightAt(x, z), extendedWorld.foliageHeight(x, z)),
+  resolveSubject(subject) {
+    if (subject.person) {
+      const person = worldDetails
+        .getPopulationState()
+        .people.find((item) => item.id === subject.person && item.visible);
+      return person ? [person.position.x, person.position.y, person.position.z] : null;
+    }
+    if (subject.stop) {
+      const stop = routeStops.find((item) => item.id === subject.stop);
+      return stop
+        ? railPoint(stop.z)
+            .add(new THREE.Vector3(0, 1.5, 0))
+            .toArray()
+        : null;
+    }
+    return null;
+  },
+  onSet(set) {
+    if (set.location !== undefined) {
+      const z =
+        typeof set.location === 'number'
+          ? set.location
+          : (routeStops.find((stop) => stop.id === set.location)?.z ??
+            directorLocations[set.location]);
+      if (Number.isFinite(z)) jumpTo(z);
+    }
+    if (set.weather && set.weather !== weather) {
+      $('weather').value = set.weather;
+      $('weather').dispatchEvent(new Event('change'));
+    }
+    if (set.timeOfDay && (set.timeOfDay === 'dusk') !== dusk) daylight.click();
+    if (set.speedKmh !== undefined)
+      changeDrive((next) => {
+        next.speed = set.speedKmh / 3.6;
+      });
+  },
+  onCaption: (caption) => filmCaptions.show(caption),
+  obstructed(from, to) {
+    directorRay.set(from, directorDirection.subVectors(to, from).normalize());
+    directorRay.far = Math.max(0.2, from.distanceTo(to) - 0.8);
+    return directorRay.intersectObjects(station.children, true).length > 0;
+  },
+});
+const directorRay = new THREE.Raycaster();
+const directorDirection = new THREE.Vector3();
+const directorLocations = {
+  gorge: -520,
+  terraces: -380,
+  village: -195,
+  shrine: 95,
+  station: 490,
+  city: 675,
+  tokyo: landmarks.tokyoZ,
+  bridge: landmarks.bridgeZ,
+  tunnel: (landmarks.tunnelStartZ + landmarks.tunnelEndZ) / 2,
+  summit: landmarks.summitZ,
+};
 function updateCamera(dt, snap = false) {
   storyCinematics?.restoreBaseCamera();
   cameraRig.update({
     dt,
     distance: state.distance,
     direction: state.direction,
-    view,
+    // The director overlays its own pose; the rig keeps a valid follow pose beneath it.
+    view: view === 'director' ? 'follow' : view,
     snap,
     focusPose: embedded ? embedVisuals?.focusPose() : null,
     inTunnel: isTunnel(
@@ -1109,6 +1241,55 @@ function updateCamera(dt, snap = false) {
     THREE.MathUtils.clamp(state.distance / trackLength, 0.001, 0.995),
   );
   stableSunShadow.apply(sun, position, renderer.shadowMap);
+  document.body.classList.toggle('film-mode', Boolean(filmDirector.getState().active));
+  directorLook = filmDirector.update({
+    dt,
+    enabled: view === 'director' && !storyHost?.engine.getState().activeBeat,
+    distance: state.distance,
+    direction: state.direction,
+    speed: state.speed,
+    inTunnel: isTunnel(position.z),
+    ...directorContext(),
+  });
+}
+let directorLook = null;
+const sunDirection = new THREE.Vector3();
+/** Filmable places near the train: stop, bridge, tunnel portal and the current place card. */
+function directorContext() {
+  const ahead = (distance) => (distance - state.distance) * state.direction;
+  const stop = routeStops.reduce(
+    (best, candidate) =>
+      Math.abs(ahead(candidate.distance)) < Math.abs(ahead(best?.distance ?? Infinity))
+        ? candidate
+        : best,
+    null,
+  );
+  const stopNear = stop && Math.abs(ahead(stop.distance)) < 260 ? stop : null;
+  const bridgeDistance = distanceAtZ(track, trackLength, landmarks.bridgeZ);
+  const portalDistance = distanceAtZ(
+    track,
+    trackLength,
+    state.direction > 0 ? landmarks.tunnelStartZ : landmarks.tunnelEndZ,
+  );
+  const placeStop = stop && ahead(stop.distance) < 520 && ahead(stop.distance) > -120 ? stop : null;
+  const clock = dusk ? '18:24' : '16:42';
+  return {
+    stop: stopNear ? { id: stopNear.id, distance: stopNear.distance } : null,
+    bridge: Math.abs(ahead(bridgeDistance)) < 600 ? { distance: bridgeDistance } : null,
+    tunnelAhead:
+      ahead(portalDistance) > 0 && ahead(portalDistance) < 600
+        ? { distance: ahead(portalDistance) }
+        : null,
+    place: placeStop
+      ? {
+          id: placeStop.id,
+          title: placeStop.name,
+          native: placeStop.japanese,
+          subtitle: `${placeStop.theme} · ${clock}`,
+          line: PLACE_LINES[placeStop.id] ?? null,
+        }
+      : null,
+  };
 }
 function finish(success) {
   setDrive(0, 1);
@@ -1401,7 +1582,9 @@ document.addEventListener('visibilitychange', () => {
   last = performance.now();
 });
 let shadowElapsed = 1,
-  reflectionElapsed = 1;
+  reflectionElapsed = 1,
+  mindsStop = null,
+  mindsStopAge = 0;
 function frame(now) {
   requestAnimationFrame(frame);
   if (embedded && (embedSuspended || document.hidden)) {
@@ -1477,6 +1660,7 @@ function frame(now) {
     position: routePosition,
   });
   extendedWorld.update(state.paused ? 0 : dt, {
+    minds,
     position: routePosition,
     distance: state.distance,
     weather: localWeather,
@@ -1543,6 +1727,18 @@ function frame(now) {
     const v = track.getTangentAt(t).multiplyScalar(state.direction);
     train[i].rotation.set(-Math.asin(v.y), Math.atan2(v.x, v.z), 0, 'YXZ');
   }
+  const crossingDirection = Math.sign(routeTangent.z * state.direction) || 1;
+  const carHalf = CAR_SPACING / 2;
+  levelCrossings.update(dt, {
+    trainFront: train[0].position.z + crossingDirection * carHalf,
+    trainRear: train[train.length - 1].position.z - crossingDirection * carHalf,
+    speed: Math.abs(state.speed),
+    direction: crossingDirection,
+    cameraPosition: camera.position,
+    dusk,
+    weather: localWeather,
+    paused: state.paused || menuOpen,
+  });
   if (!state.paused) waterMat.uniforms.time.value += dt * (weather === 'rain' ? 1.8 : 1);
   waterMat.uniforms.distortionScale.value = weather === 'rain' ? 3.1 : 1.6;
   updateCamera(dt);
@@ -1602,6 +1798,7 @@ function frame(now) {
     });
   }
   openingSequence.applyCamera(train[0].position, train[train.length - 1].position);
+  applySunHeight();
   atmosphere.update(dt, camera.position);
   skyReflections.update(localWeather, dusk);
   eveningMotes.update(dt, {
@@ -1656,9 +1853,29 @@ function frame(now) {
     distance: state.distance,
     elapsed: state.elapsed,
     stationActivity: activeDirectorDecision()?.stationActivity ?? 'commute',
+    minds,
   });
-  if (!['interpreting', 'building'].includes(gameStore.getState().worldBuilder.status))
+  mindsStop ??= nearestUpcomingStop();
+  mindsStopAge += realDt;
+  if (mindsStopAge > 0.5) {
+    mindsStop = nearestUpcomingStop();
+    mindsStopAge = 0;
+  }
+  minds.tick(state.paused ? 0 : dt, {
+    weather: localWeather,
+    dusk,
+    region: mindRegion(routePosition.z, additionalStops),
+    trainSpeed: state.speed,
+    doorsOpen: state.doorsOpen,
+    remainingToStation:
+      ((mindsStop?.distance ?? state.distance) - state.distance) * state.direction,
+    trainPosition: train[0].position,
+    cameraPosition: camera.position,
+  });
+  if (!['interpreting', 'building'].includes(gameStore.getState().worldBuilder.status)) {
     void director.tick();
+    void mindsClient.tick();
+  }
   generatedWorld?.update(state.paused ? 0 : dt, {
     cameraPosition: camera.position,
     trainPosition: train[0].position,
@@ -1785,6 +2002,20 @@ function frame(now) {
       forest: sceneSound.forest.density,
       wind: wind.getState().speedMps,
     });
+    const bellSource = levelCrossings.getState().nearestBell;
+    crossingBell?.update({
+      ringing: Boolean(bellSource),
+      distance: bellSource?.distance ?? Infinity,
+      pan: bellSource
+        ? sourcePan(listener, right, { x: bellSource.position[0], z: bellSource.position[2] })
+        : 0,
+      // Closed cab and carriage windows muffle the bell.
+      volume:
+        gameStore.getState().preferences.soundVolume *
+        0.75 *
+        (['cab', 'passenger'].includes(view) ? 0.35 : 1),
+      active: sound && state.started && !state.paused && !menuOpen && !document.hidden,
+    });
   }
   for (const chunk of sceneryChunks) {
     chunk.mesh.visible =
@@ -1806,7 +2037,26 @@ function frame(now) {
     riverWater.capture({ refreshReflection: reflectionElapsed >= 0.05 });
     if (reflectionElapsed >= 0.05) reflectionElapsed = 0;
   }
-  renderer.render(scene, camera);
+  if (directorLook) filmPipeline.setLook(directorLook);
+  else filmPipeline.setLook({ letterbox: forcedLetterbox, dofMaxBlur: 0 });
+  filmCaptions.setBar(
+    (filmPipeline.getState().letterbox *
+      Math.min(0.3, Math.max(0, 1 - innerWidth / innerHeight / 2.39)) *
+      innerHeight) /
+      2,
+    // Without the finish pass the page draws the bars.
+    { drawBars: filmPipeline.quality === 'off' },
+  );
+  sunDirection.copy(sun.position).sub(sun.target.position).normalize();
+  filmPipeline.render({
+    dt: realDt,
+    weather: localWeather,
+    dusk,
+    inTunnel: isTunnel(routePosition.z),
+    sunDirection,
+    sunColor: sun.color,
+    neon: dusk && Math.abs(routePosition.z - landmarks.tokyoZ) < 900,
+  });
   const resized = frameBudget.record({
     intervalMs,
     cpuMs: performance.now() - cpuStart,
@@ -1925,6 +2175,7 @@ function railwayAction(action) {
   if (result.effect === 'close-doors' && state.doorsOpen) toggleDoors();
   if (result.effect === 'depart') {
     soundscape?.horn?.();
+    minds.observe({ type: 'horn' });
     changeDrive((drive) => {
       drive.paused = false;
       drive.brake = 0;
@@ -2070,7 +2321,7 @@ if (import.meta.env.DEV) {
   };
   const actions = {
     camera(value) {
-      choices(value, ['scenic', 'follow', 'cab', 'passenger', 'vista', 'orbit']);
+      choices(value, ['scenic', 'follow', 'cab', 'passenger', 'vista', 'director', 'orbit']);
       selectCamera(value);
     },
     weather(value) {
@@ -2198,6 +2449,37 @@ if (import.meta.env.DEV) {
   });
   const webmcp = registerGameWebMCP({
     inspector,
+    extensions: [
+      ({ tool }) => registerMindTools({ tool, minds, client: mindsClient }),
+      ({ tool }) =>
+        registerDirectorTools({
+          tool,
+          director: filmDirector,
+          activate: () => {
+            if (!state.started) start();
+            if (view !== 'director') selectCamera('director');
+          },
+          film: {
+            getState: () => ({
+              ...filmPipeline.getState(),
+              preference: gameStore.getState().preferences.filmLook,
+            }),
+            setPreference: (value) =>
+              gameStore.setPreferences({ filmLook: value === 'full' ? 'full' : value }),
+            setLetterbox: (value) => {
+              forcedLetterbox = value;
+            },
+          },
+          getContext: () => ({
+            ...directorContext(),
+            people: worldDetails
+              .getPopulationState()
+              .people.filter((person) => person.visible && person.state !== 'onboard')
+              .slice(0, 24)
+              .map((person) => ({ id: person.id, role: person.role, state: person.state })),
+          }),
+        }),
+    ],
     getGameState: () => inspector.snapshot().game,
     actions,
     railway: { duties: stationDuties, act: railwayAction },
@@ -2365,6 +2647,18 @@ window.addEventListener('resize', () => {
   renderer.setSize(innerWidth, innerHeight);
   riverWater.resize();
 });
+// In Director mode the HUD fades out and returns while the pointer or keys are active.
+let filmPointerTimer = 0;
+const wakeFilmHUD = () => {
+  document.body.classList.add('film-pointer');
+  clearTimeout(filmPointerTimer);
+  filmPointerTimer = setTimeout(() => document.body.classList.remove('film-pointer'), 2600);
+};
+window.addEventListener('pointermove', wakeFilmHUD, { passive: true });
+window.addEventListener('pointerdown', wakeFilmHUD, { passive: true });
+window.addEventListener('keydown', wakeFilmHUD);
+$('film-look').value = gameStore.getState().preferences.filmLook;
+$('film-look').onchange = () => gameStore.setPreferences({ filmLook: $('film-look').value });
 if (embedded) {
   embedVisuals = createEmbedVisuals({
     THREE,
@@ -2386,6 +2680,7 @@ if (embedded) {
   gameStore.setPreferences({ sound: false, narrationEnabled: false, hudVisible: false });
   gameStore.updateDirector({ enabled: false });
   director.setEnabled(false);
+  mindsClient.setEnabled(false);
   $('start-with-sound').checked = false;
   start();
   changeDrive((drive) => {

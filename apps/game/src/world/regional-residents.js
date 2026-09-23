@@ -282,6 +282,8 @@ export function createRegionalResidents({ THREE, parent, stop, local, yaw = 0, p
     lastTime = -Infinity,
     disposed = false;
   const shown = new Map();
+  // Smoothed body turn per resident for optional NPC mind cues.
+  const lookTurn = new Float32Array(residents.length);
   const contextFor = (weather) => ({ theme: stop.theme, weather: weather ?? 'clear' });
   function part(mesh, x, y, z, sx, sy, sz, tint, pitch = 0) {
     const index = mesh === boxes ? boxCount++ : roundCount++;
@@ -295,10 +297,44 @@ export function createRegionalResidents({ THREE, parent, stop, local, yaw = 0, p
   }
   const cube = (...args) => part(boxes, ...args);
   const round = (...args) => part(rounds, ...args);
+  let minds = null;
+  function senseMind(resident, pose) {
+    minds.sense(
+      resident.id,
+      resident.role,
+      body.position.x,
+      body.position.z,
+      pose.walking,
+      pose.frame !== 'street',
+      true,
+      pose.activity,
+    );
+    return minds.expressionFor(resident.id);
+  }
+  // Platform and street frames both put the rail toward negative x, so the train is at -90°.
+  function lookTarget(resident, pose, lookAt) {
+    if (lookAt === 'train') return -Math.PI / 2;
+    if (lookAt !== 'neighbour') return NaN;
+    let best = 16,
+      target = NaN;
+    for (const other of residents) {
+      const seen = shown.get(other.id);
+      if (other === resident || !seen || seen.frame !== pose.frame) continue;
+      const dx = seen.x - pose.x,
+        dz = seen.z - pose.z,
+        d = dx * dx + dz * dz;
+      if (d < best) {
+        best = d;
+        target = Math.atan2(dx, dz);
+      }
+    }
+    return target;
+  }
   function update(elapsed = 0, context = {}) {
     if (disposed || Math.abs(elapsed - lastTime) < 1 / 24) return;
     const dt = lastTime === -Infinity ? 0 : Math.max(0, elapsed - lastTime);
     lastTime = elapsed;
+    minds = context.minds ?? null;
     boxCount = 0;
     roundCount = 0;
     for (const resident of residents) {
@@ -312,16 +348,46 @@ export function createRegionalResidents({ THREE, parent, stop, local, yaw = 0, p
         body.position.copy(local(pose.x, 0.62, pose.z));
         body.rotation.set(0, yaw + pose.yaw, 0);
       }
+      // Optional NPC minds: report the pose, then read a small expression for visual cues.
+      const expression = minds ? senseMind(resident, pose) : undefined;
+      let headY = 0,
+        headZ = 0,
+        hairZ = 0,
+        gesture = pose.gesture,
+        armCue = '';
+      if (expression && !pose.seated) {
+        const i = resident.index;
+        const target = lookTarget(resident, pose, expression.lookAt);
+        let turn = Number.isFinite(target)
+          ? Math.atan2(Math.sin(target - pose.yaw), Math.cos(target - pose.yaw))
+          : expression.headTurn * 0.5;
+        turn = Math.max(-1.2, Math.min(1.2, turn));
+        lookTurn[i] += (turn - lookTurn[i]) * (1 - Math.exp(-(dt || 1 / 24) * 3));
+        if (!pose.walking) body.rotation.y += lookTurn[i];
+        if (expression.posture === 'slumped') {
+          headY = -0.05;
+          headZ = 0.04;
+        } else if (expression.posture === 'eager') headY = 0.02;
+        if (expression.lookAt === 'sky') hairZ = -0.04;
+        else if (expression.lookAt === 'ground') headZ += 0.05;
+        if (!pose.walking) {
+          gesture =
+            pose.gesture * (0.5 + expression.gestureRate) +
+            Math.sin(elapsed * 2.2 + resident.offset) * expression.gestureRate * 0.08;
+          if (expression.intent === 'wave' || expression.intent === 'check-phone')
+            armCue = expression.intent;
+        }
+      }
       body.scale.set(resident.width, resident.height / 1.7, 1);
       body.updateMatrix();
       const hip = pose.seated ? 0.58 : 0.95;
       const gait = pose.walking ? Math.sin((elapsed + resident.offset) * 5.8) * 0.36 : 0;
       cube(0, hip + 0.05, 0, 0.43, 0.59, 0.28, resident.coat);
-      round(0, hip + 0.61, 0, 0.165, 0.22, 0.17, resident.skin);
-      round(0, hip + 0.71, -0.035, 0.175, 0.145, 0.165, resident.hair);
+      round(0, hip + 0.61 + headY, headZ, 0.165, 0.22, 0.17, resident.skin);
+      round(0, hip + 0.71 + headY, -0.035 + headZ + hairZ, 0.175, 0.145, 0.165, resident.hair);
       if (resident.hat) {
-        cube(0, hip + 0.84, 0, 0.39, 0.05, 0.37, resident.coat);
-        cube(0, hip + 0.9, -0.015, 0.29, 0.12, 0.27, resident.coat);
+        cube(0, hip + 0.84 + headY, headZ, 0.39, 0.05, 0.37, resident.coat);
+        cube(0, hip + 0.9 + headY, -0.015 + headZ, 0.29, 0.12, 0.27, resident.coat);
       }
       if (resident.scarf) cube(0, hip + 0.31, 0.145, 0.33, 0.11, 0.1, '#d5a55f');
       for (const side of [-1, 1]) {
@@ -340,12 +406,24 @@ export function createRegionalResidents({ THREE, parent, stop, local, yaw = 0, p
           0.29,
           '#302e2d',
         );
-        const armAngle = pose.seated ? -0.9 : -gait * side - pose.gesture;
+        // Arm boxes pitch about their centres, so raised cues also move the box and hand.
+        if (side === 1 && armCue === 'wave') {
+          const wave = Math.sin(elapsed * 7 + resident.offset) * 0.15;
+          cube(0.29, hip + 0.45, 0.08, 0.13, 0.56, 0.15, resident.coat, -2.8 + wave);
+          round(0.29, hip + 0.74, 0.17, 0.065, 0.09, 0.065, resident.skin);
+          continue;
+        }
+        if (side === 1 && armCue === 'check-phone') {
+          cube(0.22, hip - 0.02, 0.2, 0.13, 0.56, 0.15, resident.coat, -1.2);
+          round(0.2, hip + 0.02, 0.44, 0.065, 0.09, 0.065, resident.skin);
+          continue;
+        }
+        const armAngle = pose.seated ? -0.9 : -gait * side - gesture;
         cube(side * 0.29, hip - 0.06, 0.03, 0.13, 0.56, 0.15, resident.coat, armAngle);
         round(
           side * 0.29,
           hip - 0.3,
-          pose.seated ? 0.27 : pose.gesture * 0.3,
+          pose.seated ? 0.27 : gesture * 0.3,
           0.065,
           0.09,
           0.065,

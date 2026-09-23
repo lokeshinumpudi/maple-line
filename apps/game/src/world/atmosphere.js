@@ -163,7 +163,7 @@ export function createAtmosphere({ THREE, scene, camera, renderer, sun, hemi, wa
     sun.color.lerp(sunTarget, blend);
     sun.intensity = THREE.MathUtils.lerp(
       sun.intensity,
-      config.sunPower * (isDusk ? 0.28 : 1),
+      config.sunPower * (isDusk ? 0.52 : 1),
       blend,
     );
     hemi.color.lerp(zenithTarget, blend);
