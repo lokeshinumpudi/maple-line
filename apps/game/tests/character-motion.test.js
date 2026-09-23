@@ -8,6 +8,7 @@ import {
   createSteering,
   fadeFor,
   handSocketFrame,
+  smoothQuaternionTracks,
   solveTwoBone,
   strideTimeScale,
 } from '../src/world/character-motion.js';
@@ -549,4 +550,41 @@ test('look-at turns the head toward a target within its limits, and eases back',
     rig.apply(1 / 30, { lookTarget: null, breath: 0 });
   }
   close(Math.atan2(forward().x, forward().z), 0, 0.05);
+});
+
+test('smoothed clip rotations pass through the keys, hold still between equal keys and do not kink', () => {
+  const axis = new THREE.Vector3(0, 0, 1);
+  const angles = [0, 0, 0.2, 0.8, 1.0, 1.0];
+  const times = [0, 0.3, 0.4, 0.5, 0.6, 1];
+  const values = angles.flatMap((a) => new THREE.Quaternion().setFromAxisAngle(axis, a).toArray());
+  // The last key is stored in the other hemisphere: the same rotation, negated.
+  for (let c = 20; c < 24; c++) values[c] = -values[c];
+  const make = (smooth) => {
+    const bone = new THREE.Bone();
+    bone.name = 'b';
+    const clip = new THREE.AnimationClip('c', 1, [
+      new THREE.QuaternionKeyframeTrack('b.quaternion', times, values),
+    ]);
+    if (smooth) smoothQuaternionTracks(THREE, clip, { loop: false });
+    const mixer = new THREE.AnimationMixer(bone);
+    mixer.clipAction(clip).play();
+    return (t) => {
+      mixer.setTime(t);
+      return 2 * Math.atan2(bone.quaternion.z, bone.quaternion.w);
+    };
+  };
+  const smooth = make(true);
+  const linear = make(false);
+  for (let k = 0; k < times.length - 1; k++) close(smooth(times[k]), angles[k], 1e-4);
+  // The hold stays held, and there is no overshoot past the last key.
+  for (const t of [0.05, 0.15, 0.25]) close(smooth(t), 0, 1e-6);
+  for (const t of [0.65, 0.8, 0.95]) close(Math.abs(smooth(t)), 1, 1e-4);
+  // Peak angular acceleration at 60 Hz: the monotone cubic has no velocity steps at keys.
+  const peak = (at) => {
+    let max = 0;
+    for (let t = 2 / 60; t <= 1; t += 1 / 60)
+      max = Math.max(max, Math.abs(at(t) - 2 * at(t - 1 / 60) + at(t - 2 / 60)) * 3600);
+    return max;
+  };
+  assert.ok(peak(smooth) < peak(linear) * 0.7, `${peak(smooth)} vs ${peak(linear)}`);
 });

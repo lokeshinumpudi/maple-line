@@ -7,6 +7,7 @@
 import { toneVrm } from './mtoon-tone.js';
 import { createVrmFace } from './vrm-expressions.js';
 import { vrmHumanoidRig } from './humanoid-bones.js';
+import { smoothQuaternionTracks } from '../world/character-motion.js';
 
 /** Fallback gait per unit of hips height (the UAL clip set's measured values). */
 export const DEFAULT_GAIT = Object.freeze({ walk: 1.064, hurry: 1.489, seat: 0.507 });
@@ -66,6 +67,9 @@ export function createVrmActor({ THREE, vrm, m, clipSet, mobile = false }) {
     clipSet.animations.forEach((animation, i) => {
       const clip = m.createVRMAnimationClip(animation, vrm);
       clip.name = clipSet.names[i] ?? `clip-${i}`;
+      // Smooth, not linear, between the 30 fps keys (character-motion.js).
+      const loop = clipSet.extras?.clips?.find((entry) => entry.name === clip.name)?.loop;
+      smoothQuaternionTracks(THREE, clip, { loop: loop !== false });
       actions.set(clip.name, mixer.clipAction(clip));
     });
     // Names that share another clip's animation (shelter plays watch-train's folded arms).
@@ -81,9 +85,11 @@ export function createVrmActor({ THREE, vrm, m, clipSet, mobile = false }) {
       THREE.MathUtils.degToRad(degrees),
     ),
   }));
+  for (const entry of posture) entry.undo = entry.q.clone().invert();
   const face = createVrmFace(vrm.expressionManager);
   const rig = vrmHumanoidRig(vrm);
   let settled = false;
+  let stooped = false;
 
   return {
     root,
@@ -100,9 +106,13 @@ export function createVrmActor({ THREE, vrm, m, clipSet, mobile = false }) {
      * procedural layers (look-at, IK, foot planting) are what the springs and skin see.
      */
     update(dt, { afterPose = null } = {}) {
+      // three.js only writes a bone whose mixed value changed, and the rig puts back last
+      // frame's pose (stoop included) before the mixer. Take the stoop off first, so a bone
+      // the clip holds still is not stooped again every frame (it spun Mr. Ishida's neck).
+      if (stooped) for (const { node, undo } of posture) node?.quaternion.multiply(undo);
       mixer.update(dt);
-      // Clips set every bone each frame, so the stoop is added to a fresh pose each time.
-      if (actions.size) for (const { node, q } of posture) node?.quaternion.multiply(q);
+      stooped = actions.size > 0 && posture.length > 0;
+      if (stooped) for (const { node, q } of posture) node?.quaternion.multiply(q);
       if (afterPose) {
         root.updateMatrixWorld(true);
         afterPose();
