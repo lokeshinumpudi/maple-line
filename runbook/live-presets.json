@@ -900,5 +900,273 @@
         }
       }
     ]
+  },
+  {
+    "title": "See where the cast stands",
+    "hint": "This embed does not play episodes or switch character clips. Use the station to picture where the Momiji cast waits; the clip swap and its measurements are in the full game.",
+    "options": [
+      {
+        "label": "Station outside",
+        "config": {
+          "location": "station",
+          "camera": "scenic"
+        }
+      },
+      {
+        "label": "Passenger view",
+        "config": {
+          "camera": "passenger"
+        }
+      }
+    ]
+  },
+  {
+    "title": "Hold a still frame",
+    "hint": "Pause and play the train. A held frame is where a pose bug shows; the pose test itself runs in the game’s test suite, not in this embed.",
+    "options": [
+      {
+        "label": "Pause",
+        "config": {
+          "paused": true
+        }
+      },
+      {
+        "label": "Play",
+        "config": {
+          "paused": false
+        }
+      }
+    ]
+  },
+  {
+    "title": "Compare still and moving",
+    "hint": "Small motion layers are easiest to judge against something still. Stop the train, then let it run; the character layers themselves are switched only in the full game.",
+    "initial": {
+      "focus": "train",
+      "location": "station"
+    },
+    "options": [
+      {
+        "label": "Stopped",
+        "config": {
+          "paused": true
+        }
+      },
+      {
+        "label": "Moving",
+        "config": {
+          "paused": false
+        }
+      }
+    ]
+  },
+  {
+    "title": "Look at the edges of a built mesh",
+    "hint": "Switch the train between surfaces and triangles. Notice where edges gather at bends and corners; the character topology comparison is in the capture above.",
+    "initial": {
+      "focus": "train"
+    },
+    "options": [
+      {
+        "label": "Surfaces",
+        "config": {
+          "wireframe": false
+        }
+      },
+      {
+        "label": "Triangles",
+        "config": {
+          "wireframe": true
+        }
+      }
+    ]
+  },
+  {
+    "title": "Pick a reference view",
+    "hint": "Use real game views as references beside concept art: the same place in two lights.",
+    "options": [
+      {
+        "label": "Station by day",
+        "config": {
+          "location": "station",
+          "timeOfDay": "daylight"
+        }
+      },
+      {
+        "label": "Station at dusk",
+        "config": {
+          "location": "station",
+          "timeOfDay": "dusk"
+        }
+      }
+    ]
+  },
+  {
+    "title": "Find what blocks a view",
+    "hint": "Director portraits are not triggered here. Orbit the station and notice where walls and posts would block a face, then compare the fixed views.",
+    "initial": {
+      "location": "station"
+    },
+    "options": [
+      {
+        "label": "Orbit the station",
+        "config": {
+          "camera": "scenic"
+        }
+      },
+      {
+        "label": "Passenger view",
+        "config": {
+          "camera": "passenger"
+        }
+      },
+      {
+        "label": "Driver view",
+        "config": {
+          "camera": "cab"
+        }
+      }
+    ]
+  },
+  {
+    "title": "Look for a clock you could show",
+    "hint": "Episodes are not played in this embed. Look for what could show time and pressure on screen: the platform, the light, an arriving train.",
+    "options": [
+      {
+        "label": "Station",
+        "config": {
+          "location": "station",
+          "timeOfDay": "daylight"
+        }
+      },
+      {
+        "label": "Evening",
+        "config": {
+          "location": "station",
+          "timeOfDay": "dusk"
+        }
+      },
+      {
+        "label": "Train arriving",
+        "config": {
+          "paused": false,
+          "camera": "follow"
+        }
+      }
+    ]
+  },
+  {
+    "title": "Hold one frame",
+    "hint": "The embed runs on the normal clock. Pause to hold a single frame; the fixed render clock (?render=1) exists only in the full game.",
+    "options": [
+      {
+        "label": "Run",
+        "config": {
+          "paused": false
+        }
+      },
+      {
+        "label": "Hold",
+        "config": {
+          "paused": true
+        }
+      }
+    ]
+  },
+  {
+    "title": "Choose a quiet place to listen",
+    "hint": "This embed is silent. Voices play in the full game and in rendered videos; these views show where the lines are spoken.",
+    "options": [
+      {
+        "label": "Station",
+        "config": {
+          "location": "station"
+        }
+      },
+      {
+        "label": "Gorge",
+        "config": {
+          "location": "gorge"
+        }
+      }
+    ]
+  },
+  {
+    "title": "Open places from a fixed list",
+    "hint": "A ?scene= link chooses from a fixed list of places, like these buttons do. The embed itself does not read ?scene= or #ep= links.",
+    "options": [
+      {
+        "label": "Station",
+        "config": {
+          "location": "station"
+        }
+      },
+      {
+        "label": "Bridge",
+        "config": {
+          "location": "bridge"
+        }
+      },
+      {
+        "label": "Gorge",
+        "config": {
+          "location": "gorge"
+        }
+      }
+    ]
+  },
+  {
+    "title": "Visit separate areas",
+    "hint": "Each agent owned an area of the game. These are separate route sections you can check one at a time.",
+    "options": [
+      {
+        "label": "Gorge",
+        "config": {
+          "location": "gorge"
+        }
+      },
+      {
+        "label": "Station",
+        "config": {
+          "location": "station"
+        }
+      },
+      {
+        "label": "Tokyo",
+        "config": {
+          "location": "tokyo"
+        }
+      }
+    ]
+  },
+  {
+    "title": "Change one thing at a time",
+    "hint": "Keep the camera still and change a single setting, as in a before/after capture. Compare each view with the one before it.",
+    "initial": {
+      "focus": "train"
+    },
+    "options": [
+      {
+        "label": "Daylight",
+        "config": {
+          "timeOfDay": "daylight",
+          "weather": "clear"
+        }
+      },
+      {
+        "label": "Dusk",
+        "config": {
+          "timeOfDay": "dusk",
+          "weather": "clear"
+        }
+      },
+      {
+        "label": "Rain",
+        "config": {
+          "timeOfDay": "daylight",
+          "weather": "rain"
+        }
+      }
+    ]
   }
 ]

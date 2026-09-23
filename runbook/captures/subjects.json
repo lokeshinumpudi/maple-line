@@ -51,6 +51,51 @@
     "cast": {
       "caption": "Haru and Emi with the recorder and notebook",
       "box": [38, 32, 25, 45]
+    },
+    "clips": {
+      "caption": "Retargeted Quaternius clips on the VRM cast",
+      "box": [0, 0, 100, 100],
+      "note": "1920 × 1080 contact sheet from the 23 September 2026 session"
+    },
+    "pose-fix": {
+      "caption": "Mr. Sato standing and Riko sitting, before and after the pose fix",
+      "box": [0, 0, 100, 100],
+      "note": "1920 × 810 · old build left, fixed build right · 23 September 2026 session"
+    },
+    "cast-models": {
+      "caption": "Riko, Mr. Sato and Mr. Ishida as VRM and as Blender-built figures",
+      "box": [12, 26, 76, 50],
+      "note": "1400 × 800 character lab capture from the 23 September 2026 session"
+    },
+    "concept-sheet": {
+      "caption": "Riko turnaround sheet: front, side and back",
+      "box": [3, 2, 94, 96],
+      "note": "1536 × 1024 · AI-generated concept art (openai/gpt-image-2.5-flare), not a game capture"
+    },
+    "key-frame": {
+      "caption": "Story key frame: Riko runs for the village bus in the rain",
+      "box": [20, 10, 78, 85],
+      "note": "1536 × 1024 · AI-generated story key frame (openai/gpt-image-2.5-flare), not a game capture"
+    },
+    "dialogue-lines": {
+      "caption": "Episode 1 of The 17:42, one frame per spoken line",
+      "box": [0, 4, 100, 92],
+      "note": "1920 × 810 contact sheet from an episode render in the 23 September 2026 session"
+    },
+    "blocked-shot": {
+      "caption": "A dialogue portrait of Mr. Ishida before the framing fix",
+      "box": [0, 15, 100, 70],
+      "note": "1400 × 900 capture from the 23 September 2026 session, before the fix"
+    },
+    "before-after": {
+      "caption": "Water, storm, foliage and dusk passes, before and after",
+      "box": [0, 0, 100, 100],
+      "note": "1280 × 1440 · before left, after right · 23 September 2026 session"
+    },
+    "episode-poster": {
+      "caption": "Poster frame for The 17:42, Episode 1",
+      "box": [0, 12, 100, 76],
+      "note": "1920 × 1080 poster written by the render script"
     }
   },
   "subjects": {
@@ -259,6 +304,121 @@
       "box": [21, 37, 58, 26],
       "label": "Station destination sign",
       "observation": "The destination board helps the player identify the stop. Whether departure is allowed comes from the driving and station rules; this still image does not show a live clearance."
+    },
+    "Retargeted clip sheet": {
+      "asset": "clips",
+      "box": [0, 0, 100, 100],
+      "observation": "Twelve frames from the retargeted Quaternius clips: Riko holding her radio, walking and sitting, Mr. Sato walking and sitting, Mr. Ishida walking. The VRM bodies did not change; only the clips and the pose reset did."
+    },
+    "Old and new idle": {
+      "asset": "pose-fix",
+      "box": [0, 0, 100, 50],
+      "observation": "Mr. Sato standing, before (left) and after (right). The old home-made idle held him stiff with his arms at his sides; the Quaternius idle puts his weight on one leg and lets his arms hang loose."
+    },
+    "T-pose after a cross-fade": {
+      "asset": "pose-fix",
+      "box": [0, 50, 50, 50],
+      "observation": "Before the fix: Riko should be sitting, but her arms stay at the VRM rest pose, straight out. The clip held those bones still, three.js never rewrote them, and the rig had reset them to rest."
+    },
+    "Seated after the fix": {
+      "asset": "pose-fix",
+      "box": [50, 50, 50, 50],
+      "observation": "After the fix, the same moment: the rig restores the clip’s own last pose before adding layers, so Riko sits with her hands on the radio."
+    },
+    "Radio cradle": {
+      "asset": "clips",
+      "box": [0, 0, 33.3, 25],
+      "observation": "Standing still, Riko brings the radio up in front of her with both hands; it hangs from her left hand’s socket by its handle and the grip layer closes her fingers. Walking, the walk-carry clip already places her hands, so no arm IK runs."
+    },
+    "Planted stance foot": {
+      "asset": "clips",
+      "box": [0, 50, 33.3, 25],
+      "observation": "Mr. Sato mid-stride. Only the stance foot is pinned; it plants over 0.12 s and lets go over 0.2 s, so the layer adds no shake to the leg the clip is swinging."
+    },
+    "VRM and Blender-built figures": {
+      "asset": "cast-models",
+      "box": [12, 26, 76, 50],
+      "observation": "Each cast member twice: the VRM model first, then the earlier Blender-built figure. The VRM bodies were modelled with loops at the joints and face; the Blender figures were assembled from primitives and skin-modifier tubes."
+    },
+    "Tube limbs": {
+      "asset": "cast-models",
+      "box": [25, 29, 11, 45],
+      "observation": "The Blender-built Riko. Arms and legs are smooth tubes with no edge loops at the elbow or knee, so a bend pinches like a pipe, and the face has no shape keys for expressions."
+    },
+    "Riko turnaround sheet": {
+      "asset": "concept-sheet",
+      "box": [3, 2, 94, 96],
+      "observation": "AI-generated concept art: Riko from the front, side and back in an A-pose, at one scale on a plain background. Check that the views agree (the hair clip, the bag strap, the skirt length) before using it as a modelling reference."
+    },
+    "Story key frame": {
+      "asset": "key-frame",
+      "box": [20, 10, 78, 85],
+      "observation": "An AI-generated key frame from the session: Riko runs for a waiting bus in the rain while the driver waves. One picture shows who, where, what she wants and the time pressure, without words."
+    },
+    "Eleven spoken lines": {
+      "asset": "dialogue-lines",
+      "box": [0, 4, 100, 92],
+      "observation": "One frame per spoken line of Episode 1 after the framing fix, rendered at 16:9. The speaker’s face is visible in all 11 lines, including Mr. Ishida on his moved bench."
+    },
+    "Shot blocked by the station": {
+      "asset": "blocked-shot",
+      "box": [0, 15, 100, 70],
+      "observation": "Before the fix: a portrait meant for Mr. Ishida shows the back of his head and the station wall. His bench stood 0.6 m inside the building, so no nearby camera could see his face."
+    },
+    "Arithmetic as conflict": {
+      "asset": "dialogue-lines",
+      "box": [0, 4, 25, 25],
+      "observation": "The first line of the first script: “Seventeen forty-two in. Seventeen forty out.” The problem lives in the numbers. With the sound off, nothing in the picture shows a bus, a clock or what is at stake."
+    },
+    "A frame that tells the story": {
+      "asset": "key-frame",
+      "box": [20, 10, 78, 85],
+      "observation": "An AI-generated key frame: rain, a waiting bus, a girl running with something she must deliver. Muted, the picture already states the want and the pressure."
+    },
+    "Poster frame": {
+      "asset": "episode-poster",
+      "box": [0, 12, 100, 76],
+      "observation": "The poster the render script writes: a frame with the dialogue hidden and the series and episode title set over it, taken 2.5 s into the first portrait beat."
+    },
+    "Captions in the frame": {
+      "asset": "dialogue-lines",
+      "box": [0, 4, 50, 25],
+      "observation": "Captions are part of each page screenshot, drawn with the game’s own fonts and styles. Their fades are set from the render clock, so each frame shows exactly the caption state for its time."
+    },
+    "Subtitled lines": {
+      "asset": "dialogue-lines",
+      "box": [0, 4, 100, 92],
+      "observation": "Rendered lines with subtitles and speaker names. In a voiced render the subtitle uses the chosen language, and each beat holds until its clip has finished."
+    },
+    "A place a link can open": {
+      "asset": "station",
+      "box": [17, 37, 82, 40],
+      "observation": "A place link such as ?scene=station/sunset/rain opens here. Every part after the place is checked against fixed lists of offsets, times, weather and cameras before the game acts on it; anything else shows a short notice."
+    },
+    "Evidence an agent returns": {
+      "asset": "clips",
+      "box": [0, 0, 100, 100],
+      "observation": "A contact sheet one agent returned with its jitter and foot-slide numbers. The reviewer checks twelve moments at a glance before merging, instead of replaying every clip."
+    },
+    "Before/after pair": {
+      "asset": "before-after",
+      "box": [0, 0, 100, 25],
+      "observation": "A before/after pair another agent returned from the water pass: same camera, same size, old build left and new build right."
+    },
+    "River before and after": {
+      "asset": "before-after",
+      "box": [0, 0, 100, 25],
+      "observation": "Before (left) and after (right) the water pass, from one camera. The bank, trees and sky stay put, so the change in the water’s colour and reflection is easy to see."
+    },
+    "Storm before and after": {
+      "asset": "before-after",
+      "box": [0, 25, 100, 25],
+      "observation": "The station in the evening, before (left) and after (right) the storm pass: darker clouds, lamp glow and rain streaks, from the same camera."
+    },
+    "Forest before and after": {
+      "asset": "before-after",
+      "box": [0, 50, 100, 25],
+      "observation": "The terraces from above, before (left) and after (right) the foliage pass. With the camera fixed, the change in the tree crowns and haze can be compared directly."
     }
   }
 }

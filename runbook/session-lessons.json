@@ -1,0 +1,671 @@
+[
+  {
+    "kind": "studio",
+    "studio": true,
+    "initial": 0,
+    "label": "Explore the concept",
+    "ref": 0,
+    "inspected": "23 September 2026",
+    "sampleTitle": "Working pattern",
+    "sampleNote": "Simplified from current source · setup and helpers omitted",
+    "title": "Motion quality: retargeted clips & stride matching",
+    "stage": "Studio · 7. Bring characters to life",
+    "visual": "bars",
+    "measured": "23 September 2026",
+    "statusNote": "measured in the game on 23 September 2026",
+    "values": [
+      "Home-made Blender clips",
+      "Quaternius clips + pose fix"
+    ],
+    "steps": [
+      "Before: clips made by script in Blender (arms in rad/s², foot slide in % of distance)",
+      "After: the same bodies with motion-capture clips"
+    ],
+    "bars": [
+      {
+        "label": "Idle arms, Riko",
+        "a": 751,
+        "b": 2.7,
+        "aText": "751",
+        "bText": "2.7"
+      },
+      {
+        "label": "Idle arms, Mr. Sato",
+        "a": 1253,
+        "b": 2.1,
+        "aText": "1253",
+        "bText": "2.1"
+      },
+      {
+        "label": "Foot slide",
+        "a": 10.7,
+        "b": 4.8,
+        "aText": "10.7%",
+        "bText": "2.4–4.8%"
+      }
+    ],
+    "barNote": "Grey: before · colour: after",
+    "definition": "Retargeting copies an animation clip from one skeleton to another by matching bones by role (hips, upper arm, knee) instead of by name. Stride matching sets a clip’s playback speed (timeScale) so the feet cover the same ground as the body. Jitter is how sharply joint rotations change speed from frame to frame; foot slide is how far a planted foot moves.",
+    "impact": "The Momiji cast kept the same VRM bodies. Swapping the home-made clips for the Quaternius Universal Animation Library (CC0, motion-capture quality) and fixing the pose reset made the user say the characters looked “much better and pretty”.",
+    "present": "The VRM cast plays 17 clips retargeted offline into one 350 KB file, cast-clips.vrma, by asset-src/characters/vrm-cast/retarget.mjs. characters/humanoid-bones.js maps VRM, Blender, Mixamo, Quaternius, Rigify and MakeHuman joints to one set of names. Walk clips play at the body’s speed divided by the clip’s own foot speed, clamped to 0.3–1.6.",
+    "next": "Add a turn-on-the-spot clip for the VRM cast; today they turn in the idle pose and a foot left behind is released and planted again. The Quaternius walk (0.92 m/s for Riko) is slower than the residents’ 1.05–1.29 m/s, so walks play up to 1.6 times faster than recorded.",
+    "accept": "On the same scene before and after: idle arm jitter under 5 rad/s², walk foot slide under 5% of the distance walked, and a contact sheet of every clip with no T-pose.",
+    "tradeoff": "Motion-capture clips come from another skeleton, so each needs a rest-pose check and a measured foot speed. The outside packs stay out of git; only the retargeted output is committed.",
+    "sample": "// 1. Name the joints once (characters/humanoid-bones.js):\nconst rig = humanoidRigFor(model.scene); // Mixamo, UAL, Rigify… → hips, upperArmL…\n\n// 2. The clip's own foot speed, measured offline and scaled by hips height:\nconst { walkSpeed } = vrmGait(extras, hipsHeight); // metres per second\n\n// 3. Play it so the feet cover the ground the body covers:\naction.timeScale = strideTimeScale(body.speed, walkSpeed); // clamped 0.3–1.6",
+    "file": "apps/game/src/world/character-motion.js",
+    "source": "apps/game/src/world/hero-cast.js; apps/game/src/world/character-motion.js; apps/game/src/characters/humanoid-bones.js; apps/game/src/characters/vrm-actor.js; asset-src/characters/vrm-cast/retarget.mjs",
+    "start": 434,
+    "end": 438,
+    "asset": "clips",
+    "spots": [
+      {
+        "label": "Retargeted clip sheet"
+      },
+      {
+        "label": "Old and new idle"
+      }
+    ],
+    "observation": "Twelve frames from the retargeted Quaternius clips on Riko, Mr. Sato and Mr. Ishida. The bodies are the same VRM models as before.",
+    "docUrl": "https://quaternius.itch.io/universal-animation-library",
+    "docLabel": "Quaternius Universal Animation Library",
+    "exercise": "Try next: take one walk clip, measure its foot speed from root motion, and play it at three body speeds. Watch a planted heel against a mark on the ground at each speed.",
+    "sourceCode": "/** Clip timeScale that makes the feet travel at the body's actual speed. */\nexport function strideTimeScale(speed, clipSpeed, { min = 0.3, max = 1.6 } = {}) {\n  if (!(clipSpeed > 0)) return 1;\n  return Math.min(max, Math.max(min, speed / clipSpeed));\n}"
+  },
+  {
+    "kind": "studio",
+    "studio": true,
+    "initial": 0,
+    "label": "Explore the concept",
+    "ref": 0,
+    "inspected": "23 September 2026",
+    "sampleTitle": "Working pattern",
+    "sampleNote": "Simplified from current source · setup and helpers omitted",
+    "title": "Skinned poses: never reset to rest every frame",
+    "stage": "Studio · 7. Bring characters to life",
+    "visual": "restPose",
+    "statusNote": "schematic of the bug and the fix",
+    "values": [
+      "Reset to rest",
+      "Clip skips a bone",
+      "Restore clip pose"
+    ],
+    "steps": [
+      "Every bone goes back to the rest pose (a T-pose for VRM) before the clips run",
+      "three.js does not rewrite a bone whose blended value did not change",
+      "Put back the pose the clips made last frame, then add the layers"
+    ],
+    "definition": "A skinned mesh bends with a skeleton. The rest pose is the skeleton’s neutral pose; for VRM models it is a T-pose, arms straight out. An animation mixer blends clips and writes bone rotations, but three.js skips writing a bone when its blended value has not changed.",
+    "impact": "The rig reset every bone to rest each frame so its extra layers would not pile up. Bones a clip held still were never written again, so they stayed at rest: arms snapped into a T-pose after a cross-fade settled, and Mr. Ishida stood at his bench instead of sitting. The user said they looked “like they got some disease”.",
+    "present": "world/character-rig.js keeps a copy of the pose the clips made last frame. resetPose() puts it back before the mixer runs, and apply() captures the new clip pose before adding look-at, hands and feet. tests/hero-pose.test.js checks that both arms hang within 50° of straight down in every standing clip and that seated Mr. Ishida’s hips sit just above the 0.61 m bench.",
+    "next": "Run the same pose test for every new cast member and clip, including clips added by agents. A render check that flags an arm more than 60° from down in a portrait would catch the bug in video too.",
+    "accept": "The pose test passes for all clips; a contact sheet of the episode shows no T-pose; a seated person’s hips are no more than 0.15 m above the seat.",
+    "tradeoff": "Keeping the last clip pose costs one rotation and one position copy per bone per frame. Resetting only the bones the layers touch is cheaper, but easy to break when a new layer is added.",
+    "sample": "// Wrong: back to rest every frame. A clip that holds a bone\n// still does not write it again, so that bone stays at rest.\nfor (const [bone, r] of rest) bone.quaternion.copy(r.q);\n\n// Right (hero-cast.js → character-rig.js):\nrig.resetPose();        // the pose the clips made last frame\nblender.update(step);   // the mixer writes only what changed\nrig.apply(step, opts);  // captures the clip pose, then adds layers",
+    "file": "apps/game/src/world/character-rig.js",
+    "source": "apps/game/src/world/character-rig.js; apps/game/tests/hero-pose.test.js",
+    "start": 248,
+    "end": 265,
+    "asset": "pose-fix",
+    "spots": [
+      {
+        "label": "T-pose after a cross-fade"
+      },
+      {
+        "label": "Seated after the fix"
+      }
+    ],
+    "observation": "Before and after the pose fix, from the same camera. The left column is the old build and the right column the fixed one.",
+    "docUrl": "https://threejs.org/docs/pages/AnimationMixer.html",
+    "docLabel": "Three.js animation mixer",
+    "exercise": "Try next: play a clip that holds one arm still, let the cross-fade settle for 2 s, then log that arm’s rotation with and without a rest reset before the mixer.",
+    "sourceCode": "  // The pose the clips produced last frame, before these layers. three.js only writes a\n  // bone when its mixed value changes, so a clip holding a bone still (a single key, or a\n  // settled cross-fade) does not write it again: restoring the rest pose here would leave\n  // that bone at rest. Restoring the clips' own last pose keeps it where the clip put it.\n  const clipPose = new Map();\n  for (const [bone, r] of rest) clipPose.set(bone, { q: r.q.clone(), p: r.p.clone() });\n  function resetPose() {\n    for (const [bone, pose] of clipPose) {\n      bone.quaternion.copy(pose.q);\n      bone.position.copy(pose.p);\n    }\n  }\n  function capturePose() {\n    for (const [bone, pose] of clipPose) {\n      pose.q.copy(bone.quaternion);\n      pose.p.copy(bone.position);\n    }\n  }"
+  },
+  {
+    "kind": "studio",
+    "studio": true,
+    "initial": 0,
+    "label": "Explore the concept",
+    "ref": 0,
+    "inspected": "23 September 2026",
+    "sampleTitle": "Working pattern",
+    "sampleNote": "Simplified from current source · setup and helpers omitted",
+    "title": "Procedural layers on top of clips",
+    "stage": "Studio · 7. Bring characters to life",
+    "visual": "bars",
+    "measured": "23 September 2026",
+    "statusNote": "measured in the game on 23 September 2026",
+    "values": [
+      "Layers off",
+      "Layers on"
+    ],
+    "steps": [
+      "The clip alone, in a fresh session (jitter in rad/s²)",
+      "Look-at, hands and feet added: within 10% of the clip, or lower"
+    ],
+    "bars": [
+      {
+        "label": "Idle arms, Riko",
+        "a": 2.5,
+        "b": 2.7,
+        "aText": "2.5",
+        "bText": "2.7"
+      },
+      {
+        "label": "Walking legs, Riko",
+        "a": 77,
+        "b": 53,
+        "aText": "77",
+        "bText": "53"
+      },
+      {
+        "label": "Walking legs, Mr. Sato",
+        "a": 72,
+        "b": 39,
+        "aText": "72",
+        "bText": "39"
+      }
+    ],
+    "barNote": "Grey: layers off · colour: on",
+    "definition": "A procedural layer is code that changes a pose after the clip, such as turning the head toward a speaker (look-at) or bending a leg so the foot stays on the ground (inverse kinematics, IK). Each layer should own a few bones and blend in by a weight from 0 to 1.",
+    "impact": "When a layer writes bones the clip is also animating, the two fight and the joint shakes. Maple Line gives each layer its own bones and its own moments, then measures each one on and off.",
+    "present": "Look-at owns only the neck and head, split 40% neck and 60% head, with critically damped springs and a 0.05 rad dead zone so a speaker’s head bob does not shake the listener. Foot IK pins only the stance foot while walking, easing in over 0.12 s and out over 0.2 s. Arm IK stays off while Riko walks with walk-carry, because that clip already places her hands.",
+    "next": "Turn the measurement into a check: a short headless run that reports jitter per bone group with each layer on and off, and fails when a layer adds more than 10%.",
+    "accept": "Every bone group stays within 10% of its layers-off jitter, or goes down. The one known exception is Riko’s hands (0.8 to 1.7 rad/s² walking) from the radio grip, still under 2 rad/s².",
+    "tradeoff": "A fair comparison needs one fresh session per condition and the development switch setDebug({ layers }), so both runs see the same events. Each layer adds a little work per character per frame.",
+    "sample": "// One fresh session per condition, same events, 60 fps.\n// measureJitter is the capture script's helper (not committed).\nhero.setDebug({ layers: { look: false, hands: false, grip: false, feet: false } });\nconst off = await measureJitter(hero, { seconds: 12 }); // rad/s² per bone group\nhero.setDebug({ layers: {} }); // every layer on\nconst on = await measureJitter(hero, { seconds: 12 });\nfor (const group of Object.keys(off))\n  console.assert(on[group] <= off[group] * 1.1, group);",
+    "file": "apps/game/src/world/character-rig.js",
+    "source": "apps/game/src/world/character-rig.js; apps/game/src/world/character-motion.js; docs/CHARACTER-MOTION.md",
+    "start": 291,
+    "end": 326,
+    "asset": "clips",
+    "spots": [
+      {
+        "label": "Radio cradle"
+      },
+      {
+        "label": "Planted stance foot"
+      }
+    ],
+    "observation": "Frames from the retargeted clips with the layers on. Hands, head and feet are placed by the clip first and adjusted by the layers second.",
+    "docUrl": "https://threejs.org/docs/pages/Skeleton.html",
+    "docLabel": "Three.js skeleton",
+    "exercise": "Try next: add a look-at layer that owns only the head, then switch it on and off while a clip plays. Compare the neck’s jitter in both runs before letting the layer own more bones.",
+    "sourceCode": "  /** Angles smaller than this (radians) do not move the look target. */\n  const LOOK_DEAD_ZONE = 0.05;\n  function lookAt(dt, target, { maxYaw, maxPitch, strength }) {\n    const head = bones.head;\n    if (!head || !chest) return;\n    const want = target ? strength : 0;\n    const weight = Math.min(1, Math.max(0, spring(look.weight, want, 4, dt)));\n    if (weight < 0.003 && !target) {\n      look.aim = null;\n      return;\n    }\n    chest.getWorldQuaternion(s.q3);\n    const up = s.b.copy(chestUp).applyQuaternion(s.q3).normalize();\n    const fwd = s.a.copy(chestForward).applyQuaternion(s.q3);\n    fwd.addScaledVector(up, -fwd.dot(up)).normalize();\n    const left = s.c.crossVectors(up, fwd).normalize();\n    if (target) {\n      const eye = head.getWorldPosition(s.d);\n      const to = s.e.subVectors(target, eye).normalize();\n      const yaw = Math.max(-maxYaw, Math.min(maxYaw, Math.atan2(to.dot(left), to.dot(fwd))));\n      const pitch = Math.max(\n        -maxPitch,\n        Math.min(maxPitch, Math.asin(Math.max(-1, Math.min(1, to.dot(up))))),\n      );\n      if (!look.aim || weight < 0.02) {\n        // Starting from nothing: aim straight at the target; the weight eases it in.\n        look.aim = { yaw, pitch };\n        if (weight < 0.02) {\n          look.yaw.x = yaw;\n          look.pitch.x = pitch;\n          look.yaw.v = look.pitch.v = 0;\n        }\n      } else if (Math.hypot(yaw - look.aim.yaw, pitch - look.aim.pitch) > LOOK_DEAD_ZONE) {\n        look.aim.yaw = yaw;\n        look.aim.pitch = pitch;\n      }"
+  },
+  {
+    "kind": "studio",
+    "studio": true,
+    "initial": 0,
+    "label": "Explore the concept",
+    "ref": 0,
+    "inspected": "23 September 2026",
+    "sampleTitle": "Working pattern",
+    "sampleNote": "Teaching example · three.js and three-vrm objects",
+    "title": "Character topology, retopology & base meshes",
+    "stage": "Studio · 7. Bring characters to life",
+    "visual": "flow",
+    "statusNote": "schematic of the working method",
+    "values": [
+      "Turnaround sheet",
+      "Blockout",
+      "Model or sculpt",
+      "Retopology loops",
+      "UVs + flat paint",
+      "Rig, weights, VRM"
+    ],
+    "steps": [
+      "Front, side, back and A-pose drawings of one character",
+      "Simple shapes placed against the drawings, seen straight on",
+      "Box-model or sculpt the real forms",
+      "Rebuild the surface with loops at eyes, mouth, shoulders, elbows and knees",
+      "Unwrap UVs, paint a flat texture, add anime shading tricks",
+      "Rig, paint skin weights, animate or retarget, export VRM or GLB"
+    ],
+    "definition": "Topology is how a mesh’s vertices and edges connect. Edge loops are rings of edges that follow a shape, like the rings around an elbow. Retopology rebuilds a rough or detailed surface as a lighter mesh with loops where it bends. Primitives (boxes, cylinders) and skin-modifier tubes have no loops at the joints, so they bend like pipes.",
+    "impact": "The earlier Blender-built cast was made from primitives and skin-modifier tubes and bent like pipes at elbows and knees. The VRM cast has joint loops and facial shape keys, so it bends at the joints and can blink and smile.",
+    "present": "The Momiji cast uses VRM models with MToon toon shading; the Blender-built GLBs still load with ?cast=blender. A character studio and a concept-built Riko are being built; neither is in the game yet.",
+    "next": "Take the shortcut indie artists use: start from a good base mesh and customise it. Sources: Quaternius (CC0), Fab’s free Personal licence (individuals under $100k revenue) and Booth.pm (terms differ per model). Read each licence on the download day and record it in asset-src/THIRD_PARTY.md.",
+    "accept": "A 90° bend at elbow and knee keeps the limb’s volume; the face has blink, smile and the main mouth shapes; the licence allows use in a public repository, or the source files stay outside git.",
+    "tradeoff": "Two licence traps: the free Quaternius Universal Base Characters “Standard” pack contains only muscular superhero bodies, and Fab’s Standard licence forbids redistributing source files. The maple-line GitHub repository is public, so licensed sources stay out of git.",
+    "sample": "// Teaching example: check a loaded character before you animate it.\nlet triangles = 0, skinned = 0, shapeKeys = 0;\nvrm.scene.traverse((node) => {\n  if (!node.isMesh) return;\n  triangles += node.geometry.index ? node.geometry.index.count / 3 : 0;\n  if (node.isSkinnedMesh) skinned++;\n  shapeKeys += Object.keys(node.morphTargetDictionary ?? {}).length;\n});\nconsole.log({ triangles, skinned, shapeKeys });\n// Tube-built limbs pass this check too: bend an elbow to 90° and look.",
+    "file": "apps/game/src/characters/vrm-actor.js",
+    "source": "apps/game/src/characters/vrm-actor.js; docs/research/ANIME-CHARACTERS.md",
+    "start": 1,
+    "end": 9,
+    "asset": "cast-models",
+    "spots": [
+      {
+        "label": "VRM and Blender-built figures"
+      },
+      {
+        "label": "Tube limbs"
+      }
+    ],
+    "observation": "Each Momiji cast member twice: the VRM model, then the earlier Blender-built model made from primitives and tubes.",
+    "docUrl": "https://vrm.dev/en/",
+    "docLabel": "VRM format",
+    "exercise": "Try next: bend one arm of a box-built figure and one arm of a base mesh with elbow loops to 90°. Compare the inside of the elbow from the side.",
+    "sourceCode": "/**\n * A loaded VRM made ready to act: MToon toned to the game, the shared clip set turned into\n * clips for this skeleton, gait scaled to its leg length, the hero-cast face adapter, a\n * posture offset (an elder's stoop) and the per-frame update order three-vrm needs:\n * mixer -> posture -> expressions -> vrm.update (humanoid copy, look-at, springs).\n */\nimport { toneVrm } from './mtoon-tone.js';\nimport { createVrmFace } from './vrm-expressions.js';\nimport { vrmHumanoidRig } from './humanoid-bones.js';"
+  },
+  {
+    "kind": "studio",
+    "studio": true,
+    "initial": 0,
+    "label": "Explore the concept",
+    "ref": 0,
+    "inspected": "23 September 2026",
+    "sampleTitle": "Working pattern",
+    "sampleNote": "Shortened from the session request · credentials omitted",
+    "title": "Concept turnarounds & story key frames",
+    "stage": "Studio · 7. Bring characters to life",
+    "visual": "flow",
+    "statusNote": "schematic of the working method",
+    "values": [
+      "Write the brief",
+      "Turnaround sheet",
+      "Story key frames",
+      "Ortho references",
+      "Model to match"
+    ],
+    "steps": [
+      "One paragraph: age, clothes, props, face and body shape",
+      "Front, side and back in an A-pose on a plain background",
+      "A few frames that tell the plot without words",
+      "Line the sheet up behind the modelling views, seen straight on",
+      "Block out, then project the sheet onto the model as a guide"
+    ],
+    "definition": "A turnaround sheet draws one character from the front, side and back in the same pose and scale. An A-pose has the arms angled down, which rigs better than arms straight out. Key frames are single pictures of the main story moments. Orthographic (ortho) views have no perspective, so they line up with a 3D modelling view.",
+    "impact": "Concept sheets fixed how Riko, Mr. Sato and the others look before any modelling. A few story key frames told the whole plot with no words, which showed gaps in the script early.",
+    "present": "Sheets were generated with openai/gpt-image-2.5-flare through the AI Gateway at 1536 × 1024, for about $0.04 and about 25 s each. They are AI-generated concept art kept outside the repository: references, not game assets.",
+    "next": "Split each sheet into front, side and back images and use them as ortho references and as a projection source. The concept-built Riko is being modelled from these sheets; it is not in the game yet.",
+    "accept": "Front and side views agree on height, head size and joint positions; someone who has not read the script can retell the plot from the key frames.",
+    "tradeoff": "Generated views can disagree (a hair clip that changes side, a sleeve that changes length). Compare the three views before modelling, and label generated art as generated.",
+    "sample": "// One request per sheet through the AI Gateway (about 25 s each):\nconst request = {\n  model: 'openai/gpt-image-2.5-flare',\n  size: '1536x1024',\n  n: 1,\n  prompt:\n    'Character turnaround sheet … Same character three times in neutral ' +\n    'A-pose: front, side, back; full body; plain warm paper background; ' +\n    'no text. Character: Riko, 17, short dark bob with a red hair clip, …',\n};",
+    "file": "Concept request t.req.json (kept outside the repository)",
+    "source": "docs/STORY-ART.md; docs/research/ANIME-CHARACTERS.md",
+    "start": 1,
+    "end": 1,
+    "sourceCode": "{\n  \"model\": \"openai/gpt-image-2.5-flare\",\n  \"prompt\": \"Character turnaround sheet for a cozy slice-of-life anime film in the Japanese countryside, warm hand-painted Ghibli-like feel, cute stylized proportions (head about 1/5 of height, large expressive eyes, soft rounded shapes). Same character three times in neutral A-pose: front, side, back; full body; plain warm paper background; no text. Character: Riko, 17, short dark bob with a red hair clip, navy sailor school uniform with red ribbon, pleated skirt, white knee socks, brown loafers, canvas shoulder bag.\",\n  \"size\": \"1536x1024\",\n  \"n\": 1\n}",
+    "asset": "concept-sheet",
+    "spots": [
+      {
+        "label": "Riko turnaround sheet"
+      },
+      {
+        "label": "Story key frame"
+      }
+    ],
+    "observation": "AI-generated concept art, used as a modelling and story reference.",
+    "docUrl": "https://vercel.com/docs/ai-gateway",
+    "docLabel": "AI Gateway documentation",
+    "exercise": "Try next: write a one-paragraph brief for a side character, make a turnaround, and mark every place where the front and side views disagree."
+  },
+  {
+    "kind": "studio",
+    "studio": true,
+    "initial": 0,
+    "label": "Explore the concept",
+    "ref": 0,
+    "inspected": "23 September 2026",
+    "sampleTitle": "Working pattern",
+    "sampleNote": "Simplified from current source · setup and helpers omitted",
+    "title": "Occlusion-aware shot framing",
+    "stage": "Studio · 8. Tell stories on screen",
+    "visual": "shotSearch",
+    "statusNote": "schematic of the current director camera",
+    "values": [
+      "Planned view",
+      "Search nearby",
+      "Clear, same side"
+    ],
+    "steps": [
+      "Rays from the camera to the eyes and chest hit a wall",
+      "Try angles 15–90° round, then higher, lower, closer or further",
+      "Keep the first fully clear view on the same side of the 180° line"
+    ],
+    "definition": "Occlusion means something stands between the camera and what it should show. A sightline test casts rays from the camera to points that must be visible. The 180° rule keeps the camera on one side of the line between two speakers, so they do not swap sides of the screen between cuts.",
+    "impact": "Dialogue shots stared at a wall because Mr. Ishida’s bench stood 0.6 m inside the station building. The bench was moved, and the director now checks what the camera can see before it holds a portrait.",
+    "present": "camera/shot-framing.js checks the eyes and chest, tries candidateViews() in cost order, keeps the 180° rule unless nothing on its side is clear, and never picks the back of the speaker’s head. A held portrait is re-checked 4 times a second; after two blocked checks a clearly better angle may replace it, eased over 0.9 s, then held for 1.5 s. It aims at the VRM head bone. 11 of 11 Episode 1 lines show the speaker’s face.",
+    "next": "Extend the full blocker list (people and props) to shot types other than portraits; today they check scenery only.",
+    "accept": "Render one frame per spoken line and count the lines where the speaker’s face is visible. Read every camera: entry in the episode log.",
+    "tradeoff": "Each check casts a few rays against a filtered blocker list, 4 times a second, only while a portrait holds. Glass, wires, leaves and weather never block, so a face behind a window counts as visible.",
+    "sample": "// Plan: which nearby view can see the eyes and chest?\n// sightline() stands for the director's ray test.\nconst score = (view) => sightline(placeView(eyes, view), [eyes, chest]);\nconst found = searchView({ base, score, lineAngle, side });\n// found.view is the cheapest clear change; found.flipped means it crossed the line.\n\n// Hold: re-check 4 times a second, switch only when clearly better.\nconst monitor = createFramingMonitor(); // 0.25 s, 2 strikes, 1.5 s rest\nif (monitor.due(dt) && monitor.report(score(current)))\n  if (monitor.better(score(current), found.score)) monitor.switched();",
+    "file": "apps/game/src/camera/shot-framing.js",
+    "source": "apps/game/src/camera/shot-framing.js; apps/game/tests/shot-framing.test.js; docs/DIRECTOR.md",
+    "start": 44,
+    "end": 69,
+    "asset": "dialogue-lines",
+    "spots": [
+      {
+        "label": "Eleven spoken lines"
+      },
+      {
+        "label": "Shot blocked by the station"
+      }
+    ],
+    "observation": "One frame per spoken line of Episode 1, after the framing fix.",
+    "docUrl": "https://threejs.org/docs/pages/Raycaster.html",
+    "docLabel": "Three.js raycaster",
+    "exercise": "Try next: put a wall between a camera and a character, cast rays to the eyes and chest, and move the camera 15° at a time until both rays are clear.",
+    "sourceCode": "/**\n * Candidate viewpoints near `base`, cheapest change first: orbit, raise or lower, push in,\n * pull back. `cost` grows with how far a candidate strays from the planned shot.\n */\nexport function candidateViews(base) {\n  const list = [];\n  const add = (dAngle, dRise, scale) =>\n    list.push({\n      angle: wrap(base.angle + dAngle),\n      reach: base.reach * scale,\n      rise: base.rise + dRise,\n      cost:\n        Math.abs(dAngle) / (90 * DEG) + Math.abs(dRise) * 0.45 + Math.abs(Math.log(scale)) * 0.9,\n    });\n  for (const d of ORBIT) add(d, 0, 1);\n  for (const d of ORBIT) add(d, 0.6, 1);\n  for (const d of ORBIT.slice(0, 7)) {\n    add(d, 1.4, 1);\n    add(d, -0.3, 1);\n  }\n  for (const d of ORBIT.slice(0, 5)) {\n    add(d, 0, 0.7);\n    add(d, 0, 0.5);\n    add(d, 0.4, 0.6);\n  }\n  for (const d of [0, 30 * DEG, -30 * DEG]) add(d, 0.3, 1.3);"
+  },
+  {
+    "kind": "studio",
+    "studio": true,
+    "initial": 0,
+    "label": "Explore the concept",
+    "ref": 0,
+    "inspected": "23 September 2026",
+    "sampleTitle": "Working pattern",
+    "sampleNote": "Teaching example · not the episode format",
+    "title": "Story structure for short videos",
+    "stage": "Studio · 8. Tell stories on screen",
+    "visual": "flow",
+    "statusNote": "schematic of the story checklist",
+    "values": [
+      "A clear want",
+      "Stakes",
+      "A visible clock",
+      "An obstacle",
+      "Someone chooses",
+      "Payoff on screen"
+    ],
+    "steps": [
+      "One character wants one thing, shown in one shot",
+      "What they lose if they fail",
+      "A clock or timetable the viewer can see",
+      "What stands in the way",
+      "A person decides to help, or not",
+      "The result, shown instead of said"
+    ],
+    "definition": "A story beat is one change in the situation. Stakes are what a character loses if they fail. A visible clock is a deadline the viewer can see, such as a station clock or a bus about to leave. A payoff shows the result of a choice on screen instead of reporting it in dialogue.",
+    "impact": "Many people watch short videos muted. The first script of The 17:42 did not work that way: its conflict was arithmetic in dialogue, nothing was at stake, the payoff was never shown, six characters shared the episode, and the bus and the clock never appeared on screen.",
+    "present": "Episode 1 of The 17:42 plays in the game and renders to video with the first script. A rewrite built on this checklist is being written; it is not in the game yet.",
+    "next": "Draw the beats as key frames before writing lines, keep to 3–4 characters, and put the clock and the bus in shots. Keep “how it’s made” credits out of the story video; they belong in the blog or the post that shares it.",
+    "accept": "Mute the video and show it to someone who has not read the script. They can say who wants what, what stops them, who chooses and what happened.",
+    "tradeoff": "Showing the clock and the payoff needs extra shots, places and props, which cost modelling and render time. Fewer characters means some of the cast get no lines.",
+    "sample": "// A beat sheet to test before writing any lines:\nconst beats = [\n  { beat: 'want', show: 'who wants what, in one shot' },\n  { beat: 'stakes', show: 'what is lost if they fail' },\n  { beat: 'clock', show: 'a clock or timetable on screen' },\n  { beat: 'obstacle', show: 'what stands in the way' },\n  { beat: 'choice', show: 'someone decides to help, or not' },\n  { beat: 'payoff', show: 'the result, on screen' },\n];\n// Then mute the cut: can a viewer retell it from the pictures alone?",
+    "file": "apps/game/src/drama/series/the-1742.js",
+    "source": "apps/game/src/drama/series/the-1742.js; docs/drama/README.md",
+    "start": 67,
+    "end": 84,
+    "asset": "dialogue-lines",
+    "spots": [
+      {
+        "label": "Arithmetic as conflict"
+      },
+      {
+        "label": "A frame that tells the story"
+      }
+    ],
+    "observation": "The first script’s opening lines, rendered one frame per line.",
+    "docUrl": "https://github.com/lokeshinumpudi/maple-line/blob/main/docs/drama/README.md",
+    "docLabel": "Maple Line episode format",
+    "exercise": "Try next: write a six-line beat sheet for a 60-second story, draw one stick-figure frame per beat, and ask someone to retell it from the frames alone.",
+    "sourceCode": "            {\n              shot: { type: 'portrait', subject: { cast: 'riko' } },\n              dialogue: [\n                {\n                  cast: 'riko',\n                  text: 'Seventeen forty-two in. Seventeen forty out.',\n                  emotion: 'anxious',\n                  translations: {\n                    'te-IN': 'రైలు ఐదు నలభై రెండుకి వస్తుంది. బస్సు ఐదు నలభైకే వెళ్ళిపోతుంది.',\n                  },\n                },\n                {\n                  cast: 'riko',\n                  text: 'That isn’t a connection. That’s a race.',\n                  emotion: 'dry',\n                  translations: { 'te-IN': 'ఇది కనెక్షన్ కాదు. ఇది పరుగు పందెం.' },\n                },\n              ],"
+  },
+  {
+    "kind": "studio",
+    "studio": true,
+    "initial": 0,
+    "label": "Explore the concept",
+    "ref": 0,
+    "inspected": "23 September 2026",
+    "sampleTitle": "Working pattern",
+    "sampleNote": "Simplified from current source · setup and helpers omitted",
+    "title": "Deterministic video rendering",
+    "stage": "Studio · 8. Tell stories on screen",
+    "visual": "flow",
+    "statusNote": "schematic of the current render path",
+    "values": [
+      "step(1/30 s)",
+      "Sim + captions",
+      "Page screenshot",
+      "H.264 yuv420p",
+      "Mix audio"
+    ],
+    "steps": [
+      "The script advances one controllable clock by exactly 1/30 s",
+      "Train, people, weather, camera, captions and fades read that clock",
+      "Chrome DevTools captures the page, captions included",
+      "+faststart MP4 that plays in WhatsApp and iMessage",
+      "Clips placed by line id from the audio manifest"
+    ],
+    "definition": "Deterministic rendering means the same input always gives the same frames. In render mode one controllable clock drives everything, random numbers come from a fixed seed, and adaptive resolution is off. H.264 is the video codec phones play everywhere; yuv420p is its usual colour format; +faststart puts the file’s index first so playback starts before the download ends.",
+    "impact": "A screen recording stutters whenever the machine is slow. Stepping a fixed clock gives a smooth 30 fps video however long each frame takes. WebM from the browser’s MediaRecorder does not play on iPhones, so the output is MP4.",
+    "present": "?render=1 exposes window.__mapleRender with ready(), play(), step(), timeline() and framing(). scripts/render-episode.mjs steps frames, captures each with Page.captureScreenshot, pipes the JPEGs to ffmpeg and mixes an audio manifest placed by line id (scene/beat/line, counted from 1). Episode 1: 88 s, 2631 frames at 30 fps, 114 s to render at 16:9 and 156 s at 9:16 on an Apple M4 Pro, about 20 MB.",
+    "next": "Record the game’s own sound (train, ambience, crossing bells) into renders; today only manifest clips are mixed in.",
+    "accept": "Two renders of one episode give the same frame count and timeline; the file plays in WhatsApp and iMessage on an iPhone; each caption appears on the frame where the timeline says its line starts.",
+    "tradeoff": "A screenshot per frame holds the loop to about 15–18 frames per second. Capturing captions as page screenshots keeps them identical to the game, at the cost of that screenshot.",
+    "sample": "// Page opened with ?render=1&fps=30&aspect=9:16 (scripts/render-episode.mjs):\nawait page.evaluate(() => window.__mapleRender.ready());\nawait page.evaluate(() => window.__mapleRender.play('the-1742-1'));\nfor (let frame = 0; frame < maxFrames; frame++) {\n  const status = await page.evaluate(() => window.__mapleRender.step(1));\n  ffmpeg.stdin.write(await capture(92)); // one JPEG screenshot per step\n  if (status.done) break;\n}\n// ffmpeg: libx264 High, format=yuv420p, -movflags +faststart",
+    "file": "apps/game/src/main.js",
+    "source": "scripts/render-episode.mjs; apps/game/src/main.js; docs/VIDEO.md",
+    "start": 3862,
+    "end": 3877,
+    "asset": "episode-poster",
+    "spots": [
+      {
+        "label": "Poster frame"
+      },
+      {
+        "label": "Captions in the frame"
+      }
+    ],
+    "observation": "Output of the render script for Episode 1.",
+    "docUrl": "https://chromedevtools.github.io/devtools-protocol/tot/Page/#method-captureScreenshot",
+    "docLabel": "Chrome DevTools Page.captureScreenshot",
+    "exercise": "Try next: render the same 5 seconds twice with a seeded random generator and compare the frames. Then remove the seed and compare again.",
+    "sourceCode": "    step(count = 1) {\n      for (let i = 0; i < count; i++) {\n        renderEventTime = videoFrames / fps;\n        frame(renderClock.advance());\n        videoFrames += 1;\n        if (!ended && current && episodeRunner.getState().status === 'ended') {\n          ended = true;\n          endCardFrame = videoFrames + Math.round(TAIL_SECONDS * fps);\n        }\n        if (videoFrames === endCardFrame) {\n          filmCaptions.hide();\n          renderOverlay.endCard(titles(current));\n        }\n      }\n      return status();\n    },"
+  },
+  {
+    "kind": "studio",
+    "studio": true,
+    "initial": 0,
+    "label": "Explore the concept",
+    "ref": 0,
+    "inspected": "23 September 2026",
+    "sampleTitle": "Working pattern",
+    "sampleNote": "Simplified from current source · setup and helpers omitted",
+    "title": "Multilingual voice & translation",
+    "stage": "Studio · 8. Tell stories on screen",
+    "visual": "flow",
+    "statusNote": "schematic of the current voice path",
+    "values": [
+      "English line",
+      "Hand translation?",
+      "Machine translate",
+      "Speak + cache",
+      "Hold the beat"
+    ],
+    "steps": [
+      "Each line is written in English with its cast member",
+      "Use the episode’s hand-written translation when it has one",
+      "Otherwise machine translation, with the speaker’s gender; names stay as they are",
+      "bulbul speech; clips and translations cached on disk",
+      "The runner waits for the clip to end before the next line"
+    ],
+    "definition": "Text-to-speech (TTS) turns a written line into audio. Machine translation turns the line into another language automatically. A voice cache stores generated clips on disk so the same line never costs twice.",
+    "impact": "Episodes can play and render with voices and subtitles in 11 languages. Costs stay small: about ₹1 per episode in English and about ₹3 in Telugu.",
+    "present": "The director’s narration engine calls Sarvam bulbul:v3 for speech and sarvam-translate:v1 for subtitles, caching both under .cache/narration/. SARVAM_VOICE_MODEL selects the model; bulbul:v4-flash (224 speakers tagged by style) is allowed but beta-gated for this account, and an unknown value keeps bulbul:v3. Hand-written translations in the episode win over machine ones. drama/episode-voice.js holds each line until its clip ends.",
+    "next": "Add hand-written Telugu for every line of Episode 1, and have a native speaker review each language before a voiced video is shared.",
+    "accept": "A native speaker reads the subtitles and hears no wrong times, nouns or pronouns; the render timeline shows no line cut off by the next one.",
+    "tradeoff": "Machine translation made three kinds of mistake in this session: a clock time read as “inches”, “front car” as “motor car”, and he and she swapped. Hand translation fixes them but costs a person’s time per language.",
+    "sample": "// An episode line with a hand-written translation (drama/series/the-1742.js):\n{ cast: 'riko', text: 'That isn’t a connection. That’s a race.',\n  emotion: 'dry',\n  translations: { 'te-IN': 'ఇది కనెక్షన్ కాదు. ఇది పరుగు పందెం.' } }\n\n// Every clip of an episode, cached on disk, plus a render manifest:\n// pnpm voice:episode --episode the-1742-1 --lang te-IN\n// SARVAM_VOICE_MODEL=bulbul:v4-flash tries the beta model.",
+    "file": "packages/voice-score/index.js",
+    "source": "apps/director/src/narration.js; apps/game/src/drama/episode-voice.js; scripts/voice-episode.mjs; packages/voice-score/index.js",
+    "start": 1,
+    "end": 11,
+    "asset": "dialogue-lines",
+    "spots": [
+      {
+        "label": "Subtitled lines"
+      }
+    ],
+    "observation": "Rendered lines with their subtitles.",
+    "docUrl": "https://docs.sarvam.ai/",
+    "docLabel": "Sarvam AI documentation",
+    "exercise": "Try next: machine-translate three lines containing a time, a vehicle part and a pronoun, then compare them with a hand translation. Note each change in meaning.",
+    "sourceCode": "/** Increment when casting or delivery changes to invalidate prepared audio. */\nexport const VOICE_REVISION = 'cast-2';\n/** The model every request uses unless the director is started with SARVAM_VOICE_MODEL. */\nexport const VOICE_MODEL = 'bulbul:v3';\n/**\n * Models the director may select. bulbul:v3 uses one speaker for every language.\n * bulbul:v4-flash uses per-language, style-tagged speakers (for example\n * `kavitha_te_conversation`); it was in closed beta for this account in September 2026,\n * so a cast member without a v4 speaker for a language keeps its v3 voice.\n */\nexport const VOICE_MODELS = ['bulbul:v3', 'bulbul:v4-flash'];"
+  },
+  {
+    "kind": "studio",
+    "studio": true,
+    "initial": 0,
+    "label": "Explore the concept",
+    "ref": 0,
+    "inspected": "23 September 2026",
+    "sampleTitle": "Working pattern",
+    "sampleNote": "Simplified from current source · setup and helpers omitted",
+    "title": "Shared links as untrusted input",
+    "stage": "Studio · 8. Tell stories on screen",
+    "visual": "flow",
+    "statusNote": "schematic of the current decoder",
+    "values": [
+      "Size cap",
+      "Inflate ≤ 64 KB",
+      "UTF-8 + JSON",
+      "Same validator",
+      "textContent only"
+    ],
+    "steps": [
+      "Refuse a #ep= payload over 12,000 characters or with odd characters, before decoding",
+      "Stop decompressing past 64 KB, so a small link cannot grow into a huge document",
+      "Require valid UTF-8 and valid JSON",
+      "The saved-episode validator refuses unknown cue types and __proto__ keys",
+      "Dialogue is set with textContent, so markup stays plain text"
+    ],
+    "definition": "Untrusted input is data the game did not make itself, such as a link someone else built. A decompression bomb is a small compressed payload that expands into a very large one. Prototype pollution uses a __proto__ key in JSON to change how every object behaves. textContent sets text without reading it as HTML.",
+    "impact": "Anyone can make a link that opens the game on an episode, so every link is checked: size first, decompression capped, then the same validator as saved episodes. The tests include a link under 12,000 characters that expands to 4 MB.",
+    "present": "Links: ?episode= (a built-in id), ?scene= (place, offset, time, weather and camera from fixed lists), #ep= (an episode as raw deflate plus base64url) and ?watch= (a short id for an episode kept in the Signal site store). share/episode-codec.js decodes; tests/share-links.test.js covers damaged, oversized and polluted payloads.",
+    "next": "Test the ?watch= write path against the live Signal gateway; the unit tests use a stand-in for signal.db.",
+    "accept": "Oversized, damaged, non-UTF-8, unknown-cue and __proto__ payloads each fail with a short notice, and the ride then starts normally.",
+    "tradeoff": "Privacy: the Signal store records the sharer’s email (updatedBy), and anyone with site access can list the collection; say so before someone shares. #ep= links store nothing, but they are long.",
+    "sample": "// #ep=1.<base64url of raw-deflated JSON>\nconst payload = location.hash.slice('#ep='.length);\nconst json = await decodeEpisodePayload(payload); // length, 64 KB, UTF-8, JSON\nconst episode = normalizeEpisode(json, { stops, crossings }); // saved-episode rules\ncaption.textContent = line.text; // never innerHTML",
+    "file": "apps/game/src/share/episode-codec.js",
+    "source": "apps/game/src/share/episode-codec.js; apps/game/src/share/deep-link.js; apps/game/tests/share-links.test.js",
+    "start": 79,
+    "end": 101,
+    "asset": "station",
+    "spots": [
+      {
+        "label": "A place a link can open"
+      }
+    ],
+    "observation": "The station, one of the places a ?scene= link can open.",
+    "docUrl": "https://developer.mozilla.org/en-US/docs/Web/API/DecompressionStream",
+    "docLabel": "MDN DecompressionStream",
+    "exercise": "Try next: compress 4 MB of spaces into a link, then decode it with and without a byte cap. Watch memory use in both runs.",
+    "sourceCode": "/** Decodes a payload to parsed JSON. Throws a TypeError with a reader-facing message. */\nexport async function decodeEpisodePayload(\n  payload,\n  { maxChars = PAYLOAD_CHARS, maxBytes = EPISODE_JSON_BYTES } = {},\n) {\n  if (typeof payload !== 'string' || payload.length > maxChars || !PAYLOAD.test(payload))\n    throw new TypeError('That shared episode link is damaged.');\n  const compressed = fromBase64Url(payload.slice(VERSION.length));\n  let bytes;\n  try {\n    bytes = await collect(pipe(compressed, new DecompressionStream('deflate-raw')), maxBytes);\n  } catch (error) {\n    if (error instanceof TypeError && error.message.startsWith('That shared')) throw error;\n    throw new TypeError('That shared episode link is damaged.');\n  }\n  let text;\n  try {\n    text = new TextDecoder('utf-8', { fatal: true }).decode(bytes);\n    return JSON.parse(text);\n  } catch {\n    throw new TypeError('That shared episode link is damaged.');\n  }\n}"
+  },
+  {
+    "kind": "studio",
+    "studio": true,
+    "initial": 0,
+    "label": "Explore the concept",
+    "ref": 0,
+    "inspected": "23 September 2026",
+    "sampleTitle": "Working pattern",
+    "sampleNote": "Shell commands shown as comments · names are examples",
+    "title": "Parallel agents, worktrees & integration",
+    "stage": "Studio · 9. Work with many agents",
+    "visual": "flow",
+    "statusNote": "schematic of the working method",
+    "values": [
+      "Worktree + port",
+      "Owner per area",
+      "Numbers to hit",
+      "Merge early",
+      "Keep both",
+      "Check evidence"
+    ],
+    "steps": [
+      "One git worktree, one branch and one dev port per agent",
+      "One owner for each area of files",
+      "Numeric acceptance criteria and the evidence to return",
+      "Merge into one integration branch early and often",
+      "Conflicts in main.js, the episode runner and docs: keep both behaviours",
+      "Read contact sheets, before/after captures and jitter numbers before merging"
+    ],
+    "definition": "A git worktree is a second checkout of the same repository in its own folder, so two agents can edit different branches at once. An integration branch collects everyone’s work. A hub file is one that many features touch, such as main.js.",
+    "impact": "The 23 September session ran many agents at once on characters, camera framing, video, voice, sharing, water and storms, each merging into one integration branch.",
+    "present": "Agents work in .claude/worktrees/<name> on their own branches. The dev server uses a strict port (4173), so it fails instead of silently opening another game, and each agent starts its own port. Render servers turn off hot reload so an edit elsewhere cannot reload a page mid-capture.",
+    "next": "Before removing an old worktree, run git status inside it: git branch --no-merged lists unmerged commits but cannot see uncommitted work. Message a running agent when scope changes instead of starting a second agent on the same files.",
+    "accept": "Every agent returns its numbers and evidence (jitter per bone group, a contact sheet, before/after captures), and the integration branch passes pnpm check after each merge.",
+    "tradeoff": "More agents means more merges in the hub files. Agents must never touch the person’s everyday browser session; use a separate browser profile or headless runs.",
+    "sample": "// Shell, one agent's setup (names are examples):\n// git worktree add .claude/worktrees/motion -b agent/motion <integration-branch>\n// pnpm --filter @maple-line/game exec vite --port 4181\n//\n// Merge early and often into the integration branch:\n// git merge agent/motion   # in hub files, keep both behaviours\n//\n// Before removing an old worktree, look for uncommitted work:\n// git -C .claude/worktrees/motion status --short",
+    "file": "apps/game/vite.config.js",
+    "source": "apps/game/vite.config.js; AGENTS.md",
+    "start": 71,
+    "end": 79,
+    "asset": "clips",
+    "spots": [
+      {
+        "label": "Evidence an agent returns"
+      },
+      {
+        "label": "Before/after pair"
+      }
+    ],
+    "observation": "Evidence returned by agents in this session.",
+    "docUrl": "https://git-scm.com/docs/git-worktree",
+    "docLabel": "git worktree",
+    "exercise": "Try next: make two worktrees, change different lines of the same function in each, merge both into one branch, and resolve the conflict by keeping both behaviours.",
+    "sourceCode": "  server: {\n    host: '127.0.0.1',\n    port: 4173,\n    strictPort: true,\n    allowedHosts: true,\n    proxy: { '/api/director': directorTarget },\n    // Episode renders (scripts/render-episode.mjs): a source edit must not reload the page mid-capture.\n    ...(process.env.MAPLE_RENDER_SERVER === '1' ? { hmr: false, watch: null } : {}),\n  },"
+  },
+  {
+    "kind": "studio",
+    "studio": true,
+    "initial": 0,
+    "label": "Explore the concept",
+    "ref": 0,
+    "inspected": "23 September 2026",
+    "sampleTitle": "Working pattern",
+    "sampleNote": "Simplified from current source · setup and helpers omitted",
+    "title": "Before/after captures for visual review",
+    "stage": "Studio · 9. Work with many agents",
+    "visual": "flow",
+    "statusNote": "schematic of the review method",
+    "values": [
+      "Fix the camera",
+      "Capture before",
+      "Make the change",
+      "Capture after",
+      "Side by side"
+    ],
+    "steps": [
+      "Save the camera pose, weather, time of day and output size",
+      "Capture on the old build",
+      "Change one thing",
+      "Capture again with exactly the same settings",
+      "Compare at normal viewing size, where the player looks first"
+    ],
+    "definition": "A before/after capture is two screenshots from the same camera, weather, time of day and size: one before a change and one after. The first screen is what the player sees when the game starts.",
+    "impact": "The first Blender pass looked like no change at all. Its 4 new models sat about 1 km from where the player starts, used one flat vertex-colour material, and flat lighting washed them out.",
+    "present": "Visual work in this session returned paired captures from fixed camera poses (water, storm, foliage, station at night). Render mode fixes the pixel ratio and turns off adaptive resolution, so paired frames match in size. The train is on screen 100% of the time, so it and faces in close-ups get detail first.",
+    "next": "Keep a small set of saved camera poses (start screen, train close-up, a portrait) and capture all of them before and after every visual change.",
+    "accept": "The change is visible side by side at normal viewing size, on the first screen, the train or a face. If it is not, move the detail to where the player looks.",
+    "tradeoff": "Fixed poses can miss problems elsewhere, such as shimmer while moving. Add a short moving clip for those.",
+    "sample": "// Same camera, weather, time and size, before and after.\n// capture() is a helper that opens the game with these settings and saves a JPEG.\nconst pose = { location: 'gorge', camera: 'scenic', weather: 'rain', size: [1600, 900] };\nawait capture('before.jpg', pose); // old build\nawait capture('after.jpg', pose);  // new build\n// Side by side for review:\n// ffmpeg -i before.jpg -i after.jpg -filter_complex hstack compare.jpg",
+    "file": "apps/game/src/main.js",
+    "source": "apps/game/src/main.js; docs/VIDEO.md",
+    "start": 169,
+    "end": 177,
+    "asset": "before-after",
+    "spots": [
+      {
+        "label": "River before and after"
+      },
+      {
+        "label": "Storm before and after"
+      },
+      {
+        "label": "Forest before and after"
+      }
+    ],
+    "observation": "Before on the left, after on the right, from the same camera.",
+    "docUrl": "https://threejs.org/docs/pages/WebGLRenderer.html",
+    "docLabel": "Three.js WebGLRenderer",
+    "exercise": "Try next: save the start-screen camera pose, make one visual change, and capture before and after at the same size. If you cannot see the change at a glance, move it closer to the player.",
+    "sourceCode": "const frameBudget = createFrameBudget({\n  renderer,\n  devicePixelRatio,\n  ...(mobilePlay ? { pixelBudget: 700000, maxPixelRatio: 1 } : {}),\n  // Renders draw one CSS pixel per output pixel at the requested size, every frame.\n  ...(renderMode\n    ? { devicePixelRatio: 1, pixelBudget: Infinity, maxPixelRatio: 1, adaptive: false }\n    : {}),\n});"
+  }
+]
