@@ -21,7 +21,7 @@
   "rig": "ual",
   "rest": "identity",
   "out": "apps/game/public/models/characters/vrm/cast-clips.vrma",
-  "bytes": 358196,
+  "bytes": 357712,
   "bones": [
     "hips",
     "spine",

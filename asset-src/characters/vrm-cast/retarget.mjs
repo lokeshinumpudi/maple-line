@@ -620,6 +620,53 @@ export function addWave(clip, { side = 'right', amplitude = 0.4, hertz = 2 }, en
   return { ...clip, rotations: { ...clip.rotations, [lower]: values } };
 }
 
+/**
+ * Soften snaps on the finger tracks: one binomial pass (1, 2, 1) over the 30 fps keys, in
+ * each key's hemisphere. UAL keys its fingers abruptly (Consume closes the hand within a
+ * frame), which reads as a flick at 60 Hz. Loops wrap across the seam (the first and last
+ * keys are the same pose); one-shots keep their end keys. Other bones are left as authored.
+ */
+export function smoothFingers(clip, { passes = 1 } = {}) {
+  const out = { ...clip, rotations: { ...clip.rotations } };
+  const n = clip.times.length;
+  if (n < 3) return out;
+  const a = new THREE.Quaternion();
+  const b = new THREE.Quaternion();
+  const c = new THREE.Quaternion();
+  for (const [bone, source] of Object.entries(clip.rotations)) {
+    if (!isFinger(bone)) continue;
+    let values = source;
+    for (let pass = 0; pass < passes; pass++) {
+      const next = new Float32Array(values.length);
+      for (let f = 0; f < n; f++) {
+        const ends = f === 0 || f === n - 1;
+        if (ends && !clip.loop) {
+          next.set(values.subarray(f * 4, f * 4 + 4), f * 4);
+          continue;
+        }
+        // Loop neighbours across the seam: key n-1 repeats key 0.
+        const before = f === 0 ? n - 2 : f - 1;
+        const after = f === n - 1 ? 1 : f + 1;
+        readQuat(values, f, b);
+        readQuat(values, before, a);
+        readQuat(values, after, c);
+        const sa = a.dot(b) < 0 ? -1 : 1;
+        const sc = c.dot(b) < 0 ? -1 : 1;
+        const q = new THREE.Quaternion(
+          sa * a.x + 2 * b.x + sc * c.x,
+          sa * a.y + 2 * b.y + sc * c.y,
+          sa * a.z + 2 * b.z + sc * c.z,
+          sa * a.w + 2 * b.w + sc * c.w,
+        ).normalize();
+        writeQuat(next, f, q);
+      }
+      values = next;
+    }
+    out.rotations[bone] = values;
+  }
+  return out;
+}
+
 // ---- key reduction ------------------------------------------------------------------------
 
 /**
@@ -869,7 +916,7 @@ export async function buildUalCast(folder, { cast = UAL_CAST } = {}) {
       clip = splice(clip, other, bones, { envelope: entry.envelope, weight, phase });
     }
     if (entry.wave) clip = addWave(clip, entry.wave, entry.envelope, order);
-    clip = { ...clip, name: entry.name, loop: entry.loop ?? true };
+    clip = smoothFingers({ ...clip, name: entry.name, loop: entry.loop ?? true });
     clips.push(clip);
     const drop = round((hipsRestHeight - minY(clip.hips)) / hipsRestHeight, 4);
     gait[entry.name] = { footSpeedPerHipsHeight: 0, hipsDropPerHipsHeight: drop };
