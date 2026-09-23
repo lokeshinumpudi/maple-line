@@ -6,8 +6,9 @@ export function paintTerrain(geometry, { seed = 431, bankDistance, snowAt } = {}
   const positions = geometry.attributes.position;
   const normals = geometry.attributes.normal;
   const colors = new Float32Array(positions.count * 3);
-  const meadow = new THREE.Color('#91a578'),
-    moss = new THREE.Color('#688878');
+  // Warm, slightly dry meadow greens: closer to late-season grass under haze.
+  const meadow = new THREE.Color('#9ba279'),
+    moss = new THREE.Color('#6f836c');
   const stone = new THREE.Color('#969b91'),
     sand = new THREE.Color('#c1bda2');
   const snow = new THREE.Color('#dce7e4'),

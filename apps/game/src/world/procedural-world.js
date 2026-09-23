@@ -100,6 +100,7 @@ export function createProceduralWorld({
   riverBedHeight,
   riverProfile,
   snowCoverage,
+  cardCanopy = null,
 }) {
   const root = new THREE.Group();
   root.name = 'Player-created valley';
@@ -153,12 +154,14 @@ export function createProceduralWorld({
   const dummy = new THREE.Object3D();
   const color = new THREE.Color();
   const chunks = [];
+  const crownBatches = [];
   let details;
   let disposed = false;
   function dispose() {
     if (disposed) return;
     disposed = true;
     root.removeFromParent();
+    for (const mesh of crownBatches) cardCanopy?.unregister(mesh);
     details?.dispose();
     wind.dispose();
     for (const chunk of chunks) chunk.mesh.dispose();
@@ -260,6 +263,14 @@ export function createProceduralWorld({
           anchorMin: i === 1 ? -1.2 : -0.5,
           anchorMax: i === 1 ? -0.3 : 0.5,
         });
+        // Near crowns get leaf cards; spring worlds get blossom cards.
+        if (i === 1 && cardCanopy) {
+          cardCanopy.register(mesh, {
+            kind: plan.season === 'spring' ? 'blossom' : 'leaf',
+            wind,
+          });
+          crownBatches.push(mesh);
+        }
       });
     }
     const meadow = createMeadowLayout({ plan, terrain, railU, riverBedHeight, center });

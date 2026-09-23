@@ -12,6 +12,7 @@ import { inForestGrove } from './scenery-fields.js';
 import { createSurfaceDetail, smoothTerrainNormals } from '../rendering/surface-detail.js';
 import { createCedarGeometry } from './nature-geometry.js';
 import { createLeafClusterGeometry, createLeafClusterTexture } from './tree-foliage.js';
+import { applyWaterSurface } from '../rendering/water-surface.js';
 /** Fixed regional railway: procedural scenery is streamed around the train. */
 export const ROUTE_START_Z = 790;
 export const ROUTE_END_Z = 24000;
@@ -230,7 +231,17 @@ export function scenicTerrain(worldX, z) {
   return wetlandTerrainHeight(worldX, z, y, wetlandProfile);
 }
 
-export function createExtendedWorld({ THREE, scene, railPoint, center = routeCenter, wind }) {
+/** Cherry trees line the approach to Sakuragawa (桜川, "cherry river"). */
+export const SAKURA_ZONE = Object.freeze({ start: 1080, end: 2320 });
+
+export function createExtendedWorld({
+  THREE,
+  scene,
+  railPoint,
+  center = routeCenter,
+  wind,
+  cardCanopy = null,
+}) {
   const surfaceDetail = createSurfaceDetail();
   const root = new THREE.Group();
   root.name = 'Regional railway / streamed countryside';
@@ -258,7 +269,7 @@ export function createExtendedWorld({ THREE, scene, railPoint, center = routeCen
     return materials.get(name);
   };
   const m = {
-    grass: material('meadow terrain', '#839166', { vertexColors: true }),
+    grass: material('meadow terrain', '#899068', { vertexColors: true }),
     timber: material('cedar timber', '#66543f'),
     stone: material('retaining stone', '#a9ac9d'),
     cream: material('station plaster', '#e4dec9'),
@@ -288,6 +299,8 @@ export function createExtendedWorld({ THREE, scene, railPoint, center = routeCen
     rice: material('rice field rows', '#9dac70'),
     dark: material('tunnel lining', '#4e5e5c', { side: THREE.DoubleSide }),
   };
+  // Lakes and ravine river reflect the cached sky; they share the river's wave normals.
+  applyWaterSurface(THREE, m.water);
   for (const key of ['roof']) surfaceDetail.apply(m[key], 'roof');
   for (const key of ['timber', 'trunk']) surfaceDetail.apply(m[key], 'timber');
   surfaceDetail.apply(m.stone, 'stone');
@@ -303,6 +316,11 @@ export function createExtendedWorld({ THREE, scene, railPoint, center = routeCen
   const leafGeo = keep(createLeafClusterGeometry(THREE));
   const leafTexture = createLeafClusterTexture(THREE);
   const leafyMaterial = material('broadleaf foliage', '#ffffff', {
+    map: leafTexture,
+    alphaTest: 0.45,
+    side: THREE.DoubleSide,
+  });
+  const blossomMaterial = material('cherry blossom crowns', '#ffffff', {
     map: leafTexture,
     alphaTest: 0.45,
     side: THREE.DoubleSide,
@@ -327,6 +345,7 @@ export function createExtendedWorld({ THREE, scene, railPoint, center = routeCen
     const ownedGeometries = [],
       textures = [],
       ownedMaterials = [],
+      crownBatches = [],
       batches = new Map(),
       canopy = new Map(),
       residents = [],
@@ -484,10 +503,11 @@ export function createExtendedWorld({ THREE, scene, railPoint, center = routeCen
         }
       else {
         const autumn = z > 16800 && z < 20000;
+        const sakura = z > SAKURA_ZONE.start && z < SAKURA_ZONE.end && (i * 7919) % 10 < 7;
         for (let tier = 0; tier < 2; tier++)
           item(
             leafGeo,
-            leafyMaterial,
+            sakura ? blossomMaterial : leafyMaterial,
             x + between(-0.7, 0.7),
             y + h * 0.72 + tier * 1.3,
             z,
@@ -495,12 +515,61 @@ export function createExtendedWorld({ THREE, scene, railPoint, center = routeCen
             r * 0.8,
             r,
             random() * 6,
-            autumn
-              ? ['#be8847', '#c7a558', '#9b703e'][i % 3]
-              : ['#7b955b', '#91a566', '#607d4f'][i % 3],
+            sakura
+              ? ['#e897b0', '#f2b3c5', '#da86a3'][i % 3]
+              : autumn
+                ? ['#be8847', '#c7a558', '#9b703e'][i % 3]
+                : ['#7c8e5a', '#909c64', '#637752'][i % 3],
           );
       }
       registerCrown(x, z, r + 1, pine ? y + h * 1.18 : y + h * 0.72 + 1.3 + r * 0.8);
+    }
+    // A cherry avenue along the line near Sakuragawa. Its own seed keeps every other
+    // placement in these chunks unchanged.
+    const avenueStart = Math.max(start, SAKURA_ZONE.start),
+      avenueEnd = Math.min(end, SAKURA_ZONE.end);
+    if (avenueEnd > avenueStart) {
+      let avenueSeed = 70001 + index * 131;
+      const avenue = () => {
+        avenueSeed = (Math.imul(avenueSeed, 1664525) + 1013904223) >>> 0;
+        return avenueSeed / 4294967296;
+      };
+      const count = Math.round(((avenueEnd - avenueStart) / 600) * 120);
+      for (let k = 0; k < count; k++) {
+        const z = avenueStart + avenue() * (avenueEnd - avenueStart),
+          side = avenue() < 0.5 ? -1 : 1,
+          lateral = side * (13 + avenue() * 26),
+          p = railPoint(z),
+          x = p.x + lateral;
+        const h = 6 + avenue() * 3.5,
+          r = 2.6 + avenue() * 1.6,
+          tint = ['#e897b0', '#f2b3c5', '#da86a3', '#eea6bc'][k % 4];
+        if (villageLots.some((lot) => Math.abs(z - lot.z) < 18 && Math.abs(x - lot.x) < 17))
+          continue;
+        if (fieldAt(x, z) || lakeAt(x, z)?.radius < 1.25) continue;
+        if (z > 1500 && z < 2300 && lateral > -21 && lateral < -1) continue;
+        if (
+          additionalStops.some((stop) => Math.abs(z - stop.z) < 60 && lateral > 4 && lateral < 46)
+        )
+          continue;
+        const y = scenicTerrain(x, z);
+        if (Math.abs(y - p.y) > 14) continue;
+        item(trunkGeo, m.trunk, x, y + h * 0.28, z, 0.2, h * 0.56, 0.2, avenue() * 6);
+        for (let tier = 0; tier < 3; tier++)
+          item(
+            leafGeo,
+            blossomMaterial,
+            x + (avenue() - 0.5) * 1.6,
+            y + h * 0.66 + tier * 0.9,
+            z + (avenue() - 0.5) * 1.6,
+            r * (1 - tier * 0.18),
+            r * 0.7,
+            r * (1 - tier * 0.18),
+            avenue() * 6,
+            tint,
+          );
+        registerCrown(x, z, r + 1, y + h * 0.66 + 1.8 + r * 0.7);
+      }
     }
     // Permanent field cells belong to one chunk; the same pads shape their terrain.
     for (let z = Math.ceil(start / 72) * 72; z < end; z += 72)
@@ -998,12 +1067,18 @@ export function createExtendedWorld({ THREE, scene, railPoint, center = routeCen
         wind &&
         ((mat === m.foliage && geo === coneGeo) ||
           mat === leafyMaterial ||
+          mat === blossomMaterial ||
           (mat === m.snow && geo === coneGeo))
       )
         wind.apply(mesh, { amplitude: 0.48, anchorMin: -1.2, anchorMax: -0.3, flutter: 0.06 });
       if (wind && mat === m.trunk)
         wind.apply(mesh, { amplitude: 0.008, anchorMin: -0.5, anchorMax: 0.5, flutter: 0 });
       group.add(mesh);
+      // Near crowns draw dense leaf or blossom cards; the batch keeps the far ones.
+      if (cardCanopy && (mat === leafyMaterial || mat === blossomMaterial)) {
+        cardCanopy.register(mesh, { kind: mat === blossomMaterial ? 'blossom' : 'leaf', wind });
+        crownBatches.push(mesh);
+      }
     }
     const tokyo = createTokyoPassage({ THREE, parent: group, railPoint, start, end });
     totalBuilt++;
@@ -1019,6 +1094,7 @@ export function createExtendedWorld({ THREE, scene, railPoint, center = routeCen
       tokyo,
       dispose() {
         tokyo?.dispose();
+        for (const mesh of crownBatches) cardCanopy?.unregister(mesh);
         for (const resident of residents) resident.dispose();
         root.remove(group);
         group.traverse((object) => {

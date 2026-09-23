@@ -52,6 +52,9 @@ import { createSurfaceDetail, smoothTerrainNormals } from './rendering/surface-d
 import { createCedarGeometry, createWeatheredRockGeometry } from './world/nature-geometry.js';
 import { createFrameBudget } from './rendering/frame-budget.js';
 import { createFilmPipeline } from './rendering/film-pipeline.js';
+import { installHeightFog } from './rendering/height-fog.js';
+import { createSceneryEffects } from './rendering/scenery-effects.js';
+import { weatherChoice } from './world/weather-state.js';
 import { createDirector } from './camera/director.js';
 import { registerDirectorTools } from './agent/director-tools.js';
 import { mountFilmCaptions } from './ui/film-captions.js';
@@ -147,6 +150,8 @@ const scene = new THREE.Scene();
 scene.name = 'Maple Line world';
 scene.background = new THREE.Color('#abc9cd');
 scene.fog = new THREE.FogExp2('#abc9cd', 0.0028);
+// Height fog and far haze replace the fog chunks; must run before any material compiles.
+installHeightFog(THREE);
 const mobilePlay =
   !renderMode && matchMedia('(pointer: coarse)').matches && Math.min(innerWidth, innerHeight) < 820;
 let renderer;
@@ -271,6 +276,14 @@ function terrain(u, z) {
   return height;
 }
 const surfaceDetail = createSurfaceDetail();
+// Graphics tier, card canopies, falling leaves and the water clock.
+const sceneryEffects = createSceneryEffects({
+  THREE,
+  scene,
+  camera,
+  mobile: mobilePlay,
+  wetness: surfaceDetail.wetness,
+});
 const materials = {};
 function mat(color) {
   return (materials[color] ??= new THREE.MeshStandardMaterial({
@@ -337,6 +350,7 @@ const riverWater = createRiverWater({
   center,
   riverProfile,
   riverBedHeight,
+  quality: sceneryEffects.settings,
 });
 const water = riverWater.mesh,
   waterMat = riverWater.material;
@@ -526,6 +540,16 @@ const atmosphere = createAtmosphere({
   hemi,
   waterMat,
   balance: LIGHT_BALANCE,
+  quality: sceneryEffects.settings,
+  fxLayer: sceneryEffects.FX_LAYER,
+  // Valley mist settles just above the river, which runs about 5 m below the rails.
+  groundHeight: (z) => routeElevation(z) - 5.2,
+  onStrike: (strike) =>
+    soundscape?.thunder?.({
+      delay: strike.delay,
+      strength: strike.strength,
+      pan: Math.sin(strike.bearing),
+    }),
 });
 const wildlife = addWildlife({
   THREE,
@@ -557,7 +581,7 @@ const wildlife = addWildlife({
 });
 const wind = createWindField({ THREE });
 const windCues = createWindCues({ THREE, scene });
-const snowCoverage = { value: 0 };
+const snowCoverage = sceneryEffects.snowCoverage;
 for (const object of [ground, leaves, pines, rocks]) {
   object.material = object.material.clone();
   object.material.onBeforeCompile = (shader) => {
@@ -591,6 +615,7 @@ const openingSequence = createOpeningSequence({
 });
 for (const material of [leaves.material, pines.material, ground.material])
   openingSequence.tintMaterial(material);
+openingSequence.tintMaterial(sceneryEffects.canopy.materials.leaf);
 const trackSnow = createTrackSnow({
   THREE,
   scene,
@@ -601,7 +626,14 @@ const trackSnow = createTrackSnow({
     z > ROUTE_END_Z ||
     Math.abs(z - landmarks.bridgeZ) < landmarks.bridgeSpan / 2,
 });
-const extendedWorld = createExtendedWorld({ THREE, scene, railPoint, center, wind });
+const extendedWorld = createExtendedWorld({
+  THREE,
+  scene,
+  railPoint,
+  center,
+  wind,
+  cardCanopy: sceneryEffects.canopy,
+});
 // Road crossings whose lamps, arms and queued cars react to the approaching train.
 const levelCrossings = createLevelCrossings({
   THREE,
@@ -854,6 +886,10 @@ gameStore.subscribe(
     ({ mode, view, dusk, sound, weather } = next);
     filmPipeline.setQuality(filmQuality(next.filmLook));
     if ($('film-look')) $('film-look').value = next.filmLook;
+    if ($('graphics-quality')) $('graphics-quality').value = next.graphics;
+    if ($('weather') && document.activeElement !== $('weather'))
+      $('weather').value = weatherChoice(next);
+    sceneryEffects.setPreference(next.graphics);
     document.body.classList.toggle('hud-hidden', !next.hudVisible);
     $('restore-hud').hidden = next.hudVisible;
     if ($('camera-view')) $('camera-view').value = view;
@@ -1886,6 +1922,7 @@ const worldBuilder = createWorldBuilder({
       riverBedHeight,
       riverProfile,
       snowCoverage,
+      cardCanopy: sceneryEffects.canopy,
     });
     try {
       await renderer.compileAsync(next.root, camera, scene);
@@ -1954,6 +1991,7 @@ if (import.meta.hot)
 
 const rainImpacts = createRainImpacts({
   scene,
+  count: sceneryEffects.settings.splashes,
   heightAt: (x, z) => Math.max(-0.37, terrain(x - center(z), z)),
 });
 const eveningMotes = createEveningMotes({
@@ -1983,6 +2021,7 @@ let last = renderClock ? renderClock.now() : performance.now(),
 document.addEventListener('visibilitychange', () => {
   if (!renderClock) last = performance.now();
 });
+const drawingBuffer = new THREE.Vector2();
 let reflectionElapsed = 1,
   mindsStop = null,
   mindsStopAge = 0;
@@ -2058,6 +2097,7 @@ function frame(now) {
     canDepart: dutyState.active ? dutyState.canDepart : railwayPoints.getState().mainAligned,
   });
   if (atmosphere.weather !== localWeather) atmosphere.setWeather(localWeather);
+  atmosphere.setStorm(gameStore.getState().preferences.storm);
   regionalTraffic.update(state.started && !state.paused && !menuOpen ? dt : 0, {
     position: routePosition,
   });
@@ -2237,14 +2277,17 @@ function frame(now) {
     season: gameStore.getState().worldBuilder.active?.plan.season ?? 'autumn',
   });
   surfaceDetail.update(dt, localWeather);
+  const weatherFrame = atmosphere.getState();
   rainImpacts.update(state.paused ? 0 : dt, {
     weather: localWeather,
-    position: train[0].position,
+    position: camera.position,
     inTunnel: isTunnel(routePosition.z),
+    storm: weatherFrame.stormAmount,
   });
   artDirection?.apply();
   wind.update(state.paused && !(embedded && embedVisuals?.focus() === 'forest') ? 0 : dt, {
     weather: localWeather,
+    gust: weatherFrame.gust,
   });
   windCues.update(state.paused ? 0 : dt, {
     cameraPosition: camera.position,
@@ -2451,6 +2494,20 @@ function frame(now) {
       Math.abs(chunk.z - camera.position.z) < (embedVisuals?.sceneryDistance() ?? 720);
     chunk.mesh.castShadow = chunk.casts;
   }
+  sceneryEffects.update({
+    dt,
+    realDt,
+    paused: state.paused,
+    rain: weatherFrame.rain * (1 + weatherFrame.stormAmount * 0.6),
+    gust: weatherFrame.gust,
+    leafKind: fallingLeafKind(camera.position.z, localWeather),
+    groundHeight: routeElevation(camera.position.z) - 4,
+    sunColor: sun.color,
+    skyColor: hemi.color,
+    frameMs: intervalMs,
+    night: dusk || isTunnel(routePosition.z) ? 1 : 0,
+    pixelHeight: renderer.getDrawingBufferSize(drawingBuffer).y,
+  });
   for (const chunk of railChunks) chunk.mesh.visible = Math.abs(chunk.z - camera.position.z) < 1200;
   reflectionElapsed += dt;
   // Train, foliage and light transforms must share the shadow image’s frame.
@@ -2459,8 +2516,9 @@ function frame(now) {
   embedVisuals?.apply(dt);
   riverWater.mesh.visible = camera.position.z < 1400;
   if (riverWater.mesh.visible) {
-    riverWater.capture({ refreshReflection: reflectionElapsed >= 0.05 });
-    if (reflectionElapsed >= 0.05) reflectionElapsed = 0;
+    const reflectionDue = reflectionElapsed >= sceneryEffects.settings.reflectionInterval;
+    riverWater.capture({ refreshReflection: reflectionDue });
+    if (reflectionDue) reflectionElapsed = 0;
   }
   if (directorLook) filmPipeline.setLook(renderLook(directorLook));
   else filmPipeline.setLook(renderLook({ letterbox: forcedLetterbox, dofMaxBlur: 0 }));
@@ -2479,6 +2537,9 @@ function frame(now) {
     dt: realDt,
     weather: localWeather,
     dusk,
+    sunPhase,
+    storm: weatherFrame.stormAmount,
+    flash: weatherFrame.flash,
     inTunnel: isTunnel(routePosition.z),
     sunDirection,
     sunColor: sun.color,
@@ -2492,6 +2553,16 @@ function frame(now) {
     active: !document.hidden,
   });
   if (resized) riverWater.resize();
+}
+/** Which leaves drift past the camera here: autumn maples, cherry petals or none. */
+function fallingLeafKind(z, localWeather) {
+  if (localWeather === 'snow' || isTunnel(z)) return null;
+  const season = gameStore.getState().worldBuilder.active?.plan.season;
+  if (season) return season === 'autumn' ? 'maple' : season === 'spring' ? 'petal' : null;
+  if (z > -830 && z < 830) return 'maple';
+  if (z > 1050 && z < 2350) return 'petal';
+  if (z > 16800 && z < 20000) return 'maple';
+  return null;
 }
 const sceneryChunks = [];
 for (const source of [trunks, branches, leaves, pines, rocks]) {
@@ -2519,6 +2590,7 @@ for (const source of [trunks, branches, leaves, pines, rocks]) {
     chunk.computeBoundingSphere();
     wind.copyToChunk(source, chunk);
     scene.add(chunk);
+    if (source === leaves) sceneryEffects.canopy.register(chunk, { kind: 'leaf', wind });
     sceneryChunks.push({
       mesh: chunk,
       z: (bucket + 0.5) * 120,
@@ -2870,7 +2942,7 @@ if (import.meta.env.DEV) {
       selectCamera(value);
     },
     weather(value) {
-      $('weather').value = choices(value, ['clear', 'rain', 'snow']);
+      $('weather').value = choices(value, ['clear', 'rain', 'snow', 'storm']);
       $('weather').dispatchEvent(new Event('change'));
     },
     timeOfDay(value) {
@@ -2954,6 +3026,11 @@ if (import.meta.env.DEV) {
       population: worldDetails.getPopulationState?.(),
       wildlife: wildlife.getState(),
       wind: wind.getState(),
+      graphics: {
+        ...sceneryEffects.getState(),
+        river: riverWater.getState(),
+        weather: atmosphere.getState(),
+      },
       windCues: windCues.getState(),
       eveningMotes: eveningMotes.getState(),
       story: storyHost?.engine.getState(),
@@ -3192,7 +3269,7 @@ if (import.meta.env.DEV) {
   });
 }
 $('camera-view').value = view;
-$('weather').value = weather;
+$('weather').value = weatherChoice(gameStore.getState().preferences);
 daylight.textContent = dusk ? 'Daylight' : 'Dusk';
 atmosphere.setDusk(dusk);
 atmosphere.setWeather(weather);
@@ -3393,6 +3470,14 @@ document.getElementById('places-picker')?.addEventListener('toggle', (event) => 
 });
 $('film-look').value = gameStore.getState().preferences.filmLook;
 $('film-look').onchange = () => gameStore.setPreferences({ filmLook: $('film-look').value });
+$('graphics-quality').value = gameStore.getState().preferences.graphics;
+$('graphics-quality').onchange = () =>
+  gameStore.setPreferences({ graphics: $('graphics-quality').value });
+sceneryEffects.setPreference(gameStore.getState().preferences.graphics);
+sceneryEffects.onTier((settings) => {
+  riverWater.setQuality(settings);
+  atmosphere.setQuality(settings);
+});
 if (embedded) {
   embedVisuals = createEmbedVisuals({
     THREE,

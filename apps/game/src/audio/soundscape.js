@@ -455,6 +455,36 @@ export function createSoundscape(context) {
         train: true,
       });
     },
+    /**
+     * Thunder after a lightning strike. delay is the flash-to-sound time in seconds;
+     * strength 0..1 (near strikes crack, far ones only rumble); pan -1..1.
+     */
+    thunder({ delay = 0, strength = 0.6, pan = 0 } = {}) {
+      if (disposed || current.master === 0) return;
+      const near = Math.min(1, Math.max(0, strength));
+      const start = Math.max(0, Math.min(12, delay));
+      if (near > 0.55)
+        event({
+          type: 'noise',
+          delay: start,
+          filterFrequency: 1300,
+          q: 0.55,
+          gain: 0.2 * near,
+          duration: 0.4,
+          pan,
+        });
+      // Rolling thunder: overlapping low bands that arrive from different parts of the bolt.
+      for (let i = 0; i < 4; i++)
+        event({
+          type: 'noise',
+          delay: start + 0.06 + i * (0.4 + Math.random() * 0.55),
+          filterFrequency: 60 + Math.random() * 85,
+          q: 0.45,
+          gain: (0.55 - i * 0.09) * (0.35 + near * 0.65),
+          duration: 2 + Math.random() * 2.4,
+          pan: pan * 0.6,
+        });
+    },
     horn() {
       if (disposed || current.master === 0 || current.motor === 0) return;
       for (const frequency of [370, 465])

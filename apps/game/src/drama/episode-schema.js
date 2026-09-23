@@ -49,7 +49,7 @@ export const SCENE_PLACES = Object.freeze([
   'summit',
 ]);
 export const SCENE_TIMES = Object.freeze(['daylight', 'sunrise', 'sunset', 'dusk']);
-export const SCENE_WEATHER = Object.freeze(['clear', 'rain', 'snow']);
+export const SCENE_WEATHER = Object.freeze(['clear', 'rain', 'snow', 'storm']);
 /** `set.offset` range in metres. */
 export const SCENE_OFFSET = Object.freeze({ min: -2000, max: 2000 });
 const PLACES = SCENE_PLACES;

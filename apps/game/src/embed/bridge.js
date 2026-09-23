@@ -8,7 +8,7 @@ export function validateEmbedConfig(input) {
     surface: ['materials', 'clay', 'wireframe', 'normals'],
     isolation: ['all', 'subject', 'structure'],
     camera: ['scenic', 'follow', 'cab', 'passenger', 'vista'],
-    weather: ['clear', 'rain', 'snow'],
+    weather: ['clear', 'rain', 'snow', 'storm'],
     timeOfDay: ['daylight', 'sunrise', 'sunset', 'dusk'],
     location: ['gorge', 'terraces', 'station', 'bridge', 'summit', 'tokyo'],
   };

@@ -5,7 +5,7 @@ import viteConfig from '../vite.config.js';
 
 for (const config of [
   { paused: 'false' },
-  { weather: 'storm' },
+  { weather: 'hail' },
   { location: 1 },
   { script: 'run' },
   null,
@@ -15,6 +15,9 @@ for (const config of [
     assert.throws(() => validateEmbedConfig(config), TypeError);
   });
 }
+test('embed accepts a storm as a weather choice', () => {
+  assert.doesNotThrow(() => validateEmbedConfig({ weather: 'storm' }));
+});
 test('embed checks source and origin, rejects the whole invalid config, and disposes', () => {
   let listener,
     removed,

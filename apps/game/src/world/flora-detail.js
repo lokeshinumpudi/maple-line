@@ -141,7 +141,7 @@ export function addFloraDetail({
     m.computeBoundingSphere();
     parent.add(m);
   }
-  const greens = ['#667b38', '#819849', '#9aab60', '#526d36', '#b2ad68'];
+  const greens = ['#6d7a40', '#86934f', '#a0a764', '#5a6c3c', '#b8ab6c'];
   for (let start = -850; start < 850; start += 100) {
     const chunk = new THREE.Group();
     chunk.name = `Forest floor ${start}–${start + 100}m`;

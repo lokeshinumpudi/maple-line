@@ -139,7 +139,8 @@ export function normalizeShot(spec) {
     if (!spec.set || typeof spec.set !== 'object') throw new TypeError('set must be an object.');
     const set = {};
     for (const [key, value] of Object.entries(spec.set)) {
-      if (key === 'weather' && ['clear', 'rain', 'snow'].includes(value)) set.weather = value;
+      if (key === 'weather' && ['clear', 'rain', 'snow', 'storm'].includes(value))
+        set.weather = value;
       else if (key === 'timeOfDay' && ['daylight', 'sunrise', 'sunset', 'dusk'].includes(value))
         set.timeOfDay = value;
       else if (key === 'location' && (typeof value === 'string' || Number.isFinite(value)))

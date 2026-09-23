@@ -25,6 +25,7 @@
           ><select id="weather">
             <option value="clear">Clear skies</option>
             <option value="rain">Rain</option>
+            <option value="storm">Storm</option>
             <option value="snow">Snow</option>
           </select></label
         ><button id="sound" aria-label="Disable sound" aria-pressed="true">Sound on</button
@@ -251,6 +252,15 @@
             <option value="full">Cinematic · bloom, sun shafts, focus</option>
             <option value="lite">Graded · colour and lens only</option>
             <option value="off">Off · plain render</option>
+          </select></label
+        >
+        <label
+          >Scenery detail
+          <select id="graphics-quality">
+            <option value="auto">Automatic for this device</option>
+            <option value="high">High · sharp reflections, dense rain and leaves</option>
+            <option value="medium">Medium · softer reflections, nearer leaf detail</option>
+            <option value="low">Low · sky reflections only, for phones</option>
           </select></label
         >
       </section>

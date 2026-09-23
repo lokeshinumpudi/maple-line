@@ -96,12 +96,45 @@ test('river normal coordinates follow channel direction and retain reflection/re
   const water = createRiverWater({ scene, camera, renderer, center, riverProfile, riverBedHeight });
   assert.ok(water.mesh.geometry.attributes.riverFlowUv.array.every(Number.isFinite));
   assert.ok(water.mesh.geometry.attributes.riverFlowDirection.array.every(Number.isFinite));
-  assert.ok(water.material.fragmentShader.includes('getNoise( vFlowUv )'));
-  assert.ok(water.material.fragmentShader.includes('vec2 downstream=vec2(0.,time*1.25)'));
-  assert.ok(water.material.fragmentShader.includes('bedSampler'));
-  assert.ok(water.material.fragmentShader.includes('mirrorSampler'));
+  const shader = water.material.fragmentShader;
+  assert.ok(shader.includes('vec2 flow = vFlowUv'));
+  assert.ok(shader.includes('vec2 downstream = normalize(vFlowDirection)'));
+  assert.ok(shader.includes('rainRipples('));
+  assert.ok(shader.includes('bedSampler'));
+  assert.ok(shader.includes('mirrorSampler'));
+  assert.equal(water.material.uniforms.mirrorMix.value, 1);
   water.dispose();
   assert.equal(scene.children.length, 0);
+});
+
+test('the low graphics tier skips the mirror and bed passes and reflects the sky', () => {
+  const scene = new THREE.Scene(),
+    camera = new THREE.PerspectiveCamera();
+  let renders = 0;
+  const renderer = {
+    getDrawingBufferSize: (value) => value.set(1280, 720),
+    getRenderTarget: () => null,
+    setRenderTarget() {},
+    render: () => renders++,
+  };
+  const water = createRiverWater({
+    scene,
+    camera,
+    renderer,
+    center,
+    riverProfile,
+    riverBedHeight,
+    quality: { reflectionSize: 0, refraction: false },
+  });
+  assert.equal(water.material.uniforms.mirrorMix.value, 0);
+  assert.equal(water.material.uniforms.refractionMix.value, 0);
+  water.capture();
+  assert.equal(renders, 0);
+  water.setQuality({ reflectionSize: 512, refraction: true });
+  assert.equal(water.getState().reflectionSize, 512);
+  water.capture();
+  assert.equal(renders, 1);
+  water.dispose();
 });
 
 test('all seasonal casts stay in habitat and reuse their instance buffers when switched while paused', () => {

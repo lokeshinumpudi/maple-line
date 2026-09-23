@@ -116,7 +116,7 @@ export function registerDramaTools({
       intents: [...INTENTS],
       events: [...MIND_EVENTS],
       timesOfDay: ['daylight', 'sunrise', 'sunset', 'dusk'],
-      weather: ['clear', 'rain', 'snow'],
+      weather: ['clear', 'rain', 'snow', 'storm'],
       limits: { ...EPISODE_LIMITS },
       voices: Object.entries(VOICE_CAST).map(([id, part]) => ({ id, name: part.name })),
       deliveries: Object.keys(VOICE_DELIVERY),
