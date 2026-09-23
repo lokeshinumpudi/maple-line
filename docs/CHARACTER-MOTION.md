@@ -1,12 +1,12 @@
 # Character motion
 
-How the Momiji cast (Mr. Sato, Riko, Mr. Ishida) move and hold things. It applies to both model kinds the game loads: the VRM figures (default) and the Blender GLBs (`?cast=blender`). The instanced crowd is not affected.
+How the Momiji cast (Mr. Sato, Riko, Mr. Ishida) move and hold things. It applies to their VRM figures. The instanced crowd is not affected. The older Blender GLB cast (`?cast=blender`) was retired in September 2026; the Blender-cast measurements below are kept as history.
 
 The population simulation still decides where each person goes. The code described here only decides how the body gets there and what its hands, feet and head do on the way.
 
 ## Clips
 
-The VRM figures play the Quaternius Universal Animation Library (UAL 1 and 2, CC0), retargeted offline into one file, `models/characters/vrm/cast-clips.vrma` (350 KB, 17 clips). The Blender GLBs keep their own clips inside the GLB; those clips are no longer used on VRMs. Provenance is in [third-party files](../asset-src/THIRD_PARTY.md).
+The VRM figures play the Quaternius Universal Animation Library (UAL 1 and 2, CC0), retargeted offline into one file, `models/characters/vrm/cast-clips.vrma` (350 KB, 17 clips). Provenance is in [third-party files](../asset-src/THIRD_PARTY.md).
 
 | Game clip                | UAL source                                                                | Notes                                                   |
 | ------------------------ | ------------------------------------------------------------------------- | ------------------------------------------------------- |

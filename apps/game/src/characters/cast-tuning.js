@@ -3,8 +3,7 @@
  * cast-tuning.json beside this file. hero-cast passes a model's entry to attachProps, where
  * it wins over the prop's glTF extras and the PROP_GRIPS defaults. An empty file changes
  * nothing. Keys are model paths under models/characters/ without the extension
- * ("vrm/riko", "student-riko"), because a VRM and a Blender GLB of the same person have
- * different hands.
+ * ("vrm/riko"), because two models of the same person can have different hands.
  */
 import CAST_TUNING from './cast-tuning.json' with { type: 'json' };
 

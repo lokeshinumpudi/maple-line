@@ -7,8 +7,11 @@ extra meshes, a face made of layered decals whose shape keys follow the VRM expr
 presets, strand hair with spring-bone chains, and MToon parameters in a sidecar file.
 
     blender -b --factory-startup --python-exit-code 1 \\
-      --python asset-src/characters/vrm-cast/build.py -- --cast riko
-    node asset-src/characters/vrm-cast/make-vrm.mjs riko
+      --python asset-src/characters/vrm-cast/build.py -- --cast sato
+    node asset-src/characters/vrm-cast/make-vrm.mjs sato
+
+Riko's test profile is retired: asset-src/characters/concept-cast builds her VRM. The school
+outfit and ponytail branches below were hers and stay unused until another profile needs them.
 
 `--cast all` builds every profile. Blender writes `<cast>.glb` and `<cast>.vrm.json` into
 the build folder beside this script (ignored by git) and a report beside this script;
@@ -37,35 +40,6 @@ BUILD = os.path.join(HERE, "build")
 # the body (adults have smaller heads relative to height).
 
 PROFILES = {
-    # Riko, 17, carrying her grandmother's repaired radio home. Stands in for commuter-2.
-    "riko": {
-        "person": "commuter-2",
-        "title": "Riko (test)",
-        "height": 1.58,
-        "shoulders": 1.0,
-        "hips": 1.0,
-        "chest": 1.0,
-        "limbs": 1.0,
-        "head": 1.0,
-        "hair": "ponytail",
-        "outfit": "school",
-        "brows": 0.0,
-        "eyes": {"height": 1.0, "iris": "#5a3524", "irisLight": "#a86a3e", "lash": "#2a1a1a"},
-        "colors": {
-            "skin": "#f6dcc8",
-            "hair": "#2a2024",
-            "hairTie": "#b8323a",
-            "top": "#2c3552",
-            "shirt": "#f4f1ea",
-            "ribbon": "#c0303a",
-            "lower": "#3f4660",
-            "socks": "#262a38",
-            "shoes": "#4a2f24",
-            "mouth": "#b8505a",
-            "blush": "#f08a8a",
-            "brow": "#3a2828",
-        },
-    },
     # Mr. Sato, 44, office commuter. Stands in for commuter-1.
     "sato": {
         "person": "commuter-1",
@@ -132,7 +106,7 @@ PROFILES = {
     },
 }
 
-ARGS = ma.parse_args({}, {"--cast": {"default": "riko"}})
+ARGS = ma.parse_args({}, {"--cast": {"default": "sato"}})
 P = None
 S = 1.0  # height scale against the 1.58 m base
 

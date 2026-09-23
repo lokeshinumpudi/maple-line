@@ -189,15 +189,11 @@ function toast(message, ms = 2600) {
 
 // ---- clips and trims --------------------------------------------------------------------------
 
-/** The trims key for a clip: the clip file (VRM) or the model (GLB), then the clip name. */
+/** The trims key for a clip: the clip file, then the clip name. */
 S.clipKey = (clip = state.clip) => {
-  const entry = S.loaded?.entry;
-  const owner =
-    entry?.kind === 'vrm'
-      ? String(state.clipFile)
-          .replace(/^models\/characters\//, '')
-          .replace(/\.vrma$/, '')
-      : entry?.id;
+  const owner = String(state.clipFile)
+    .replace(/^models\/characters\//, '')
+    .replace(/\.vrma$/, '');
   return `${owner}/${clip}`;
 };
 S.action = (clip = state.clip) => S.loaded?.internals.actions.get(clip) ?? null;
@@ -601,7 +597,6 @@ S.rebuildGhosts = async () => {
     loaded,
     stage,
     vrmLoader,
-    modelLoader,
     count: state.ghosts.count,
   });
   if (S.loaded !== loaded) return ghosts.dispose();
@@ -772,51 +767,29 @@ function renderClips() {
   const own = S.clipNames();
   const groups = [
     [
-      L.entry.kind === 'vrm'
-        ? `Cast clips · ${String(state.clipFile).split('/').pop()}`
-        : 'Blender GLB clips',
+      `Cast clips · ${String(state.clipFile).split('/').pop()}`,
       own.filter((name) => !S.studioClips.has(name)),
     ],
     ['Studio clips (not saved as clips)', own.filter((name) => S.studioClips.has(name))],
   ];
-  // The other clip family belongs to the other model of the same person.
-  const counterpart = S.entries.find(
-    (e) => e.member && e.member === L.entry.member && e.kind !== L.entry.kind,
-  );
-  if (counterpart && S.otherClips?.[counterpart.kind])
-    groups.push([
-      `${counterpart.kind === 'vrm' ? 'Cast clips' : 'Blender GLB clips'} · on ${counterpart.detail}`,
-      S.otherClips[counterpart.kind].map((name) => ({ name, entry: counterpart })),
-    ]);
   let count = 0;
   for (const [title, names] of groups) {
-    const items = names.filter((item) =>
-      (typeof item === 'string' ? item : item.name).toLowerCase().includes(query),
-    );
+    const items = names.filter((name) => name.toLowerCase().includes(query));
     if (!items.length) continue;
     list.append(h('div', { class: 'group' }, title));
-    for (const item of items) {
-      const name = typeof item === 'string' ? item : item.name;
-      const other = typeof item === 'string' ? null : item.entry;
-      const duration = other ? null : S.duration(name);
-      const trimmed = !other && S.tuning.studio.trims?.[S.clipKey(name)];
+    for (const name of items) {
+      const duration = S.duration(name);
+      const trimmed = S.tuning.studio.trims?.[S.clipKey(name)];
       count++;
       list.append(
         h(
           'div',
-          {
-            class: `item${!other && name === state.clip ? ' sel' : ''}${other ? ' off' : ''}`,
-            title: other ? `Switches to ${other.label} (${other.detail})` : '',
-            onclick: () =>
-              other ? S.loadEntry(other.id, { clip: name }).catch(() => {}) : S.setClip(name),
-          },
+          { class: `item${name === state.clip ? ' sel' : ''}`, onclick: () => S.setClip(name) },
           name,
           h(
             'small',
             {},
-            other
-              ? 'other model'
-              : `${duration.toFixed(2)} s · ${toFrame(duration, FPS)} f${trimmed ? ' · trimmed' : ''}${isGait(name) ? ' · gait' : ''}`,
+            `${duration.toFixed(2)} s · ${toFrame(duration, FPS)} f${trimmed ? ' · trimmed' : ''}${isGait(name) ? ' · gait' : ''}`,
           ),
         ),
       );
@@ -1091,15 +1064,6 @@ async function boot() {
   });
   renderCharacters();
   requestAnimationFrame(frame);
-  // Clip names of the other model family, for the library's cross-links.
-  S.otherClips = {};
-  vrmLoader.animations(VRM_CLIPS).then((set) => (S.otherClips.vrm = set?.names ?? []));
-  const blender = S.entries.find((e) => e.kind === 'glb' && e.member);
-  if (blender)
-    modelLoader.get(blender.path).then((gltf) => {
-      S.otherClips.glb = gltf?.animations.map((clip) => clip.name) ?? [];
-      renderClips();
-    });
   registerStudioTools(S);
   const wanted =
     params.get('character') ?? S.entries.find((e) => e.id === 'vrm/riko')?.id ?? S.entries[0]?.id;

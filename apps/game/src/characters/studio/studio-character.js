@@ -9,7 +9,6 @@
  * nearby times, drawn in a flat translucent colour.
  */
 import * as THREE from 'three';
-import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 import { createHeroCast, MOMIJI_CAST, VRM_CLIPS } from '../../world/hero-cast.js';
 import { createVrmActor } from '../vrm-actor.js';
 import { tuningKey } from '../cast-tuning.js';
@@ -34,7 +33,7 @@ export const isSeated = (name) => SIT_CLIPS.has(baseClip(name));
 /** Character list entries for every model file the dev server found. */
 export function characterEntries(files) {
   return files.map(({ path, kind, bytes }) => {
-    const member = MOMIJI_CAST.find((m) => m.vrm === path || m.path === path) ?? null;
+    const member = MOMIJI_CAST.find((m) => m.vrm === path) ?? null;
     const person = member ? stem(member.vrm) : stem(path);
     const label = PEOPLE[person] ?? titleCase(person);
     const group = member
@@ -50,7 +49,7 @@ export function characterEntries(files) {
       member,
       person,
       label,
-      detail: kind === 'vrm' ? 'VRM' : member ? 'Blender GLB (?cast=blender)' : 'GLB',
+      detail: kind === 'vrm' ? 'VRM' : kind.toUpperCase(),
       group,
     };
   });
@@ -91,7 +90,8 @@ export async function loadCharacter({
     speed: 0,
   };
   const member = entry.member ?? {};
-  const isVrm = entry.kind === 'vrm';
+  // hero-cast draws VRMs only (the Blender GLB cast is retired).
+  if (entry.kind !== 'vrm') throw new Error(`${entry.path} is not a VRM`);
   const hero = createHeroCast({
     THREE,
     scene: stage,
@@ -99,11 +99,10 @@ export async function loadCharacter({
     worldDetails: { setStandIn() {}, figureOf: (id) => (id === personId ? figure : null) },
     minds,
     personId,
-    path: isVrm ? (member.path ?? entry.path) : entry.path,
-    vrm: isVrm ? entry.path : null,
-    vrmLoader: isVrm ? vrmLoader : null,
+    vrm: entry.path,
+    vrmLoader,
     clips: clipFile,
-    props: isVrm ? (member.props ?? null) : null,
+    props: member.props ?? null,
     pocketed: member.pocketed ?? [],
     clipVariants: member.clipVariants ?? {},
     carry: member.carry ?? null,
@@ -127,7 +126,7 @@ export async function loadCharacter({
     internals,
     figure,
     personId,
-    modelPath: isVrm ? entry.path : entry.path,
+    modelPath: entry.path,
     clipFile,
     bindBounds: bounds,
     footRest,
@@ -147,37 +146,22 @@ function ghostMaterial(color) {
 }
 
 /**
- * Onion-skin copies of a loaded character. Each ghost is a fresh instance of the same file
- * (a VRM through createVrmActor with the same clip set, a GLB through a skeleton clone),
- * posed by the clip alone at its own time: the layers are not run on ghosts.
+ * Onion-skin copies of a loaded character. Each ghost is a fresh instance of the same VRM
+ * through createVrmActor with the same clip set, posed by the clip alone at its own time:
+ * the layers are not run on ghosts.
  */
-export async function createGhosts({ loaded, stage, vrmLoader, modelLoader, count = 1 }) {
+export async function createGhosts({ loaded, stage, vrmLoader, count = 1 }) {
   const ghosts = [];
   const { entry } = loaded;
   const make = async (k) => {
-    let root;
-    let mixer;
-    let actions;
-    let update;
-    if (entry.kind === 'vrm') {
-      const [vrm, clipSet] = await Promise.all([
-        vrmLoader.vrm(entry.path),
-        vrmLoader.animations(loaded.clipFile),
-      ]);
-      if (!vrm) return null;
-      const actor = createVrmActor({ THREE, vrm: vrm.vrm, m: vrm.m, clipSet });
-      root = actor.root;
-      mixer = actor.mixer;
-      actions = actor.actions;
-      update = () => actor.update(0);
-    } else {
-      const gltf = await modelLoader.get(entry.path);
-      if (!gltf) return null;
-      root = SkeletonUtils.clone(gltf.scene);
-      mixer = new THREE.AnimationMixer(root);
-      actions = new Map(gltf.animations.map((clip) => [clip.name, mixer.clipAction(clip)]));
-      update = () => mixer.update(0);
-    }
+    const [vrm, clipSet] = await Promise.all([
+      vrmLoader.vrm(entry.path),
+      vrmLoader.animations(loaded.clipFile),
+    ]);
+    if (!vrm) return null;
+    const actor = createVrmActor({ THREE, vrm: vrm.vrm, m: vrm.m, clipSet });
+    const { root, mixer, actions } = actor;
+    const update = () => actor.update(0);
     const material = ghostMaterial(k < 0 ? '#6aa7ff' : '#ffb35c');
     root.traverse((node) => {
       if (!node.isMesh) return;
