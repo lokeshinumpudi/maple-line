@@ -59,11 +59,23 @@ const APERTURE = { deep: 0, normal: 4, shallow: 9 };
 const INTERIOR = new Set(['cab', 'window']);
 const PERSON_SUBJECT = new Set(['portrait', 'orbit']);
 
-/** Vertical field of view for a full-frame focal length, widened on portrait screens. */
-export function lensToFov(lensMm, aspect = 16 / 9) {
+/** How much of a landscape frame's width a tall frame keeps, by framing and shot scale. */
+const PORTRAIT_WIDTH = {
+  wide: { wide: 1.5, medium: 1.5, close: 1.5 },
+  // Vertical video: a standing person already fits a tall frame, so close shots stay close.
+  subject: { wide: 1.4, medium: 1.2, close: 0.95 },
+};
+
+/**
+ * Vertical field of view for a full-frame focal length, widened on portrait screens.
+ * framing 'wide' (the game on a phone) keeps most of the landscape width in every
+ * shot; 'subject' (vertical video renders) widens close shots much less.
+ */
+export function lensToFov(lensMm, aspect = 16 / 9, { framing = 'wide', scale = 'medium' } = {}) {
   const vertical = 2 * Math.atan(12 / lensMm);
   if (aspect >= 1.2) return (vertical * 180) / Math.PI;
-  const widened = 2 * Math.atan((Math.tan(vertical / 2) * 1.5) / Math.max(aspect, 0.3));
+  const width = (PORTRAIT_WIDTH[framing] ?? PORTRAIT_WIDTH.wide)[scale] ?? 1.5;
+  const widened = 2 * Math.atan((Math.tan(vertical / 2) * width) / Math.max(aspect, 0.3));
   return Math.min(75, (widened * 180) / Math.PI);
 }
 
@@ -153,7 +165,10 @@ export function createDirector({
   onSet = () => {},
   onCaption = () => {},
   seed = 1907,
+  portraitFraming = 'wide',
 }) {
+  if (!(portraitFraming in PORTRAIT_WIDTH))
+    throw new TypeError('portraitFraming must be wide or subject.');
   const up = new THREE.Vector3(0, 1, 0);
   const exteriorNear = camera.near;
   let random = seed >>> 0;
@@ -655,7 +670,10 @@ export function createDirector({
     }
     camera.position.copy(eye);
     camera.lookAt(smoothAim);
-    const fov = lensToFov(lens, camera.aspect);
+    const fov = lensToFov(lens, camera.aspect, {
+      framing: portraitFraming,
+      scale: SCALE[shot.type],
+    });
     if (
       Math.abs(camera.fov - fov) > 0.01 ||
       camera.near !== (INTERIOR.has(shot.type) ? 0.06 : exteriorNear)

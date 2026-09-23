@@ -3,7 +3,12 @@ import { createTrackSnow } from './world/track-snow.js';
 import { TERRAIN_LATERAL_SAMPLES, naturalValleyTerrain } from './world/terrain-surface.js';
 import { createEmbedVisuals } from './embed/visuals.js';
 import { installEmbedBridge } from './embed/bridge.js';
-import { createStableSunShadow } from './rendering/stable-sun-shadow.js';
+import {
+  createStableSunShadow,
+  SUN_SHADOW_FRUSTUM,
+  SUN_SHADOW_FRUSTUM_DESKTOP,
+  SUN_SHADOW_MAP,
+} from './rendering/stable-sun-shadow.js';
 import { sceneSoundContext } from './audio/scene-context.js';
 import { createRegionalRailTraffic } from './world/regional-rail-traffic.js';
 import { TOKYO_PASSAGE } from './world/tokyo-passage.js';
@@ -57,8 +62,21 @@ import { createEpisodeRunner } from './drama/episode-runner.js';
 import { THE_1742 } from './drama/series/the-1742.js';
 import { registerDramaTools, createEpisodeLibrary } from './agent/drama-tools.js';
 import { installEpisodePicker } from './ui/episode-picker.js';
+import { mountEpisodeHandoff } from './ui/episode-handoff.js';
+import { normalizeEpisode } from './drama/episode-schema.js';
+import { parseDeepLink, buildDeepLink, withoutDeepLink } from './share/deep-link.js';
+import {
+  createEpisodeSharing,
+  createUrlEpisodeStore,
+  createSignalEpisodeStore,
+} from './share/episode-store.js';
+import { shareLink } from './share/share-link.js';
+import { createEpisodeVoice } from './drama/episode-voice.js';
+import { createManifestVoice } from './drama/voice-manifest.js';
+import { NARRATION_LANGUAGES } from '@maple-line/voice-score';
 import { createModelLoader, createGltfLoader } from './rendering/model-loader.js';
 import { createHeroCast, MOMIJI_CAST } from './world/hero-cast.js';
+import { createVrmLoader } from './characters/vrm-loader.js';
 import { createStationModules } from './world/station-modules.js';
 import { createMindsClient, mindRegion } from './agent/minds-client.js';
 import { registerMindTools } from './agent/mind-tools.js';
@@ -117,13 +135,20 @@ import {
   createExtendedWorld,
 } from './world/extended-route.js';
 import { distanceAtZ, nextStop, recordStationVisit } from './simulation/stops.js';
+import { readRenderOptions, createRenderClock, seededRandom } from './rendering/render-clock.js';
+import { createRenderTimeline } from './drama/render-timeline.js';
+import { mountRenderOverlay, END_CARD_SECONDS } from './ui/render-overlay.js';
 const $ = (id) => document.getElementById(id);
+// Video capture (?render=1): a script steps fixed frames through window.__mapleRender.
+const renderMode = readRenderOptions(location.search);
+const renderClock = renderMode ? createRenderClock({ fps: renderMode.fps }) : null;
+if (renderMode) Math.random = seededRandom(1742);
 const scene = new THREE.Scene();
 scene.name = 'Maple Line world';
 scene.background = new THREE.Color('#abc9cd');
 scene.fog = new THREE.FogExp2('#abc9cd', 0.0028);
 const mobilePlay =
-  matchMedia('(pointer: coarse)').matches && Math.min(innerWidth, innerHeight) < 820;
+  !renderMode && matchMedia('(pointer: coarse)').matches && Math.min(innerWidth, innerHeight) < 820;
 let renderer;
 try {
   renderer = new THREE.WebGLRenderer({
@@ -139,6 +164,10 @@ const frameBudget = createFrameBudget({
   renderer,
   devicePixelRatio,
   ...(mobilePlay ? { pixelBudget: 700000, maxPixelRatio: 1 } : {}),
+  // Renders draw one CSS pixel per output pixel at the requested size, every frame.
+  ...(renderMode
+    ? { devicePixelRatio: 1, pixelBudget: Infinity, maxPixelRatio: 1, adaptive: false }
+    : {}),
 });
 frameBudget.resize(innerWidth, innerHeight);
 renderer.setSize(innerWidth, innerHeight);
@@ -167,29 +196,47 @@ let authoredWorld,
   missionChip,
   characterGrab;
 const camera = new THREE.PerspectiveCamera(48, innerWidth / innerHeight, 0.5, 1800);
-const hemi = new THREE.HemisphereLight('#dce8db', '#646544', 2.25);
+// Less flat fill, a stronger sun and more sky reflection, so the sun and the environment map
+// shape forms instead of the hemisphere light washing them out. The atmosphere applies these
+// scales to every weather and time of day.
+const LIGHT_BALANCE = Object.freeze({ ambient: 0.42, sun: 1.2, environment: 1.6 });
+const hemi = new THREE.HemisphereLight('#dce8db', '#646544', 1.85 * LIGHT_BALANCE.ambient);
 scene.add(hemi);
-const sun = new THREE.DirectionalLight('#ffddb0', 3.1);
+const sun = new THREE.DirectionalLight('#ffddb0', 2.5 * LIGHT_BALANCE.sun);
 sun.position.set(-120, 170, -80);
 sun.castShadow = true;
-sun.shadow.mapSize.set(mobilePlay ? 1024 : 2048, mobilePlay ? 1024 : 2048);
+// Desktop spends the same 2048 map on a smaller square around the view (7.3 cm texels
+// instead of 10.7 cm); phones keep the wide, coarse map.
+const shadowMapSize = mobilePlay ? 1024 : SUN_SHADOW_MAP;
+const shadowFrustum = mobilePlay ? SUN_SHADOW_FRUSTUM : SUN_SHADOW_FRUSTUM_DESKTOP;
+sun.shadow.mapSize.set(shadowMapSize, shadowMapSize);
 Object.assign(sun.shadow.camera, {
-  left: -110,
-  right: 110,
-  top: 110,
-  bottom: -110,
+  left: -shadowFrustum / 2,
+  right: shadowFrustum / 2,
+  top: shadowFrustum / 2,
+  bottom: -shadowFrustum / 2,
   near: 1,
   far: 500,
 });
 sun.shadow.bias = -0.001;
-sun.shadow.normalBias = 0.4;
+// Normal bias follows the texel size so small parts keep contact shadows.
+sun.shadow.normalBias =
+  0.4 * (shadowFrustum / shadowMapSize / (SUN_SHADOW_FRUSTUM / SUN_SHADOW_MAP));
 scene.add(sun, sun.target);
-const stableSunShadow = createStableSunShadow();
+const stableSunShadow = createStableSunShadow({
+  frustumSize: shadowFrustum,
+  mapSize: shadowMapSize,
+});
+const shadowFocus = new THREE.Vector3();
+const shadowLook = new THREE.Vector3();
 // Linear HDR scene target with bloom, sun shafts, focus and grade; 'off' is the plain render.
 const filmPipeline = createFilmPipeline({ renderer, scene, camera, quality: 'off' });
 const filmQuality = (preference) =>
-  preference === 'auto' ? (mobilePlay ? 'off' : 'full') : preference;
-const filmCaptions = mountFilmCaptions();
+  renderMode ? 'full' : preference === 'auto' ? (mobilePlay ? 'off' : 'full') : preference;
+const filmCaptions = mountFilmCaptions(document.body, renderClock ? { clock: renderClock } : {});
+const renderOverlay = renderMode ? mountRenderOverlay({ clock: renderClock }) : null;
+const renderTimeline = renderMode ? createRenderTimeline() : null;
+let renderEventTime = 0;
 let forcedLetterbox = 0;
 if (import.meta.hot)
   import.meta.hot.dispose(() => {
@@ -470,7 +517,16 @@ const flora = addFloraDetail({
     { minZ: -510, maxZ: -410, minU: 34, maxU: 75 },
   ],
 });
-const atmosphere = createAtmosphere({ THREE, scene, camera, renderer, sun, hemi, waterMat });
+const atmosphere = createAtmosphere({
+  THREE,
+  scene,
+  camera,
+  renderer,
+  sun,
+  hemi,
+  waterMat,
+  balance: LIGHT_BALANCE,
+});
 const wildlife = addWildlife({
   THREE,
   scene,
@@ -863,10 +919,26 @@ const heroWorld = {
   setStandIn: (id, enabled) => worldDetails.setStandIn?.(id, enabled),
   figureOf: (id) => worldDetails.figureOf?.(id) ?? null,
 };
+// VRM (anime) cast first; `?cast=blender` keeps the older Blender GLBs for comparison.
+const vrmLoader =
+  new URLSearchParams(location.search).get('cast') === 'blender' ? null : createVrmLoader();
 const heroCasts = MOMIJI_CAST.map((member) =>
-  createHeroCast({ THREE, scene, loader: modelLoader, worldDetails: heroWorld, minds, ...member }),
+  createHeroCast({
+    THREE,
+    scene,
+    loader: modelLoader,
+    vrmLoader,
+    mobile: mobilePlay,
+    worldDetails: heroWorld,
+    minds,
+    ...member,
+  }),
 );
 const stationModules = createStationModules({ THREE, loader: modelLoader, parent: station });
+// The Blender train replaces the procedural exterior once its GLB loads. `?train=procedural`
+// keeps the code-built train, for comparisons and as a manual fallback.
+if (new URLSearchParams(location.search).get('train') !== 'procedural')
+  trainModel.attachModel(modelLoader);
 if (import.meta.hot)
   import.meta.hot.dispose(() => {
     for (const hero of heroCasts) hero.dispose();
@@ -1220,6 +1292,7 @@ const filmDirector = createDirector({
   THREE,
   camera,
   track,
+  portraitFraming: renderMode?.portrait ? 'subject' : 'wide',
   getTrackLength: () => track.getLength?.() ?? trackLength,
   groundAt: (x, z) => terrain(x - center(z), z),
   canopyAt: (x, z) => Math.max(activeCanopy.heightAt(x, z), extendedWorld.foliageHeight(x, z)),
@@ -1321,27 +1394,56 @@ const directorLocations = {
 };
 // Short dramas: episodes are data played through the director, captions, minds and drive.
 let episodeStopDistance = null;
+let episodePicker = null;
+// Voices and translated subtitles use the story narration routes; ambience ducks while a
+// line plays, and an offline director or missing key leaves labelled subtitles.
+const episodeAudio = document.createElement('audio');
+episodeAudio.hidden = true;
+episodeAudio.dataset.source = 'sarvam-drama';
+document.body.append(episodeAudio);
+/** Set by render mode: holds each line for its pre-generated clip. */
+let renderVoice = null;
+const episodeVoice = createEpisodeVoice({
+  audio: episodeAudio,
+  fetchImpl: fetchDirector,
+  hosted: ['signal', 'static'].includes(document.documentElement.dataset.hosting),
+  onPlaying: (playing) =>
+    window.dispatchEvent(new CustomEvent('maple:narration-state', { detail: { playing } })),
+  onStatus: (status) => {
+    episodePicker?.setStatus(status);
+    if (episodeRunner?.playing && status.reason)
+      filmCaptions.show({ kind: 'note', text: status.reason, seconds: 6 });
+  },
+});
+const syncEpisodeVoice = () => {
+  const { narrationLanguage, episodeVoice: enabled } = gameStore.getState().preferences;
+  episodeVoice.configure({ language: narrationLanguage, enabled });
+};
 const ensureAutoDrive = () => {
   if (!state.autopilot && !state.doorsOpen && !state.doorsClosing && !state.emergency)
     $('autopilot').click();
 };
+/** Place, weather and time of day from an episode scene or a place link. */
+function applySceneSettings(set) {
+  if (set.location !== undefined) {
+    const base =
+      routeStops.find((stop) => stop.id === set.location)?.z ?? directorLocations[set.location];
+    if (Number.isFinite(base)) jumpTo(base + (set.offset ?? 0));
+  }
+  if (set.weather && set.weather !== weather) {
+    $('weather').value = set.weather;
+    $('weather').dispatchEvent(new Event('change'));
+  }
+  if (set.timeOfDay)
+    gameStore.setPreferences({
+      dusk: set.timeOfDay === 'dusk',
+      sunPhase: set.timeOfDay === 'dusk' ? 'daylight' : set.timeOfDay,
+    });
+}
 const episodeRunner = createEpisodeRunner(
   {
     setScene(set) {
-      if (set.location !== undefined) {
-        const base =
-          routeStops.find((stop) => stop.id === set.location)?.z ?? directorLocations[set.location];
-        if (Number.isFinite(base)) jumpTo(base + (set.offset ?? 0));
-      }
-      if (set.weather && set.weather !== weather) {
-        $('weather').value = set.weather;
-        $('weather').dispatchEvent(new Event('change'));
-      }
-      if (set.timeOfDay)
-        gameStore.setPreferences({
-          dusk: set.timeOfDay === 'dusk',
-          sunPhase: set.timeOfDay === 'dusk' ? 'daylight' : set.timeOfDay,
-        });
+      applySceneSettings(set);
       if (set.speedKmh !== undefined)
         changeDrive((next) => {
           next.speed = set.speedKmh / 3.6;
@@ -1357,7 +1459,11 @@ const episodeRunner = createEpisodeRunner(
       if (line.entity) heroCasts.find((hero) => hero.personId === line.entity)?.talk(line.seconds);
       filmCaptions.show({ kind: 'dialogue', ...line });
     },
-    card: (caption) => filmCaptions.show(caption),
+    card(caption) {
+      // A rendered video closes on its own end card instead of the in-game one.
+      if (renderMode && !episodeRunner.playing) return;
+      filmCaptions.show(caption);
+    },
     direct: (entity, note) => minds.setDirective(entity, note),
     event: (type) => minds.observe({ type }),
     weather(value) {
@@ -1368,6 +1474,10 @@ const episodeRunner = createEpisodeRunner(
       if ((action === 'open') === state.doorsOpen) return true;
       toggleDoors();
       return (action === 'open') === state.doorsOpen;
+    },
+    // Render mode can swap in a pre-generated voice manifest (see __mapleRender.play).
+    get voice() {
+      return renderVoice ?? episodeVoice;
     },
     // At rest, below the 0.2 m/s door interlock, so a door cue after arrival is accepted.
     isStopped: () => Math.abs(state.speed) < 0.05,
@@ -1386,19 +1496,119 @@ const episodeRunner = createEpisodeRunner(
       // Regional residents are tracked live through the minds, so walking actors stay in frame.
       return mindStandingPoint(subject.entity) ? { person: subject.entity } : null;
     },
+    // Offer the end panel once the closing card has had its moment.
+    ended: () =>
+      setTimeout(() => {
+        if (episodeRunner.getState().status === 'ended') showEpisodeEnd();
+      }, 5200),
   },
   {
     stops: routeStops.map((stop) => stop.id),
     crossings: levelCrossings.getState().crossings.map((item) => item.id),
+    onEvent: (event) => renderTimeline?.record(event, renderEventTime),
   },
 );
 const episodeLibrary = createEpisodeLibrary(embedded ? null : globalThis.localStorage);
+const validateEpisode = (data) =>
+  normalizeEpisode(data, {
+    stops: routeStops.map((stop) => stop.id),
+    crossings: levelCrossings.getState().crossings.map((item) => item.id),
+  });
+// Custom episodes travel in the link itself everywhere; the Signal edition can also keep
+// them in its site store for a short ?watch= link. Everything loaded is validated again.
+const episodeSharing = createEpisodeSharing({
+  stores: [
+    document.documentElement.dataset.hosting === 'signal' ? createSignalEpisodeStore() : null,
+    createUrlEpisodeStore(),
+  ],
+  validate: validateEpisode,
+});
+const episodeHeading = (episode) =>
+  [episode.series, episode.title].filter(Boolean).join(' · ') || episode.title;
+async function episodeLinkFor(episode) {
+  const clean = validateEpisode(episode);
+  const builtIn = THE_1742.episodes.find((item) => item.id === clean.id);
+  const link =
+    builtIn && JSON.stringify(validateEpisode(builtIn)) === JSON.stringify(clean)
+      ? { kind: 'episode', id: clean.id }
+      : await episodeSharing.save(clean);
+  return { url: buildDeepLink(location.href, link), via: link.kind };
+}
+syncEpisodeVoice();
+gameStore.subscribe(
+  (value) => [value.preferences.narrationLanguage, value.preferences.episodeVoice].join('|'),
+  syncEpisodeVoice,
+);
 function watchEpisode(source) {
   if (!state.started) start();
   if (state.paused) pause();
   if (view !== 'director') selectCamera('director');
-  return episodeRunner.play(source);
+  episodeVoice.unblock();
+  const result = episodeRunner.play(source);
+  episodeHandoff?.showPlaying({ title: episodeHeading(episodeRunner.current()) });
+  const voice = (renderVoice ?? episodeVoice).status();
+  if (voice.reason) filmCaptions.show({ kind: 'note', text: voice.reason, seconds: 6 });
+  return result;
 }
+function showEpisodeEnd({ skipped = false } = {}) {
+  const episode = episodeRunner.current();
+  if (episode) episodeHandoff?.showEnded({ title: episodeHeading(episode), skipped });
+}
+/** The viewer takes over where the episode left the train: same place, still running. */
+function handOffToPlayer() {
+  if (episodeRunner.playing) episodeRunner.stop();
+  episodeHandoff?.hide();
+  filmCaptions.hide();
+  if (view === 'director') selectCamera('follow');
+  if (state.paused) pause();
+  ensureAutoDrive();
+  const stop = nearestUpcomingStop();
+  episodeHandoff?.toast(
+    `Your turn${stop ? `. Next stop: ${stop.name}` : ''}. Press W or S (or move the lever) to drive yourself, D for the doors, C to change the camera.`,
+    { seconds: 10 },
+  );
+}
+async function shareCurrentEpisode() {
+  const episode = episodeRunner.current();
+  if (!episode || !episodeHandoff) return;
+  episodeHandoff.shareBusy(true);
+  try {
+    const { url } = await episodeLinkFor(episode);
+    const result = await shareLink({
+      url,
+      title: `Maple Line · ${episode.title}`,
+      text: episode.logline ?? 'A short drama on the Maple Line.',
+    });
+    episodeHandoff.shareStatus(result, url);
+  } catch (error) {
+    episodeHandoff.shareStatus('error', error.message);
+  } finally {
+    episodeHandoff.shareBusy(false);
+  }
+}
+const episodeHandoff = embedded
+  ? null
+  : mountEpisodeHandoff({
+      actions: {
+        skip() {
+          episodeRunner.stop();
+          filmCaptions.hide();
+          showEpisodeEnd({ skipped: true });
+        },
+        takeControls: handOffToPlayer,
+        drive: handOffToPlayer,
+        watchAgain() {
+          const episode = episodeRunner.current();
+          if (!episode) return;
+          try {
+            watchEpisode(episode);
+          } catch (error) {
+            controlMessage(error.message);
+          }
+        },
+        share: () => void shareCurrentEpisode(),
+      },
+    });
 function updateCamera(dt, snap = false) {
   storyCinematics?.restoreBaseCamera();
   cameraRig.update({
@@ -1419,7 +1629,12 @@ function updateCamera(dt, snap = false) {
   stableSunShadow.setOffset(
     SUN_PHASES[dusk ? 'dusk' : gameStore.getState().preferences.sunPhase].offset,
   );
-  stableSunShadow.apply(sun, position, renderer.shadowMap);
+  // Centre the shadow square a little ahead of the train along the camera's view, where
+  // most of the visible ground is; the snap keeps it stable while the camera turns.
+  camera.getWorldDirection(shadowLook).setY(0);
+  if (shadowLook.lengthSq() > 1e-6) shadowLook.normalize();
+  shadowFocus.copy(position).addScaledVector(shadowLook, shadowFrustum * 0.18);
+  stableSunShadow.apply(sun, shadowFocus, renderer.shadowMap);
   document.body.classList.toggle('film-mode', Boolean(filmDirector.getState().active));
   directorLook = filmDirector.update({
     dt,
@@ -1762,17 +1977,18 @@ if (import.meta.hot)
     surfaceDetail.dispose();
     rainImpacts.dispose();
   });
-let last = performance.now(),
+let last = renderClock ? renderClock.now() : performance.now(),
   missionChipRenderedAt = 0,
   hold = 0;
 document.addEventListener('visibilitychange', () => {
-  last = performance.now();
+  if (!renderClock) last = performance.now();
 });
 let reflectionElapsed = 1,
   mindsStop = null,
   mindsStopAge = 0;
 function frame(now) {
-  requestAnimationFrame(frame);
+  // Render mode has no animation-frame loop; the capture script calls frame().
+  if (!renderMode) requestAnimationFrame(frame);
   if (embedded && (embedSuspended || document.hidden)) {
     last = now;
     return;
@@ -1928,7 +2144,9 @@ function frame(now) {
   });
   if (!state.paused) waterMat.uniforms.time.value += dt * (weather === 'rain' ? 1.8 : 1);
   waterMat.uniforms.distortionScale.value = weather === 'rain' ? 3.1 : 1.6;
-  episodeRunner.update(dt);
+  // Pausing the ride holds the episode and any line being spoken.
+  episodeVoice.setPaused(menuOpen || state.paused || document.hidden);
+  episodeRunner.update(state.paused ? 0 : dt);
   characterGrab?.update({ viewportAspect: camera.aspect });
   // One game minute per real minute of riding; dialogs and pause hold the clock.
   const networkDt = state.started && !state.paused ? dt : 0;
@@ -2252,8 +2470,10 @@ function frame(now) {
     riverWater.capture({ refreshReflection: reflectionElapsed >= 0.05 });
     if (reflectionElapsed >= 0.05) reflectionElapsed = 0;
   }
-  if (directorLook) filmPipeline.setLook(directorLook);
-  else filmPipeline.setLook({ letterbox: forcedLetterbox, dofMaxBlur: 0 });
+  if (directorLook) filmPipeline.setLook(renderLook(directorLook));
+  else filmPipeline.setLook(renderLook({ letterbox: forcedLetterbox, dofMaxBlur: 0 }));
+  filmCaptions.tick();
+  renderOverlay?.tick();
   filmCaptions.setBar(
     (filmPipeline.getState().letterbox *
       Math.min(0.3, Math.max(0, 1 - innerWidth / innerHeight / 2.39)) *
@@ -2797,11 +3017,13 @@ if (import.meta.env.DEV) {
           runner: episodeRunner,
           series: [THE_1742],
           library: episodeLibrary,
-          activate: () => {
-            if (!state.started) start();
-            if (state.paused) pause();
-            if (view !== 'director') selectCamera('director');
-          },
+          play: watchEpisode,
+          linkFor: episodeLinkFor,
+          configureVoice: ({ language, enabled }) =>
+            gameStore.setPreferences({
+              ...(language ? { narrationLanguage: language } : {}),
+              ...(enabled !== undefined ? { episodeVoice: enabled } : {}),
+            }),
           catalog: () => ({
             stops: routeStops.map((stop) => ({
               id: stop.id,
@@ -3057,9 +3279,21 @@ const wakeFilmHUD = () => {
 window.addEventListener('pointermove', wakeFilmHUD, { passive: true });
 window.addEventListener('pointerdown', wakeFilmHUD, { passive: true });
 window.addEventListener('keydown', wakeFilmHUD);
-installEpisodePicker({
+episodePicker = installEpisodePicker({
   dialog: document.getElementById('places-picker'),
   series: THE_1742,
+  voice: {
+    languages: NARRATION_LANGUAGES,
+    get: () => ({
+      language: gameStore.getState().preferences.narrationLanguage,
+      enabled: gameStore.getState().preferences.episodeVoice,
+    }),
+    set: ({ language, enabled }) =>
+      gameStore.setPreferences({
+        ...(language ? { narrationLanguage: language } : {}),
+        ...(enabled !== undefined ? { episodeVoice: enabled } : {}),
+      }),
+  },
   onPlay: (episode) => {
     try {
       watchEpisode(episode);
@@ -3067,6 +3301,103 @@ installEpisodePicker({
       controlMessage(error.message);
     }
   },
+});
+// Deep links: ?episode=, ?scene=, ?watch= and #ep= open the game somewhere specific.
+// The welcome card turns into the invitation, so one tap (which also allows sound) starts it.
+function inviteFromWelcome({ eyebrow, title, body, action, run }) {
+  const welcome = $('welcome');
+  const label = welcome.querySelector('.eyebrow');
+  label.lastChild.textContent = ` ${eyebrow}`;
+  welcome.querySelector('h2').textContent = title;
+  welcome.querySelector(':scope > p').textContent = body;
+  welcome.querySelector('.welcome-note').textContent =
+    'Opened from a link. Take the controls whenever you like.';
+  const arrow = document.createElement('span');
+  arrow.setAttribute('aria-hidden', 'true');
+  arrow.textContent = '↗';
+  $('start').replaceChildren(`${action} `, arrow);
+  $('start').disabled = false;
+  $('start').onclick = () => {
+    try {
+      run();
+    } catch (error) {
+      if (!state.started) start();
+      episodeHandoff.toast(error.message);
+    }
+  };
+}
+const placeTitle = (set) => {
+  const stop = routeStops.find((item) => item.id === set.location);
+  if (stop) return `${stop.name} station`;
+  const names = { city: 'the valley town', tokyo: 'the Tokyo neon passage' };
+  return names[set.location] ?? `the ${set.location}`;
+};
+function forgetDeepLink(notice) {
+  history.replaceState(history.state, '', withoutDeepLink(location.href));
+  if (notice) episodeHandoff.toast(notice, { seconds: 9 });
+}
+function openDeepLink() {
+  const { link, notice } = parseDeepLink(location.href, {
+    episodeIds: THE_1742.episodes.map((episode) => episode.id),
+    stops: routeStops.map((stop) => stop.id),
+  });
+  if (notice) forgetDeepLink(notice);
+  if (!link) return;
+  if (link.kind === 'episode') {
+    const episode = THE_1742.episodes.find((item) => item.id === link.id);
+    inviteFromWelcome({
+      eyebrow: 'AN EPISODE FOR YOU',
+      title: episodeHeading(episode),
+      body: episode.logline ?? THE_1742.logline,
+      action: 'Watch the episode',
+      run: () => watchEpisode(episode),
+    });
+    return;
+  }
+  if (link.kind === 'scene') {
+    const details = [link.set.timeOfDay, link.set.weather].filter(Boolean).join(' · ');
+    const title = placeTitle(link.set);
+    inviteFromWelcome({
+      eyebrow: 'A PLACE ON THE LINE',
+      title: title[0].toUpperCase() + title.slice(1),
+      body: details ? `Someone sent you here: ${details}.` : 'Someone sent you here.',
+      action: 'Start here',
+      run() {
+        start();
+        applySceneSettings(link.set);
+        if (link.camera) selectCamera(link.camera);
+      },
+    });
+    return;
+  }
+  // A shared custom episode: untrusted data, decoded and validated before anything plays.
+  const startLabel = [...$('start').childNodes].map((node) => node.cloneNode(true));
+  $('start').textContent = 'Opening the shared episode…';
+  $('start').disabled = true;
+  const timeout = new Promise((_, reject) =>
+    setTimeout(() => reject(new Error('The shared episode took too long to load.')), 10000),
+  );
+  Promise.race([episodeSharing.load(link), timeout])
+    .then((episode) =>
+      inviteFromWelcome({
+        eyebrow: 'A SHARED EPISODE',
+        title: episodeHeading(episode),
+        body: episode.logline ?? 'A short drama written for the Maple Line.',
+        action: 'Watch the episode',
+        run: () => watchEpisode(episode),
+      }),
+    )
+    .catch((error) => {
+      $('start').replaceChildren(...startLabel);
+      $('start').disabled = false;
+      forgetDeepLink(`${error.message} The ride starts normally.`);
+    });
+}
+if (!embedded) openDeepLink();
+episodePicker?.setStatus(episodeVoice.status());
+// Opening Places asks the director again, so a director started later is picked up.
+document.getElementById('places-picker')?.addEventListener('toggle', (event) => {
+  if (event.newState === 'open' && !episodeRunner.playing) void episodeVoice.check();
 });
 $('film-look').value = gameStore.getState().preferences.filmLook;
 $('film-look').onchange = () => gameStore.setPreferences({ filmLook: $('film-look').value });
@@ -3181,6 +3512,153 @@ if (embedded) {
   });
   window.addEventListener('pagehide', disposeEmbed, { once: true });
 }
+/** Vertical videos stay full frame; a 2.39:1 band inside 9:16 would leave a small picture. */
+function renderLook(look) {
+  return renderMode?.portrait ? { ...look, letterbox: 0 } : look;
+}
+/**
+ * Render mode control for scripts/render-episode.mjs. Every step() advances the
+ * render clock by exactly one frame and simulates and draws that frame; the script
+ * captures the page after each step. Episode events are recorded at the time of the
+ * frame that first shows them.
+ */
+function installRenderControl() {
+  // The same background services the embed turns off: no AI requests and no sound.
+  gameStore.setPreferences({ sound: false, narrationEnabled: false });
+  gameStore.updateDirector({ enabled: false });
+  director.setEnabled(false);
+  mindsClient.setEnabled(false);
+  $('start-with-sound').checked = false;
+  const { fps } = renderMode;
+  const TAIL_SECONDS = 1.5;
+  let current = null;
+  let videoFrames = 0;
+  let endCardFrame = null;
+  let ended = false;
+  const findEpisode = (key) =>
+    THE_1742.episodes.find(
+      (episode) =>
+        episode.id === key ||
+        `${THE_1742.id}-${episode.number}` === key ||
+        String(episode.number) === String(key),
+    ) ?? episodeLibrary.list().find((episode) => episode.id === key);
+  const inSeries = (episode) => THE_1742.episodes.some((item) => item.id === episode.id);
+  const titles = (episode) => ({
+    series: episode.series ?? episode.title,
+    native: inSeries(episode) ? THE_1742.japanese : '',
+    episode: [
+      episode.number ? `Episode ${episode.number}` : null,
+      episode.series ? episode.title : null,
+    ]
+      .filter(Boolean)
+      .join(' · '),
+    next: episode.endCard?.line ?? '',
+    credit: 'Maple Line · もみじ線',
+  });
+  const status = () => {
+    const runner = episodeRunner.getState();
+    const endCardElapsed = renderOverlay.endCardElapsed();
+    return {
+      frame: videoFrames,
+      seconds: Number((videoFrames / fps).toFixed(3)),
+      runner: runner.status,
+      scene: runner.scene?.id ?? null,
+      beat: runner.beat ? runner.beat.index + 1 : null,
+      shot: runner.beat?.shot ?? null,
+      waitingFor: runner.beat?.waitingFor ?? null,
+      endCard: endCardElapsed === null ? null : Number(endCardElapsed.toFixed(2)),
+      done: endCardElapsed !== null && endCardElapsed >= END_CARD_SECONDS,
+    };
+  };
+  const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+  window.__mapleRender = Object.freeze({
+    options: renderMode,
+    /** Waits for fonts and character models, then draws warm-up frames (not recorded). */
+    async ready({ warmupFrames = 10, timeoutMs = 60000 } = {}) {
+      const deadline = performance.now() + timeoutMs;
+      await document.fonts.ready;
+      while (Object.values(modelLoader.getState()).includes('loading')) {
+        if (performance.now() > deadline) throw new Error('Models did not finish loading.');
+        await wait(100);
+      }
+      await Promise.all(heroCasts.map((hero) => hero.ready));
+      for (let i = 0; i < warmupFrames; i++) frame(renderClock.advance());
+      const gl = renderer.getContext();
+      const info = gl.getExtension('WEBGL_debug_renderer_info');
+      return {
+        ...renderMode,
+        models: modelLoader.getState(),
+        gpu: gl.getParameter(info ? info.UNMASKED_RENDERER_WEBGL : gl.RENDERER),
+        pixelRatio: renderer.getPixelRatio(),
+        canvas: [renderer.domElement.width, renderer.domElement.height],
+      };
+    },
+    episodes: () =>
+      THE_1742.episodes.map((episode) => ({
+        id: episode.id,
+        alias: `${THE_1742.id}-${episode.number}`,
+        title: episode.title,
+        number: episode.number,
+      })),
+    /**
+     * Starts an episode by id, alias (the-1742-1) or number, or a draft object. A voice
+     * manifest from `pnpm voice:episode` holds each line for its clip and shows its
+     * translated subtitles; the audio itself is mixed in by the render script.
+     */
+    play(source, { voiceManifest = null } = {}) {
+      const episode = typeof source === 'object' && source ? source : findEpisode(source);
+      if (!episode) throw new TypeError(`Unknown episode ${JSON.stringify(source)}.`);
+      renderTimeline.reset();
+      renderOverlay.reset();
+      videoFrames = 0;
+      endCardFrame = null;
+      ended = false;
+      renderEventTime = 0;
+      renderVoice = voiceManifest ? createManifestVoice(voiceManifest) : null;
+      const playing = watchEpisode(episode);
+      current = { ...episode, ...playing.episode };
+      return { episode: playing.episode, plannedSeconds: playing.episode.plannedSeconds };
+    },
+    step(count = 1) {
+      for (let i = 0; i < count; i++) {
+        renderEventTime = videoFrames / fps;
+        frame(renderClock.advance());
+        videoFrames += 1;
+        if (!ended && current && episodeRunner.getState().status === 'ended') {
+          ended = true;
+          endCardFrame = videoFrames + Math.round(TAIL_SECONDS * fps);
+        }
+        if (videoFrames === endCardFrame) {
+          filmCaptions.hide();
+          renderOverlay.endCard(titles(current));
+        }
+      }
+      return status();
+    },
+    status,
+    /** Poster frames: hide dialogue and show the series and episode title. */
+    poster(enabled) {
+      const text = current ? titles(current) : {};
+      renderOverlay.setPoster(Boolean(enabled), {
+        series: [text.series, current?.number ? `Episode ${current.number}` : null]
+          .filter(Boolean)
+          .join(' · '),
+        title: current?.title ?? '',
+      });
+      renderOverlay.tick();
+    },
+    timeline: () =>
+      renderTimeline.toManifest({
+        episode: current,
+        fps,
+        width: renderMode.width,
+        height: renderMode.height,
+        frames: videoFrames,
+      }),
+    log: () => episodeRunner.getState().log,
+  });
+}
 updateCamera(1, true);
 $('loading').hidden = true;
-requestAnimationFrame(frame);
+if (renderMode) installRenderControl();
+else requestAnimationFrame(frame);

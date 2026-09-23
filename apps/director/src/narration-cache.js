@@ -66,3 +66,48 @@ export function createNarrationCache(directory, maxBytes = 256000000) {
     },
   };
 }
+
+/** Local translation cache: one small JSON file per line, kept beside the audio cache.
+ * Translations are cheap to redo, so failures only cost another provider call.
+ * @param {string | null} directory @param {number} [maxEntries]
+ */
+export function createTranslationCache(directory, maxEntries = 20000) {
+  let writes = Promise.resolve();
+  let entries = -1;
+  return {
+    /** @param {string} key @returns {Promise<string|null>} */
+    async read(key) {
+      if (!directory) return null;
+      try {
+        const path = join(directory, `${key}.json`);
+        const info = await stat(path);
+        if (info.size > 16000) return null;
+        const value = JSON.parse(await readFile(path, 'utf8'));
+        return typeof value?.text === 'string' && value.text.trim() ? value.text : null;
+      } catch {
+        return null;
+      }
+    },
+    /** @param {string} key @param {Record<string, unknown> & {text:string}} value */
+    write(key, value) {
+      if (!directory) return Promise.resolve();
+      const folder = directory;
+      writes = writes
+        .then(async () => {
+          await mkdir(folder, { recursive: true });
+          if (entries < 0) entries = (await readdir(folder)).length;
+          if (entries >= maxEntries) return;
+          const temporary = join(folder, `${key}.${randomUUID()}.tmp`);
+          try {
+            await writeFile(temporary, JSON.stringify(value), { mode: 0o600 });
+            await rename(temporary, join(folder, `${key}.json`));
+            entries++;
+          } finally {
+            await unlink(temporary).catch(() => {});
+          }
+        })
+        .catch(() => {});
+      return writes;
+    },
+  };
+}

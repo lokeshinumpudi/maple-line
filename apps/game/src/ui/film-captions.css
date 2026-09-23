@@ -122,6 +122,16 @@
     transition-duration: 1ms;
   }
 }
+/* Render mode: fades come from the render clock (see film-captions.js), not CSS time. */
+.film-captions.manual-fades :is(.film-place, .film-line, .film-title, .film-place-rule) {
+  transition: none;
+}
+.film-captions.manual-fades :is(.film-place, .film-title) {
+  transform: none;
+}
+.film-captions.manual-fades .film-line {
+  transform: translate(-50%, 0);
+}
 /* Director mode: the HUD steps back from the frame until the pointer or keys wake it. */
 body.film-mode > :is(header, main, footer, .vignette, #speedometer, #mobile-hud-toggle) {
   transition: opacity 700ms ease;
@@ -130,4 +140,18 @@ body.film-mode:not(.film-pointer):not(:has(dialog[open], [popover]:popover-open,
   > :is(header, main, footer, .vignette, #speedometer, #mobile-hud-toggle) {
   opacity: 0;
   pointer-events: none;
+}
+/* Voice fallback label: small, top corner, never over the subtitle. */
+.film-note {
+  position: absolute;
+  top: calc(var(--film-bar, 0px) + 14px);
+  right: max(16px, 3vw);
+  max-width: min(70vw, 360px);
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: #0008;
+  font-size: 12px;
+  letter-spacing: 0.02em;
+  opacity: 0;
+  transition: opacity 600ms ease;
 }

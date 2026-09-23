@@ -1,179 +1,19 @@
 /**
- * Character motion that works on any humanoid skeleton: a canonical bone map, hand sockets
- * that props attach to, analytic two-bone IK for arms and legs, a clamped look-at, a
- * steering layer between the simulation and the drawn body, stride-matched playback,
- * clip-pair cross-fades and small additive "life" (breathing, weight shift).
+ * Character motion that works on any humanoid skeleton: hand sockets that props attach to,
+ * analytic two-bone IK, a steering layer between the simulation and the drawn body,
+ * stride-matched playback and clip-pair cross-fades. The per-frame layers that use these
+ * (look-at, foot planting, holds, idle life) are in character-rig.js.
  *
- * Nothing here knows about Maple Line's cast. A rig plugs in by naming its bones: either a
- * `boneMap` object in any node's glTF extras ({ hips: 'pelvis', handL: 'hand_l', ... }), a
- * table passed to resolveBoneMap, or names the alias list below already recognises
- * (Mixamo, Unreal/UAL mannequin, MPFB/MakeHuman game rigs, Rigify DEF bones).
+ * Nothing here knows about Maple Line's cast. Bones are canonical names from
+ * characters/humanoid-bones.js (hips, upperArmL, handR, footL, indexL1, ...), so a rig plugs in
+ * by naming its joints there: a glTF `boneMap` extra, a table, or a known convention.
  */
 
-/** Canonical humanoid bones. Required ones drive IK and look-at; the rest are optional. */
-export const REQUIRED_BONES = Object.freeze([
-  'hips',
-  'spine',
-  'chest',
-  'neck',
-  'head',
-  'upperArmL',
-  'lowerArmL',
-  'handL',
-  'upperArmR',
-  'lowerArmR',
-  'handR',
-  'upperLegL',
-  'lowerLegL',
-  'footL',
-  'upperLegR',
-  'lowerLegR',
-  'footR',
-]);
+/** Finger chains curled by the grip, by canonical root name (thumbL1, indexR1, ...). */
 export const FINGERS = Object.freeze(['thumb', 'index', 'middle', 'ring', 'little']);
-export const OPTIONAL_BONES = Object.freeze([
-  'shoulderL',
-  'shoulderR',
-  'toesL',
-  'toesR',
-  ...['L', 'R'].flatMap((side) => FINGERS.map((finger) => `${finger}${side}`)),
-]);
-export const CANONICAL_BONES = Object.freeze([...REQUIRED_BONES, ...OPTIONAL_BONES]);
 
 /** Palm centre along the hand, as a fraction of forearm length (build.py uses the same). */
 export const PALM_FRACTION = 0.3;
-
-// Side-free, lower-case, punctuation-free names each canonical bone is known by.
-const ALIASES = {
-  hips: ['hips', 'hip', 'pelvis'],
-  spine: ['spine', 'spine01', 'spine1', 'spinelower', 'abdomen', 'spine001'],
-  chest: ['chest', 'spine2', 'upperchest', 'thorax'],
-  neck: ['neck', 'neck01', 'neck1', 'neck001'],
-  head: ['head'],
-  shoulder: ['shoulder', 'clavicle', 'collar'],
-  upperArm: ['arm', 'upperarm', 'uparm', 'upperarm01', 'humerus'],
-  lowerArm: ['forearm', 'lowerarm', 'lowerarm01', 'elbow'],
-  hand: ['hand', 'wrist'],
-  upperLeg: ['upleg', 'thigh', 'upperleg', 'upperleg01', 'femur'],
-  lowerLeg: ['leg', 'calf', 'shin', 'lowerleg', 'lowerleg01', 'knee'],
-  foot: ['foot', 'ankle'],
-  toes: ['toebase', 'toe', 'toes', 'ball', 'toe01'],
-  thumb: ['handthumb1', 'thumb01', 'thumb1', 'thumb', 'finger0', 'thumbproximal'],
-  index: ['handindex1', 'index01', 'index1', 'index', 'finger1', 'indexproximal', 'fingerindex1'],
-  middle: ['handmiddle1', 'middle01', 'middle1', 'middle', 'finger2', 'middleproximal'],
-  ring: ['handring1', 'ring01', 'ring1', 'ring', 'finger3', 'ringproximal'],
-  little: ['handpinky1', 'pinky01', 'pinky1', 'pinky', 'little', 'finger4', 'littleproximal'],
-};
-const PREFIXES = ['mixamorig', 'def', 'org', 'bip01', 'bip001', 'ccbase', 'armature', 'rig'];
-
-/**
- * Split a bone name into a side ('L', 'R' or '') and a normalised base name.
- * Handles LeftArm, upperarm_l, upper_arm.L, thigh.R, DEF-thigh.L, mixamorig:LeftHand and
- * three.js-sanitised forms such as upper_armL.
- */
-export function parseBoneName(name) {
-  let raw = String(name ?? '');
-  let side = '';
-  const take = (pattern, value) => {
-    if (side || !pattern.test(raw)) return;
-    side = value;
-    raw = raw.replace(pattern, ' ');
-  };
-  take(/left/i, 'L');
-  take(/right/i, 'R');
-  take(/(?:[._\-\s:]|^)[lL](?=$|[._\-\s:\d])/, 'L');
-  take(/(?:[._\-\s:]|^)[rR](?=$|[._\-\s:\d])/, 'R');
-  // Sanitised Blender suffixes: "upper_armL" (a lower-case letter, then a capital L/R).
-  take(/(?<=[a-z0-9])L$/, 'L');
-  take(/(?<=[a-z0-9])R$/, 'R');
-  let base = raw.toLowerCase().replace(/[^a-z0-9]/g, '');
-  for (const prefix of PREFIXES)
-    if (base.startsWith(prefix) && base.length > prefix.length) base = base.slice(prefix.length);
-  return { side, base };
-}
-
-function canonicalFor(base, side) {
-  for (const [part, names] of Object.entries(ALIASES)) {
-    if (!names.includes(base)) continue;
-    const sided = !['hips', 'spine', 'chest', 'neck', 'head'].includes(part);
-    if (sided !== Boolean(side)) continue;
-    return sided ? `${part}${side}` : part;
-  }
-  return null;
-}
-
-/**
- * Resolve canonical bones on a loaded model. `mapping` (canonical -> node name) wins, then a
- * `boneMap` found in any node's userData, then aliases, then structure (a hand's parent is
- * the lower arm, whose parent is the upper arm; the chest is the upper arm chain's first
- * spine ancestor). Returns { bones, missing, source }.
- */
-export function resolveBoneMap(root, mapping = null) {
-  const nodes = [];
-  root.traverse((node) => nodes.push(node));
-  const byName = new Map(nodes.map((node) => [node.name, node]));
-  const embedded = nodes.find((node) => node.userData?.boneMap)?.userData.boneMap ?? null;
-  const table = mapping ?? embedded;
-  const bones = {};
-  const source = {};
-  if (table)
-    for (const [canonical, name] of Object.entries(table)) {
-      const node = byName.get(name) ?? byName.get(String(name).replace(/[\s.:[\]/]/g, ''));
-      if (node && CANONICAL_BONES.includes(canonical)) {
-        bones[canonical] = node;
-        source[canonical] = mapping ? 'table' : 'extras';
-      }
-    }
-  const boneNodes = nodes.filter((node) => node.isBone);
-  for (const node of boneNodes.length ? boneNodes : nodes) {
-    const { side, base } = parseBoneName(node.name);
-    const canonical = canonicalFor(base, side);
-    if (canonical && !bones[canonical]) {
-      bones[canonical] = node;
-      source[canonical] = 'alias';
-    }
-  }
-  // Structural fallbacks for chains the names did not cover.
-  for (const side of ['L', 'R']) {
-    const hand = bones[`hand${side}`];
-    if (hand && !bones[`lowerArm${side}`] && hand.parent?.isBone) {
-      bones[`lowerArm${side}`] = hand.parent;
-      source[`lowerArm${side}`] = 'structure';
-    }
-    const lower = bones[`lowerArm${side}`];
-    if (lower && !bones[`upperArm${side}`] && lower.parent?.isBone) {
-      bones[`upperArm${side}`] = lower.parent;
-      source[`upperArm${side}`] = 'structure';
-    }
-    const foot = bones[`foot${side}`];
-    if (foot && !bones[`lowerLeg${side}`] && foot.parent?.isBone) {
-      bones[`lowerLeg${side}`] = foot.parent;
-      source[`lowerLeg${side}`] = 'structure';
-    }
-    const shin = bones[`lowerLeg${side}`];
-    if (shin && !bones[`upperLeg${side}`] && shin.parent?.isBone) {
-      bones[`upperLeg${side}`] = shin.parent;
-      source[`upperLeg${side}`] = 'structure';
-    }
-  }
-  if (!bones.neck && bones.head?.parent?.isBone) {
-    bones.neck = bones.head.parent;
-    source.neck = 'structure';
-  }
-  // The chest is whatever the shoulders hang from, whatever a rig calls its spine bones
-  // (Unreal-style rigs have three to five), unless a table named it.
-  if (source.chest !== 'table' && source.chest !== 'extras') {
-    const shoulder = bones.shoulderL ?? bones.shoulderR;
-    const upper = bones.upperArmL ?? bones.upperArmR;
-    const node = shoulder?.parent ?? (upper?.parent === shoulder ? null : upper?.parent);
-    if (node?.isBone && node !== bones.spine) {
-      bones.chest = node;
-      source.chest = 'structure';
-    }
-  }
-  const missing = REQUIRED_BONES.filter((name) => !bones[name]);
-  return { bones, missing, source };
-}
 
 // ---- small math helpers (THREE passed in, so this module has no import side effects) ----
 
@@ -286,7 +126,9 @@ function bindMatrices(THREE, root) {
       if (out.has(bone)) return;
       out.set(
         bone,
-        new THREE.Matrix4().copy(node.bindMatrix).multiply(node.skeleton.boneInverses[i].clone().invert()),
+        new THREE.Matrix4()
+          .copy(node.bindMatrix)
+          .multiply(node.skeleton.boneInverses[i].clone().invert()),
       );
     });
   });
@@ -328,7 +170,7 @@ export function createHandSockets(THREE, root, bones, { palmNormals = {} } = {})
     const name = `socket.hand.${side}`;
     let socket = hand.children.find((child) => child.name === name);
     if (!socket) {
-      const finger = bones[`middle${side}`] ?? bones[`index${side}`] ?? null;
+      const finger = bones[`middle${side}1`] ?? bones[`index${side}1`] ?? null;
       const frame = handSocketFrame(THREE, {
         wrist: position(hand),
         elbow: position(elbow),
@@ -375,7 +217,8 @@ export function attachProps(THREE, root, sockets, grips = PROP_GRIPS) {
   const props = [];
   const nodes = [];
   root.traverse((node) => {
-    if (node.userData?.prop || (grips[node.name] && !node.isBone && node.isMesh)) nodes.push(node);
+    if (node.isSkinnedMesh) return; // skinned props follow their own bones
+    if (node.userData?.prop || (grips[node.name] && node.isMesh)) nodes.push(node);
   });
   for (const node of nodes) {
     const name = node.userData.prop ?? node.name;
@@ -422,6 +265,8 @@ export const STEERING_DEFAULTS = Object.freeze({
   turnInPlaceRate: 2.4,
   faceTolerance: 0.35, // rad: standing people re-face only past this
   snapDistance: 3.5, // m: jumps (Places, alighting at a door) teleport the body
+  filterTime: 0.25, // s: low-pass on the simulation position for rest and creep decisions
+  lead: 0.4, // s: steer toward where the target will be this far ahead
 });
 
 /**
@@ -443,7 +288,10 @@ export function createSteering(options = {}) {
     resting: true,
     initialized: false,
   };
-  let lastTarget = null;
+  // A low-passed copy of the simulation position: rest, start and creep decisions use it,
+  // so frame-to-frame jitter cannot set a standing body off or drag it about.
+  const filtered = { x: 0, z: 0 };
+  let lastFiltered = null;
   const targetVelocity = { x: 0, z: 0 };
   function snap(target) {
     state.x = target.x;
@@ -456,7 +304,9 @@ export function createSteering(options = {}) {
     state.resting = !target.moving;
     state.initialized = true;
     targetVelocity.x = targetVelocity.z = 0;
-    lastTarget = { x: target.x, z: target.z };
+    filtered.x = target.x;
+    filtered.z = target.z;
+    lastFiltered = { ...filtered };
   }
   function turnToward(goal, dt, rate) {
     const error = wrap(goal - state.heading);
@@ -496,34 +346,49 @@ export function createSteering(options = {}) {
           state.speed = 0;
           if (Number.isFinite(target.heading)) turnToward(target.heading, dt, o.turnInPlaceRate);
           state.turning = Math.abs(state.turnVelocity) > 0.5;
-          lastTarget = { x: target.x, z: target.z };
+          filtered.x = target.x;
+          filtered.z = target.z;
+          lastFiltered = { ...filtered };
           return state;
         }
         snap(target);
         return state;
       }
-      // Smoothed velocity of the simulation, for feed-forward speed.
-      if (lastTarget) {
-        const k = 1 - Math.exp(-dt * 5);
-        targetVelocity.x += ((target.x - lastTarget.x) / dt - targetVelocity.x) * k;
-        targetVelocity.z += ((target.z - lastTarget.z) / dt - targetVelocity.z) * k;
+      // Filtered position and its velocity (feed-forward speed for a walking target).
+      const k = 1 - Math.exp(-dt / o.filterTime);
+      filtered.x += (target.x - filtered.x) * k;
+      filtered.z += (target.z - filtered.z) * k;
+      if (lastFiltered) {
+        const kv = 1 - Math.exp(-dt * 4);
+        targetVelocity.x += ((filtered.x - lastFiltered.x) / dt - targetVelocity.x) * kv;
+        targetVelocity.z += ((filtered.z - lastFiltered.z) / dt - targetVelocity.z) * kv;
       }
-      lastTarget = { x: target.x, z: target.z };
+      lastFiltered = { ...filtered };
       const targetSpeed = Math.min(o.maxSpeed, Math.hypot(targetVelocity.x, targetVelocity.z));
-      const moving = Boolean(target.moving) || targetSpeed > 0.2;
+      const moving = Boolean(target.moving);
+      const fx = filtered.x - state.x;
+      const fz = filtered.z - state.z;
+      const settled = Math.hypot(fx, fz);
 
       // Rest with hysteresis: sim jitter inside the start radius never sets the body off.
-      if (state.resting && distance > o.startRadius) state.resting = false;
+      if (state.resting && (settled > o.startRadius || (moving && distance > o.deadZone * 2)))
+        state.resting = false;
       if (!state.resting && !moving && distance < o.deadZone && state.speed < 0.15)
         state.resting = true;
 
       let desiredSpeed = 0;
       let goal = state.heading;
       if (!state.resting) {
-        goal = Math.atan2(dx, dz);
+        // Steer at a point a little ahead of the filtered target, so sampling noise and
+        // corners in the route become gentle arcs instead of heading flicker.
+        const lead = moving ? o.lead : 0;
+        goal = Math.atan2(fx + targetVelocity.x * lead, fz + targetVelocity.z * lead);
         // Arrive: speed that reaches the target in followTime, plus the target's own speed.
-        desiredSpeed = Math.min(o.maxSpeed, targetSpeed + Math.max(0, distance - o.deadZone) / o.followTime);
-        if (!moving) desiredSpeed = Math.min(desiredSpeed, Math.sqrt(2 * o.decel * distance));
+        desiredSpeed = Math.min(
+          o.maxSpeed,
+          (moving ? targetSpeed : 0) + Math.max(0, settled - o.deadZone) / o.followTime,
+        );
+        if (!moving) desiredSpeed = Math.min(desiredSpeed, Math.sqrt(2 * o.decel * settled));
       } else if (Number.isFinite(target.heading)) {
         goal = target.heading;
       }
@@ -544,11 +409,11 @@ export function createSteering(options = {}) {
       state.speed = Math.max(0, state.speed);
       state.x += Math.sin(state.heading) * state.speed * dt;
       state.z += Math.cos(state.heading) * state.speed * dt;
-      if (state.resting && distance > 1e-4 && distance < o.startRadius) {
+      if (state.resting && settled > o.deadZone && settled < o.startRadius) {
         // Close the last centimetres invisibly so the body ends where the simulation is.
-        const creep = Math.min(distance, o.settleRate * dt) / distance;
-        state.x += dx * creep;
-        state.z += dz * creep;
+        const creep = Math.min(settled - o.deadZone, o.settleRate * dt) / settled;
+        state.x += fx * creep;
+        state.z += fz * creep;
       }
       if (Number.isFinite(target.y)) state.y += (target.y - state.y) * (1 - Math.exp(-dt * 10));
       return state;

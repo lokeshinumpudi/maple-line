@@ -3,7 +3,9 @@
   "blender": "5.2.2 LTS",
   "boneCount": 24,
   "boneMap": {
-    "chest": "Spine2",
+    "chest": "Spine1",
+    "eyeL": "eye-l",
+    "eyeR": "eye-r",
     "footL": "LeftFoot",
     "footR": "RightFoot",
     "handL": "LeftHand",
@@ -22,6 +24,7 @@
     "toesR": "RightToeBase",
     "upperArmL": "LeftArm",
     "upperArmR": "RightArm",
+    "upperChest": "Spine2",
     "upperLegL": "LeftUpLeg",
     "upperLegR": "RightUpLeg"
   },
@@ -139,7 +142,7 @@
     }
   },
   "facing": "-Y in Blender, +Z in three.js",
-  "glbBytes": 301936,
+  "glbBytes": 301988,
   "heightMetres": 1.6592,
   "heightWithinTwoCentimetres": true,
   "hurryFootSpeed": 1.697,
@@ -166,6 +169,7 @@
       "hold": "two"
     }
   },
+  "propsGlbBytes": 3824,
   "seatHeight": 0.4,
   "shapeKeyDefaults": {
     "blink-l": 0.0,

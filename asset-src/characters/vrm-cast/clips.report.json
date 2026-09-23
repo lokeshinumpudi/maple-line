@@ -1,0 +1,146 @@
+{
+  "source": "apps/game/public/models/characters/student-riko.glb",
+  "rig": "momiji",
+  "out": "apps/game/public/models/characters/vrm/cast-clips.vrma",
+  "bytes": 119892,
+  "bones": [
+    "hips",
+    "spine",
+    "chest",
+    "upperChest",
+    "neck",
+    "head",
+    "leftShoulder",
+    "leftUpperArm",
+    "leftLowerArm",
+    "leftHand",
+    "rightShoulder",
+    "rightUpperArm",
+    "rightLowerArm",
+    "rightHand",
+    "leftUpperLeg",
+    "leftLowerLeg",
+    "leftFoot",
+    "leftToes",
+    "rightUpperLeg",
+    "rightLowerLeg",
+    "rightFoot",
+    "rightToes"
+  ],
+  "hipsRestHeight": 0.8593,
+  "clips": [
+    {
+      "name": "board",
+      "seconds": 1.2,
+      "loop": false,
+      "frames": 37
+    },
+    {
+      "name": "chat",
+      "seconds": 3,
+      "loop": true,
+      "frames": 91
+    },
+    {
+      "name": "check-phone",
+      "seconds": 3,
+      "loop": true,
+      "frames": 91
+    },
+    {
+      "name": "hurry",
+      "seconds": 0.9,
+      "loop": true,
+      "frames": 28
+    },
+    {
+      "name": "idle",
+      "seconds": 4,
+      "loop": true,
+      "frames": 121
+    },
+    {
+      "name": "shelter",
+      "seconds": 3,
+      "loop": true,
+      "frames": 91
+    },
+    {
+      "name": "sit",
+      "seconds": 5,
+      "loop": true,
+      "frames": 151
+    },
+    {
+      "name": "stretch",
+      "seconds": 4,
+      "loop": true,
+      "frames": 121
+    },
+    {
+      "name": "walk",
+      "seconds": 1.2,
+      "loop": true,
+      "frames": 37
+    },
+    {
+      "name": "watch-train",
+      "seconds": 4,
+      "loop": true,
+      "frames": 121
+    },
+    {
+      "name": "wave",
+      "seconds": 2,
+      "loop": true,
+      "frames": 61
+    }
+  ],
+  "gait": {
+    "board": {
+      "footSpeedPerHipsHeight": 0.1716,
+      "hipsDropPerHipsHeight": -0.0001
+    },
+    "chat": {
+      "footSpeedPerHipsHeight": 0,
+      "hipsDropPerHipsHeight": -0.0001
+    },
+    "check-phone": {
+      "footSpeedPerHipsHeight": 0,
+      "hipsDropPerHipsHeight": -0.0001
+    },
+    "hurry": {
+      "footSpeedPerHipsHeight": 1.8972,
+      "hipsDropPerHipsHeight": 0.0192
+    },
+    "idle": {
+      "footSpeedPerHipsHeight": 0,
+      "hipsDropPerHipsHeight": -0.0001
+    },
+    "shelter": {
+      "footSpeedPerHipsHeight": 0,
+      "hipsDropPerHipsHeight": -0.0001
+    },
+    "sit": {
+      "footSpeedPerHipsHeight": 0,
+      "hipsDropPerHipsHeight": 0.4568,
+      "seatPerHipsHeight": 0.4562
+    },
+    "stretch": {
+      "footSpeedPerHipsHeight": 0,
+      "hipsDropPerHipsHeight": -0.0001
+    },
+    "walk": {
+      "footSpeedPerHipsHeight": 1.233,
+      "hipsDropPerHipsHeight": -0.0001
+    },
+    "watch-train": {
+      "footSpeedPerHipsHeight": 0,
+      "hipsDropPerHipsHeight": -0.0001
+    },
+    "wave": {
+      "footSpeedPerHipsHeight": 0,
+      "hipsDropPerHipsHeight": -0.0001
+    }
+  }
+}

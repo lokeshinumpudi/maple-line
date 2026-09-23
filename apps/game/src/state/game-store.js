@@ -51,6 +51,7 @@ export function createGameStore(startDistance = 0) {
         narrationEnabled: false,
         trainWipers: 'auto',
         powerFlow: true,
+        episodeVoice: true,
         filmLook: 'auto',
       },
       revision: 0,
@@ -154,6 +155,7 @@ export function createGameStore(startDistance = 0) {
             'hudVisible',
             'manualControls',
             'powerFlow',
+            'episodeVoice',
             'narrationEnabled',
           ].includes(key)
         ) {

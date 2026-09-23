@@ -2,6 +2,10 @@ import { CAR_COUNT, CAR_SPACING } from '../train/consist.js';
 // Optional NPC minds (context.minds) may delay a waiting passenger's walk to the door by at
 // most this many seconds. They can never slow the walk to the door or prevent boarding.
 export const MAX_MIND_BOARDING_DELAY = 2;
+/** Seconds a platform passenger keeps a shelter decision before reversing it. */
+export const SHELTER_COMMIT_SECONDS = 6;
+/** Seconds a passenger stands watching closed doors before walking back to wait. */
+export const MISSED_DOOR_SECONDS = 2.5;
 const PAUSING_INTENTS = new Set([
   'linger',
   'chat',
@@ -460,13 +464,19 @@ export function createPopulation({ center, terrain, homes = [], stationZ = 525 }
         }
         // Platform passengers use the station canopy while waiting in wet weather.
         // An arriving service always takes priority over the director's activity.
+        // A passenger commits to a shelter decision for a few seconds, so a mind or director
+        // that changes its mind does not walk them back and forth along the platform.
         const wantsShelter = context.stationActivity === 'shelter' || p.mindShelter;
-        if (p.state === 'waiting' && !nowServing && wantsShelter) {
+        const committed = elapsed - p.stateTime > SHELTER_COMMIT_SECONDS;
+        if (p.state === 'waiting' && !nowServing && wantsShelter && committed) {
           p.state = 'seeking-shelter';
           p.destination = 'station canopy';
           setRoute(p, [stationPoint(5.4 + (p.queue % 2) * 0.5, -4 + p.queue * 1.2)], 'sheltering');
         }
-        if (['seeking-shelter', 'sheltering'].includes(p.state) && (nowServing || !wantsShelter)) {
+        if (
+          (['seeking-shelter', 'sheltering'].includes(p.state) && nowServing) ||
+          (p.state === 'sheltering' && !wantsShelter && committed)
+        ) {
           p.state = 'arriving';
           p.destination = 'Momiji platform';
           setRoute(p, [p.wait], 'waiting');
@@ -516,10 +526,20 @@ export function createPopulation({ center, terrain, homes = [], stationZ = 525 }
           );
         }
         if ((p.state === 'approaching-door' || p.state === 'boarding') && !nowServing) {
+          // The doors closed in front of them: stop where they are and watch, then walk back,
+          // rather than turning straight round mid-stride.
+          p.state = 'missed-door';
+          p.stateTime = elapsed;
+          p.route = [];
+          p.walking = false;
+          p.destination = 'watching the doors close';
+          event(p, 'boarding-cancelled');
+        }
+        if (p.state === 'missed-door' && nowServing) p.state = 'waiting';
+        if (p.state === 'missed-door' && elapsed - p.stateTime > MISSED_DOOR_SECONDS) {
           p.state = 'arriving';
           p.destination = 'Momiji platform';
           setRoute(p, [p.wait], 'waiting');
-          event(p, 'boarding-cancelled');
         }
         advanceRoute(p, dt);
         if (p.state === 'boarding' && nowServing && elapsed - p.stateTime >= 1.25) {

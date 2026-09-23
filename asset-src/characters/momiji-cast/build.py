@@ -3,8 +3,11 @@
 One builder, one skeleton, one set of clips; each cast member is a row in PROFILES
 (height, width, clothing, hair, colours, props, posture). Everything is built from data so
 an agent can change a hat or a proportion and rebuild: body and face rings, a
-Mixamo-named game skeleton, weights written per ring, four face shape keys, and in-place
-clips named after the NPC minds' intents. Blender 5.2; see asset-src/lib/maple_assets.py.
+Mixamo-named game skeleton, weights written per ring, face and grip shape keys, and
+in-place clips named after the NPC minds' intents. Hand-held props (phone, radio, the
+reader's paper) are separate nodes in the canonical hand-socket frame, written into the
+character GLB and into props/<cast>.glb for other skeletons; the armature's extras carry a
+canonical bone map. Blender 5.2; see asset-src/lib/maple_assets.py.
 
     blender -b --factory-startup --python-exit-code 1 \\
       --python asset-src/characters/momiji-cast/build.py -- --cast sato
@@ -911,14 +914,17 @@ CLIPS = [
     ("board", 36, clip_board, False),
 ]
 
-# Canonical humanoid names (world/character-motion.js CANONICAL_BONES) for this skeleton.
+# Canonical humanoid names (apps/game/src/characters/humanoid-bones.js) for this skeleton.
 # The game reads this from the armature's extras; a new rig only needs its own table.
 BONE_MAP = {
     "hips": "Hips",
     "spine": "Spine",
-    "chest": "Spine2",
+    "chest": "Spine1",
+    "upperChest": "Spine2",
     "neck": "Neck",
     "head": "Head",
+    "eyeL": "eye-l",
+    "eyeR": "eye-r",
     **{
         f"{part}{s}": f"{side}{bone}"
         for s, side in (("L", "Left"), ("R", "Right"))
@@ -1221,6 +1227,12 @@ def build(cast):
     os.makedirs(os.path.dirname(out), exist_ok=True)
     ma.export_glb(out, [armature, *meshes], apply=False)
     report["glbBytes"] = os.path.getsize(out)
+    if props:
+        # The same hand props alone, in socket space, for other skeletons (the VRM cast).
+        props_out = os.path.join(os.path.dirname(out), "props", f"{cast}.glb")
+        os.makedirs(os.path.dirname(props_out), exist_ok=True)
+        ma.export_glb(props_out, props, apply=False)
+        report["propsGlbBytes"] = os.path.getsize(props_out)
     ma.write_report(report_path, report)
     if ARGS.render:
         render(os.path.join(ARGS.render, cast), armature, body, scale)

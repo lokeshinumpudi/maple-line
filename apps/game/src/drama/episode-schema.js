@@ -1,5 +1,6 @@
 import { normalizeShot } from '../camera/director.js';
 import { MOODS, INTENTS, MIND_EVENTS, ENTITY_ID_PATTERN } from '../simulation/npc-minds.js';
+import { NARRATION_LANGUAGES, VOICE_CAST, VOICE_DELIVERY } from '@maple-line/voice-score';
 
 /**
  * Episode format for short dramas staged in the running game. An episode is data:
@@ -8,15 +9,21 @@ import { MOODS, INTENTS, MIND_EVENTS, ENTITY_ID_PATTERN } from '../simulation/np
  * textContent, and every enum matches the director and NPC minds whitelists.
  *
  * Episode:
- *   { id, series?, number?, title, logline?, cast: { [castId]: { name } },
+ *   { id, series?, number?, title, logline?, cast: { [castId]: { name, note?, voice? } },
  *     scenes: [Scene], endCard?: { title?, line? } }
  * Scene:
  *   { id, heading, set?: { location, offset?, timeOfDay?, weather?, speedKmh? },
  *     stopAt?: stopId, actors?: { [castId]: entityId }, beats: [Beat] }
  * Beat:
- *   { shot: Shot, caption?, subtitle?, line?, dialogue?: [Line], hold?, waitFor?, cues?: [Cue] }
+ *   { shot: Shot, caption?, subtitle?, line?, lineTranslations?, dialogue?: [Line], hold?,
+ *     waitFor?, cues?: [Cue] }
  *   Shot subjects may also be { cast: castId } or { crossing: crossingId }.
- * Line:  { cast?: castId, speaker?: text, text, phone?: boolean }
+ * Line:  { cast?: castId, speaker?: text, text, phone?: boolean, emotion?, translations? }
+ *
+ * Voice (all optional, so older episodes stay valid): a cast member's `voice` names a
+ * VOICE_CAST part; without it a cast id that is itself a VOICE_CAST part uses that voice.
+ * `emotion` is a VOICE_DELIVERY name. `translations` / `lineTranslations` map a language
+ * code (for example `te-IN`) to hand-written text that wins over machine translation.
  * Cue:   { after, doors? | event? | weather? | direct? | release? }
  */
 export const EPISODE_LIMITS = Object.freeze({
@@ -28,7 +35,8 @@ export const EPISODE_LIMITS = Object.freeze({
   text: 160,
 });
 const ID = /^[a-z0-9-]{1,40}$/;
-const PLACES = [
+/** Scene `set.location` places besides stop ids; shared with place deep links. */
+export const SCENE_PLACES = Object.freeze([
   'gorge',
   'terraces',
   'village',
@@ -39,9 +47,20 @@ const PLACES = [
   'bridge',
   'tunnel',
   'summit',
-];
-const TIMES = ['daylight', 'sunrise', 'sunset', 'dusk'];
-const WEATHER = ['clear', 'rain', 'snow'];
+]);
+export const SCENE_TIMES = Object.freeze(['daylight', 'sunrise', 'sunset', 'dusk']);
+export const SCENE_WEATHER = Object.freeze(['clear', 'rain', 'snow']);
+/** `set.offset` range in metres. */
+export const SCENE_OFFSET = Object.freeze({ min: -2000, max: 2000 });
+const PLACES = SCENE_PLACES;
+const TIMES = SCENE_TIMES;
+const WEATHER = SCENE_WEATHER;
+export const EPISODE_LANGUAGES = NARRATION_LANGUAGES.map((language) => language.code);
+const TRANSLATED_TEXT = 320;
+/** Seconds between the start of a beat and its first line, between lines, and after the last. */
+export const LINE_LEAD = 1;
+export const LINE_GAP = 0.35;
+export const BEAT_TAIL = 0.9;
 
 function fail(path, message) {
   throw new TypeError(`${path} ${message}`);
@@ -71,13 +90,26 @@ function oneOf(value, allowed, path, { optional = false } = {}) {
   if (!allowed.includes(value)) fail(path, `must be one of: ${allowed.join(', ')}.`);
   return value;
 }
-function list(value, path, max) {
-  if (!Array.isArray(value) || !value.length || value.length > max)
-    fail(path, `must be a list of 1–${max} items.`);
+function list(value, path, max, { allowEmpty = false } = {}) {
+  const min = allowEmpty ? 0 : 1;
+  if (!Array.isArray(value) || value.length < min || value.length > max)
+    fail(path, `must be a list of ${min}–${max} items.`);
   return value;
 }
 const clean = (object) =>
   Object.fromEntries(Object.entries(object).filter(([, value]) => value !== undefined));
+/** Hand-written per-language text. English is the authored text itself. */
+function translations(value, path) {
+  if (value === undefined) return undefined;
+  const map = record(value, path);
+  const result = {};
+  for (const [code, entry] of Object.entries(map)) {
+    if (code === 'en-IN' || !EPISODE_LANGUAGES.includes(code))
+      fail(`${path}.${code}`, `must be one of: ${EPISODE_LANGUAGES.slice(1).join(', ')}.`);
+    result[code] = text(entry, `${path}.${code}`, TRANSLATED_TEXT);
+  }
+  return Object.keys(result).length ? result : undefined;
+}
 
 /** Validates an episode and returns a detached, normalized copy. */
 export function normalizeEpisode(input, { stops = [], crossings = [] } = {}) {
@@ -97,10 +129,13 @@ export function normalizeEpisode(input, { stops = [], crossings = [] } = {}) {
   for (const id of castIds) {
     if (!ID.test(id)) fail(`episode.cast.${id}`, 'needs a lowercase id.');
     const member = record(cast[id], `episode.cast.${id}`);
-    only(member, ['name', 'note'], `episode.cast.${id}`);
+    only(member, ['name', 'note', 'voice'], `episode.cast.${id}`);
     normalizedCast[id] = clean({
       name: text(member.name, `episode.cast.${id}.name`, 40),
       note: text(member.note, `episode.cast.${id}.note`, 200, { optional: true }),
+      voice: oneOf(member.voice, Object.keys(VOICE_CAST), `episode.cast.${id}.voice`, {
+        optional: true,
+      }),
     });
   }
   const places = [...PLACES, ...stops];
@@ -120,7 +155,9 @@ export function normalizeEpisode(input, { stops = [], crossings = [] } = {}) {
       only(raw, ['location', 'offset', 'timeOfDay', 'weather', 'speedKmh'], `${path}.set`);
       set = clean({
         location: oneOf(raw.location, places, `${path}.set.location`, { optional: true }),
-        offset: number(raw.offset, `${path}.set.offset`, -2000, 2000, { optional: true }),
+        offset: number(raw.offset, `${path}.set.offset`, SCENE_OFFSET.min, SCENE_OFFSET.max, {
+          optional: true,
+        }),
         timeOfDay: oneOf(raw.timeOfDay, TIMES, `${path}.set.timeOfDay`, { optional: true }),
         weather: oneOf(raw.weather, WEATHER, `${path}.set.weather`, { optional: true }),
         speedKmh: number(raw.speedKmh, `${path}.set.speedKmh`, 0, 120, { optional: true }),
@@ -142,7 +179,17 @@ export function normalizeEpisode(input, { stops = [], crossings = [] } = {}) {
         const beat = record(rawBeat, at);
         only(
           beat,
-          ['shot', 'caption', 'subtitle', 'line', 'dialogue', 'hold', 'waitFor', 'cues'],
+          [
+            'shot',
+            'caption',
+            'subtitle',
+            'line',
+            'lineTranslations',
+            'dialogue',
+            'hold',
+            'waitFor',
+            'cues',
+          ],
           at,
         );
         const rawShot = record(beat.shot, `${at}.shot`);
@@ -175,11 +222,14 @@ export function normalizeEpisode(input, { stops = [], crossings = [] } = {}) {
         const dialogue = (
           beat.dialogue === undefined
             ? []
-            : list(beat.dialogue, `${at}.dialogue`, EPISODE_LIMITS.linesPerBeat)
+            : // Empty lists are accepted so a normalized episode validates again.
+              list(beat.dialogue, `${at}.dialogue`, EPISODE_LIMITS.linesPerBeat, {
+                allowEmpty: true,
+              })
         ).map((rawLine, l) => {
           const lineAt = `${at}.dialogue[${l}]`;
           const line = record(rawLine, lineAt);
-          only(line, ['cast', 'speaker', 'text', 'phone'], lineAt);
+          only(line, ['cast', 'speaker', 'text', 'phone', 'emotion', 'translations'], lineAt);
           if (line.cast === undefined && line.speaker === undefined)
             fail(lineAt, 'needs a cast id or a speaker label.');
           if (line.phone !== undefined && typeof line.phone !== 'boolean')
@@ -189,10 +239,16 @@ export function normalizeEpisode(input, { stops = [], crossings = [] } = {}) {
             speaker: text(line.speaker, `${lineAt}.speaker`, 40, { optional: true }),
             text: text(line.text, `${lineAt}.text`),
             phone: line.phone,
+            emotion: oneOf(line.emotion, Object.keys(VOICE_DELIVERY), `${lineAt}.emotion`, {
+              optional: true,
+            }),
+            translations: translations(line.translations, `${lineAt}.translations`),
           });
         });
         const cues = (
-          beat.cues === undefined ? [] : list(beat.cues, `${at}.cues`, EPISODE_LIMITS.cuesPerBeat)
+          beat.cues === undefined
+            ? []
+            : list(beat.cues, `${at}.cues`, EPISODE_LIMITS.cuesPerBeat, { allowEmpty: true })
         ).map((rawCue, c) => {
           const cueAt = `${at}.cues[${c}]`;
           const cue = record(rawCue, cueAt);
@@ -229,6 +285,8 @@ export function normalizeEpisode(input, { stops = [], crossings = [] } = {}) {
           }
           return result;
         });
+        if (beat.lineTranslations !== undefined && beat.line === undefined)
+          fail(`${at}.lineTranslations`, 'needs a line to translate.');
         if (cues.some((cue) => cue.release) && !stopAt)
           fail(`${at}.cues`, 'release only applies to a scene with stopAt.');
         return clean({
@@ -236,6 +294,7 @@ export function normalizeEpisode(input, { stops = [], crossings = [] } = {}) {
           caption: text(beat.caption, `${at}.caption`, 80, { optional: true }),
           subtitle: text(beat.subtitle, `${at}.subtitle`, 80, { optional: true }),
           line: text(beat.line, `${at}.line`, EPISODE_LIMITS.text, { optional: true }),
+          lineTranslations: translations(beat.lineTranslations, `${at}.lineTranslations`),
           dialogue,
           hold: number(beat.hold, `${at}.hold`, 1, 90, { optional: true }),
           waitFor: oneOf(beat.waitFor, ['stopped', 'doors-closed'], `${at}.waitFor`, {
@@ -281,11 +340,36 @@ export function readingSeconds(value) {
   return Math.min(7, Math.max(1.8, 0.9 + words * 0.33));
 }
 
-/** Planned length of a beat before any wait: lead-in, every line, and a short tail. */
-export function beatSeconds(beat) {
-  const speech = beat.dialogue.reduce((sum, line) => sum + readingSeconds(line.text) + 0.35, 0);
+/** How long a voiced line keeps the floor: the clip plus a breath, never a flash. */
+export function voicedSeconds(durationMs) {
+  return Math.max(1.2, durationMs / 1000 + 0.2);
+}
+
+/** The voice part that speaks a line, or null for a line that stays subtitles only. */
+export function voiceOf(episode, line) {
+  if (!line.cast) return null;
+  const voice = episode.cast[line.cast]?.voice ?? line.cast;
+  return Object.hasOwn(VOICE_CAST, voice) ? voice : null;
+}
+
+/**
+ * Seconds each line occupies: the voice clip when one is known (seconds[i] is a
+ * number), otherwise reading time. Also used by the video renderer's audio manifest.
+ */
+export function lineSeconds(beat, seconds = []) {
+  return beat.dialogue.map((line, index) =>
+    Number.isFinite(seconds[index]) ? seconds[index] : readingSeconds(line.text),
+  );
+}
+
+/**
+ * Planned length of a beat before any wait: lead-in, every line, and a short tail.
+ * Pass per-line seconds (voicedSeconds of each clip) to plan a voiced beat.
+ */
+export function beatSeconds(beat, seconds) {
+  const speech = lineSeconds(beat, seconds).reduce((sum, value) => sum + value + LINE_GAP, 0);
   const cues = beat.cues.reduce((latest, cue) => Math.max(latest, cue.after + 1), 0);
-  return Math.max(beat.hold ?? 4, beat.dialogue.length ? 1 + speech + 0.9 : 0, cues);
+  return Math.max(beat.hold ?? 4, beat.dialogue.length ? LINE_LEAD + speech + BEAT_TAIL : 0, cues);
 }
 
 /** Planned episode length in seconds, excluding waits for the train. */

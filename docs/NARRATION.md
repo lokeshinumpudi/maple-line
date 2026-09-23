@@ -28,6 +28,10 @@ The local server stores WAV clips in `.cache/narration/`, excluded from version 
 
 The server admits at most 32 outstanding unique clips and runs two provider chains concurrently. Queued playback precedes queued speculation. Identical requests share synthesis. Cancelling one listener does not interrupt another listener using that clip; abandoning the last listener cancels its provider work. Each active provider chain has a 30-second deadline. Cache hits do not require a provider call. These measures reduce waiting; uncached generation and browser autoplay can still delay speech. This is prepared clip playback, not a streaming speech connection.
 
+## Drama episodes
+
+The drama episodes use the same routes, cache and cast package, with six more parts (Riko, Mr. Sato, Mr. Ishida, Fusae, Mrs. Hara and Mr. Tanabe) and three more deliveries (`anxious`, `dry`, `tired`). Unlike the story, an episode shows translated subtitles: the game asks `/api/director/narration/translate` for each line, then voices the translated text. See [episode voices](drama/README.md#voices-and-languages) for casting, the language picker, the offline fallback, the video clip script and Sarvam's limits and prices.
+
 ## Playback and boundaries
 
 Each request contains one spoken part, language, character, emotion and priority. The server validates these against catalogs, limits text to 1–1600 characters, and retains the existing 4096-byte body and loopback origin restrictions. Provider failure details and keys never appear in responses. `GET /api/director/narration/status` reports the cast, delivery catalog, queue activity and cache counters.

@@ -1,0 +1,144 @@
+/* Render mode (?render=1): only the picture, film text and the video's own cards. */
+html.render-mode body > :not(#world, .film-captions, .render-overlay) {
+  visibility: hidden !important;
+}
+html.render-mode *,
+html.render-mode *::before,
+html.render-mode *::after {
+  animation: none !important;
+  caret-color: transparent;
+}
+html.render-mode body {
+  cursor: none;
+}
+
+/* Film text sized for a phone watching a 1080-pixel video, not for a desktop HUD. */
+html.render-mode .film-line {
+  font-size: 3.9vmin;
+  width: min(88vw, 150vmin);
+  bottom: calc(var(--film-bar, 0px) + 7vmin);
+}
+html.render-mode .film-place {
+  left: 6vmin;
+  bottom: calc(var(--film-bar, 0px) + 22vmin);
+  max-width: 80vw;
+}
+html.render-mode .film-place-title {
+  font-size: 5vmin;
+}
+html.render-mode .film-place-subtitle {
+  font-size: 2vmin;
+}
+html.render-mode .film-title {
+  font-size: 5.2vmin;
+  padding: 0 7vw;
+  line-height: 1.5;
+}
+@media (orientation: portrait) {
+  /* Messaging apps draw their own controls over the bottom of a vertical video. */
+  html.render-mode .film-line {
+    font-size: 4.6vmin;
+    bottom: 17vh;
+  }
+  html.render-mode .film-place {
+    bottom: 34vh;
+  }
+  html.render-mode .film-title {
+    font-size: 4vmin;
+    letter-spacing: 0.2em;
+    padding: 0 5vw;
+  }
+}
+
+.render-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 6;
+  pointer-events: none;
+  color: var(--paper, #fff8e8);
+  font-family: 'Outfit', 'DM Sans', sans-serif;
+}
+.render-black {
+  position: absolute;
+  inset: 0;
+  background: #07090a;
+  opacity: 0;
+}
+.render-endcard {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 1.6vmin;
+  padding: 0 8vw;
+  text-align: center;
+  opacity: 0;
+}
+.render-endcard-series {
+  font-weight: 300;
+  font-size: 8vmin;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+}
+.render-endcard-native {
+  font-size: 2.6vmin;
+  letter-spacing: 0.4em;
+  color: var(--accent, #f0d49b);
+}
+.render-endcard-episode {
+  margin-top: 3vmin;
+  font-size: 3.2vmin;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+.render-endcard-next {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 2.6vmin;
+  font-style: italic;
+  color: var(--muted, #c4cdc2);
+}
+.render-endcard-credit {
+  margin-top: 6vmin;
+  font-size: 2vmin;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--muted, #c4cdc2);
+}
+.render-endcard-next:empty,
+.render-endcard-native:empty {
+  display: none;
+}
+
+.render-poster-title {
+  position: absolute;
+  left: 7vmin;
+  right: 7vmin;
+  bottom: 9vmin;
+  display: none;
+  text-shadow: 0 2px 18px #000a;
+}
+html.render-poster .render-poster-title {
+  display: grid;
+  gap: 1.4vmin;
+}
+html.render-poster .film-captions {
+  visibility: hidden;
+}
+.render-poster-title span {
+  font-size: 3vmin;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--accent, #f0d49b);
+}
+.render-poster-title strong {
+  font-weight: 300;
+  font-size: 9vmin;
+  letter-spacing: 0.08em;
+  line-height: 1.05;
+}
+@media (orientation: portrait) {
+  .render-poster-title {
+    bottom: 12vh;
+  }
+}

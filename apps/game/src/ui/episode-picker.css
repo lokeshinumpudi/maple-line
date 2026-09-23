@@ -60,3 +60,28 @@
     grid-template-columns: 1fr;
   }
 }
+.places-episodes-voice {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  margin: 0 0 12px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.places-episodes-voice label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.places-episodes-voice select {
+  font: inherit;
+  color: inherit;
+  background: #ffffff0a;
+  border: 1px solid #e7dec329;
+  border-radius: 8px;
+  padding: 4px 8px;
+}
+.places-episodes-voice-note {
+  color: var(--accent);
+}

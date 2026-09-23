@@ -78,7 +78,10 @@ export function episodeScreenplay(episode) {
       if (beat.line) out.push(beat.line, '');
       for (const line of beat.dialogue) {
         const name = (line.speaker ?? episode.cast[line.cast]?.name ?? line.cast).toUpperCase();
-        out.push(`**${name}**${line.phone ? ' (on the phone)' : ''}: ${line.text}`, '');
+        const notes = [line.phone ? 'on the phone' : null, line.emotion ?? null].filter(Boolean);
+        out.push(`**${name}**${notes.length ? ` (${notes.join(', ')})` : ''}: ${line.text}`, '');
+        for (const [code, text] of Object.entries(line.translations ?? {}))
+          out.push(`> _${code}:_ ${text}`, '');
       }
       if (beat.waitFor)
         out.push(

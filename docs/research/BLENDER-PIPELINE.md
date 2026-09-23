@@ -1,6 +1,6 @@
 # Blender pipeline for characters and world modules
 
-Research note, September 2026. This is a proposal. Nothing here is implemented yet. It answers one question: how agents should build characters, rigs, animation clips and world modules in Blender for Maple Line, and how those files get into the Three.js game.
+Research note, September 2026. It started as a proposal; the section below lists what has since been built. It answers one question: how agents should build characters, rigs, animation clips and world modules in Blender for Maple Line, and how those files get into the Three.js game.
 
 Terrain, trees, track and placement stay procedural in code. Blender makes hand-shaped things (people, station shelters, houses, shrine gates, crossing gear, carriage interiors) and exports them as GLB. The game code still decides where they go.
 
@@ -18,12 +18,15 @@ Claims marked **(unverified)** come from search summaries, memory or project gue
 
 ## What exists today
 
-- `apps/game` depends on `three` 0.180.0. No module imports `GLTFLoader`, and there are no `.glb` files under `apps/game`.
+- `apps/game` depends on `three` 0.180.0. `rendering/model-loader.js` loads GLBs with `GLTFLoader` and the meshopt decoder, caches each file by path, reports a failed file once to the HUD and returns `null`, so every caller keeps its procedural fallback.
+- Five GLBs are built by scripts under `asset-src/` (see its README for sizes and budgets): three Momiji cast members (`models/characters/`), the Momiji station shelter (`models/modules/`) and the five-car train (`models/vehicles/momiji-emu.glb`). `apps/game/tests/blender-assets.test.js` and `train-model.test.js` read the files and their build reports.
+- The train is the only Blender asset seen from the first screen. Its build script (`asset-src/vehicles/momiji-emu/build.py`) writes five parts: a cab body, a middle body, one door leaf, one wheelset and a single-arm pantograph. `train/train.js` builds the procedural train first, then `attachModel` hides the procedural exterior, clones a body into each car (the rear car turns the cab body through 180°), draws 16 door leaves and 4 wheelsets per car as instances, and raises the pantograph on the first two cars. Cabin, seats, passengers, lamps, wipers and door lamps stay procedural. `?train=procedural` skips the model for comparisons.
+- The train uses eight materials instead of one: paint with a light clear coat, roof, dark metal, bright metal, rubber, glass, interior lining and the destination sign. Colour and ray-cast ambient occlusion are baked into the `Col` attribute. The game adds its weather wetting to paint, roof and metal, and swaps the sign for the procedural sign so it still lights at dusk.
 - Station residents (`world/regional-residents.js`) are drawn as two `InstancedMesh` batches per station: 256 boxes and 64 low spheres, one material. Poses are computed on the CPU each frame, including arm cues for `wave` and `check-phone`. The walking speed for errands is 1.15 m/s.
 - Story characters (`docs/CHARACTERS.md`) are procedural figures sharing three instanced batches and one material. They have a 3 mm breathing motion and fixed feet.
 - NPC minds (`simulation/npc-minds.js`) export `INTENTS`: `continue, linger, chat, hurry, shelter, watch-train, wave, sit, check-phone, stretch`. None of these is `idle`, `walk` or `board`. See the clip mapping below.
-- Regional buildings (`world/regional-architecture.js`) emit plain instance descriptions into chunk batches. Kinds are `tile-home`, `farmhouse`, `shopfront`, `storehouse`, `snow-lodge` and `harbour-shed`. The authoring layer (`agent/world-authoring.js`) has prefabs including `torii`, `bench` and `lantern`.
-- The skill `.agents/skills/maple-blender-assets/SKILL.md` already sets conventions: metres, +Y-up export, origin at the ground contact point, budgets (hero about 8,000 triangles, crowd about 1,500, props about 2,000, textures up to 1024 px or 512 px for crowd), Principled BSDF only, clip names after intents, and exports under `apps/game/public/`. This document builds on those rules and does not replace them.
+- Regional buildings (`world/regional-architecture.js`) emit plain instance descriptions into chunk batches. Kinds are `tile-home`, `farmhouse`, `shopfront`, `storehouse`, `snow-lodge` and `harbour-shed`. The authoring layer (`agent/world-authoring.js`) has prefabs including `torii`, `bench` and `lantern`. None of these has a Blender module yet.
+- The skill `.agents/skills/maple-blender-assets/SKILL.md` already sets conventions: metres, +Y-up export, origin at the ground contact point, budgets (hero about 8,000 triangles, crowd about 1,500, props about 2,000, textures up to 1024 px or 512 px for crowd), Principled BSDF only, clip names after intents, and exports under `apps/game/public/`. This document builds on those rules and does not repeat them.
 - `measure_game_performance` (in `agent/build-tools.js`) samples 1 to 10 seconds. It reports observed FPS, median and p95 frame and CPU times, frames over 20 ms, all-pass draw calls and triangles. `get_runtime_profile` reads the device limits first.
 
 ## Versions checked
@@ -106,7 +109,7 @@ The game needs locomotion clips chosen by speed, plus activity clips chosen by i
 | `chat`        | yes  | intent                            | Upper body only if layered over `idle`.                                                                                      |
 | `wave`        | no   | intent                            | Right arm. Can be additive over idle or walk.                                                                                |
 | `sit`         | yes  | intent                            | Needs a bench socket height. Current benches are about 2.5 m wide.                                                           |
-| `check-phone` | yes  | intent                            | Phone prop parented to a hand bone or a named socket.                                                                        |
+| `check-phone` | yes  | intent                            | Phone prop in the hand socket (built; see docs/CHARACTER-MOTION.md).                                                         |
 | `stretch`     | no   | intent                            |                                                                                                                              |
 | `watch-train` | yes  | intent                            | Head turn toward the train is better done in code (a head bone offset) than baked into the clip.                             |
 | `shelter`     | yes  | intent                            | Hunched, hand over head or umbrella.                                                                                         |

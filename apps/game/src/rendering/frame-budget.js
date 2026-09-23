@@ -1,9 +1,14 @@
-/** Frame timing and a bounded physical-pixel budget for high-DPI displays. */
+/**
+ * Frame timing and a bounded physical-pixel budget for high-DPI displays.
+ * adaptive: false keeps the pixel ratio fixed (video renders must not drop
+ * resolution because a captured frame took long to draw).
+ */
 export function createFrameBudget({
   renderer,
   devicePixelRatio = 1,
   pixelBudget = 2000000,
   maxPixelRatio = 1.5,
+  adaptive = true,
 }) {
   let width = 1,
     height = 1,
@@ -50,7 +55,7 @@ export function createFrameBudget({
       }
       latestDraw = { calls, triangles };
       elapsed += intervalMs / 1000;
-      if (frames.length < 90 || elapsed - lastAdjustment < 2) return false;
+      if (!adaptive || frames.length < 90 || elapsed - lastAdjustment < 2) return false;
       const recent = percentile(frames.slice(-90), 0.75);
       if (recent > 24 && quality > 0.7) {
         quality = Math.max(0.7, quality - 0.1);
@@ -136,6 +141,7 @@ export function createFrameBudget({
         physicalPixels: Math.round(width * height * ratio() ** 2),
         pixelRatio: ratio(),
         adaptiveScale: quality,
+        adaptive,
         pixelBudget,
         draw: latestDraw,
         shadowHz: median ? Math.round(1000 / median) : null,

@@ -21,7 +21,7 @@ const ENUMS = {
     'od-IN',
   ],
 };
-const BOOLEANS = ['dusk', 'hudVisible', 'manualControls', 'powerFlow'];
+const BOOLEANS = ['dusk', 'hudVisible', 'manualControls', 'powerFlow', 'episodeVoice'];
 const KEYS = [...Object.keys(ENUMS), ...BOOLEANS, 'soundVolume'];
 const isRecord = (value) => value !== null && typeof value === 'object' && !Array.isArray(value);
 const valid = (key, value) =>

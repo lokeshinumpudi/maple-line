@@ -14,7 +14,12 @@ import {
  * phase the first time so two people never breathe in sync, and timeScale changes are
  * smoothed instead of jumping.
  */
-export function createClipBlender(THREE, mixer, actions, { random = Math.random } = {}) {
+export function createClipBlender(
+  THREE,
+  mixer,
+  actions,
+  { random = Math.random, drive = true } = {},
+) {
   let current = null;
   let currentName = null;
   let targetScale = 1;
@@ -83,7 +88,8 @@ export function createClipBlender(THREE, mixer, actions, { random = Math.random 
           if (fade.to === 0) action.stop();
         }
       }
-      mixer.update(dt);
+      // A VRM runs its mixer inside its own update, so the blender only sets weights.
+      if (drive) mixer.update(dt);
     },
     get fading() {
       return fades.size;
@@ -98,11 +104,23 @@ const approach = (value, target, rate, dt) => value + (target - value) * (1 - Ma
  * life, look-at, hand holds (grip curl, cradles and second-hand IK) and foot planting.
  * `heightScale` is the figure's height over 1.7 m, for offsets authored in metres.
  * Call resetPose() before the mixer each frame so the layers never accumulate.
+ *
+ * `bones` are the canonical bones the layers write (a VRM's normalized bones); `raw` are the
+ * rendered joints the hand sockets hang from (a VRM's skinned bones, or the same bones on a
+ * plain glTF rig). Positions agree between the two; orientations differ by a fixed offset.
  */
 export function createCharacterRig(
   THREE,
   root,
-  { bones, sockets = {}, props = [], face = null, random = Math.random, heightScale = 1 },
+  {
+    bones,
+    raw = bones,
+    sockets = {},
+    props = [],
+    face = null,
+    random = Math.random,
+    heightScale = 1,
+  },
 ) {
   const s = {
     a: new THREE.Vector3(),
@@ -116,23 +134,41 @@ export function createCharacterRig(
   };
   const v = () => new THREE.Vector3();
   const ONE = new THREE.Vector3(1, 1, 1);
+  const chest = bones.upperChest ?? bones.chest;
   const rest = new Map();
-  root.traverse((node) => {
-    if (node.isBone) rest.set(node, { q: node.quaternion.clone(), p: node.position.clone() });
-  });
+  for (const bone of new Set(Object.values(bones)))
+    rest.set(bone, { q: bone.quaternion.clone(), p: bone.position.clone() });
   // Bind-pose axes in each bone's own frame (the model faces +Z, up is +Y, left is +X).
   root.updateMatrixWorld(true);
   const rootBind = root.getWorldQuaternion(new THREE.Quaternion()).invert();
-  const bindWorld = (bone) => rootBind.clone().multiply(bone.getWorldQuaternion(new THREE.Quaternion()));
+  const bindWorld = (bone) =>
+    rootBind.clone().multiply(bone.getWorldQuaternion(new THREE.Quaternion()));
   const localAxis = (bone, x, y, z) =>
     bone ? new THREE.Vector3(x, y, z).applyQuaternion(bindWorld(bone).invert()) : null;
-  const chestForward = localAxis(bones.chest, 0, 0, 1);
-  const chestUp = localAxis(bones.chest, 0, 1, 0);
+  const chestForward = localAxis(chest, 0, 0, 1);
+  const chestUp = localAxis(chest, 0, 1, 0);
   const headForward = localAxis(bones.head, 0, 0, 1);
-  const bindSocket = {};
-  for (const side of ['L', 'R'])
-    if (bones[`hand${side}`] && sockets[side])
-      bindSocket[side] = bindWorld(bones[`hand${side}`]).multiply(sockets[side].quaternion);
+  // Driven hand -> rendered hand orientation, fixed at bind (identity on a plain rig).
+  const handOffset = {};
+  for (const side of ['L', 'R']) {
+    const driven = bones[`hand${side}`];
+    const shown = raw[`hand${side}`];
+    if (driven && shown) handOffset[side] = bindWorld(driven).invert().multiply(bindWorld(shown));
+  }
+  // A socket as it sits in a hanging hand (fingers down, palm to the body), relative to the
+  // body: cradles are authored in this frame so they mean the same thing on any rig.
+  const hangingSocket = {};
+  for (const [side, medial] of [
+    ['L', -1],
+    ['R', 1],
+  ]) {
+    const along = new THREE.Vector3(0, -1, 0);
+    const normal = new THREE.Vector3(medial, 0, 0);
+    const across = new THREE.Vector3().crossVectors(along, normal);
+    hangingSocket[side] = new THREE.Quaternion().setFromRotationMatrix(
+      new THREE.Matrix4().makeBasis(across, along, normal),
+    );
+  }
   const footRest = {};
   const legLength = {};
   for (const side of ['L', 'R']) {
@@ -187,7 +223,7 @@ export function createCharacterRig(
     const b = Math.sin((time / breathPeriod) * Math.PI * 2 + phase[0]);
     const w = Math.sin((time / shiftPeriod) * Math.PI * 2 + phase[1]);
     // Breathing: the chest lifts and the shoulders rise a little on each breath.
-    rotateAbout(bones.chest, axes.x, -0.014 * b * breath);
+    rotateAbout(chest, axes.x, -0.014 * b * breath);
     rotateAbout(bones.shoulderL, axes.z, 0.012 * b * breath);
     rotateAbout(bones.shoulderR, axes.z, -0.012 * b * breath);
     if (!(idle > 0.001)) return;
@@ -196,7 +232,7 @@ export function createCharacterRig(
     moveBoneWorld(bones.hips, axes.x.clone().multiplyScalar(w * 0.02 * heightScale * idle));
     rotateAbout(bones.hips, axes.z, 0.035 * w * idle);
     rotateAbout(bones.spine, axes.z, -0.025 * w * idle);
-    rotateAbout(bones.chest, axes.z, -0.014 * w * idle);
+    rotateAbout(chest, axes.z, -0.014 * w * idle);
     // Small head and shoulder drift on incommensurate periods, so it never repeats in sync.
     const yaw = 0.03 * Math.sin(time * 0.37 + phase[2]) + 0.012 * Math.sin(time * 0.91 + phase[3]);
     const nod = 0.02 * Math.sin(time * 0.29 + phase[4]);
@@ -208,7 +244,6 @@ export function createCharacterRig(
 
   function lookAt(dt, target, { maxYaw, maxPitch, strength }) {
     const head = bones.head;
-    const chest = bones.chest;
     if (!head || !chest) return;
     const want = target ? strength : 0;
     look.weight = approach(look.weight, want, want > look.weight ? 3.5 : 2.2, dt);
@@ -222,7 +257,10 @@ export function createCharacterRig(
       const eye = head.getWorldPosition(s.d);
       const to = s.e.subVectors(target, eye).normalize();
       const yaw = Math.max(-maxYaw, Math.min(maxYaw, Math.atan2(to.dot(left), to.dot(fwd))));
-      const pitch = Math.max(-maxPitch, Math.min(maxPitch, Math.asin(Math.max(-1, Math.min(1, to.dot(up))))));
+      const pitch = Math.max(
+        -maxPitch,
+        Math.min(maxPitch, Math.asin(Math.max(-1, Math.min(1, to.dot(up))))),
+      );
       // Smooth the angles, so a new target swings the head across instead of snapping.
       const fresh = look.weight < 0.06;
       look.yaw = fresh ? yaw : approach(look.yaw, yaw, 4, dt);
@@ -249,15 +287,27 @@ export function createCharacterRig(
     }
   }
 
+  /**
+   * A socket's world matrix from the driven hand as it is now (the rendered joints of a VRM
+   * only catch up in vrm.update(), after these layers).
+   */
+  function socketWorld(side) {
+    const hand = bones[`hand${side}`];
+    const socket = sockets[side];
+    const q = hand.getWorldQuaternion(new THREE.Quaternion()).multiply(handOffset[side]);
+    const shown = new THREE.Matrix4().compose(hand.getWorldPosition(v()), q, ONE);
+    return shown.multiply(tmpMatrix.compose(socket.position, socket.quaternion, socket.scale));
+  }
+
   /** Move a hand so its socket matches a world matrix: arm IK, then the wrist turns. */
-  function reachSocket(side, socketWorld, weight) {
+  function reachSocket(side, target_, weight) {
     const hand = bones[`hand${side}`];
     const socket = sockets[side];
     const upper = bones[`upperArm${side}`];
     const lower = bones[`lowerArm${side}`];
-    if (!hand || !socket || !upper || !lower || !(weight > 0.002)) return;
+    if (!hand || !socket || !upper || !lower || !handOffset[side] || !(weight > 0.002)) return;
     tmpMatrix.compose(socket.position, socket.quaternion, socket.scale).invert();
-    const handWorld = new THREE.Matrix4().multiplyMatrices(socketWorld, tmpMatrix);
+    const handWorld = new THREE.Matrix4().multiplyMatrices(target_, tmpMatrix);
     const target = new THREE.Vector3().setFromMatrixPosition(handWorld);
     // Elbows bend out to the side and back.
     const pole = lower
@@ -265,7 +315,8 @@ export function createCharacterRig(
       .addScaledVector(axes.x, side === 'L' ? 0.3 : -0.3)
       .addScaledVector(axes.z, -0.25);
     applyTwoBoneIK(THREE, upper, lower, hand, target, pole, weight, s);
-    tmpQ.setFromRotationMatrix(handWorld);
+    // The target is for the rendered hand; the driven bone differs by the fixed offset.
+    tmpQ.setFromRotationMatrix(handWorld).multiply(s.q.copy(handOffset[side]).invert());
     setBoneWorldQuaternion(hand, tmpQ, weight, s);
   }
 
@@ -282,8 +333,10 @@ export function createCharacterRig(
   }
 
   function secondHand(prop, grip, weight) {
-    prop.node.updateMatrixWorld(true);
-    reachSocket(prop.other, new THREE.Matrix4().multiplyMatrices(prop.node.matrixWorld, gripMatrix(grip)), weight);
+    const propWorld = socketWorld(prop.side).multiply(
+      new THREE.Matrix4().compose(prop.node.position, prop.node.quaternion, prop.node.scale),
+    );
+    reachSocket(prop.other, propWorld.multiply(gripMatrix(grip)), weight);
     holds[prop.other] = Math.max(holds[prop.other], weight);
   }
 
@@ -291,7 +344,7 @@ export function createCharacterRig(
     for (const prop of props) {
       if (!prop.node.visible) continue;
       holds[prop.side] = 1;
-      if (prop.cradle && bindSocket[prop.side]) {
+      if (prop.cradle && sockets[prop.side]) {
         // Cradle: brought up to the chest and steadied with the other hand while still.
         const w = approach(cradles.get(prop) ?? 0, cradle ? 1 : 0, cradle ? 2.4 : 4, dt);
         cradles.set(prop, w);
@@ -301,7 +354,7 @@ export function createCharacterRig(
             .multiplyScalar(heightScale)
             .applyMatrix4(root.matrixWorld);
           const turn = new THREE.Quaternion().setFromAxisAngle(axes.y, prop.cradle.turn ?? 0);
-          const orient = turn.multiply(rootQ).multiply(bindSocket[prop.side]);
+          const orient = turn.multiply(rootQ).multiply(hangingSocket[prop.side]);
           reachSocket(prop.side, new THREE.Matrix4().compose(place, orient, ONE), w);
           if (prop.cradle.grip2) secondHand(prop, prop.cradle.grip2, w);
         }
@@ -321,16 +374,14 @@ export function createCharacterRig(
       const index = face?.morphTargetDictionary?.[`grip-${side.toLowerCase()}`];
       if (index !== undefined) face.morphTargetInfluences[index] = grips[side];
       // Rigs with finger bones: roll each finger chain about the palm's across axis.
-      const socket = sockets[side];
-      if (!socket) continue;
-      const across = new THREE.Vector3(1, 0, 0).applyQuaternion(socket.getWorldQuaternion(s.q3));
+      if (!sockets[side] || !handOffset[side]) continue;
+      const across = new THREE.Vector3(1, 0, 0).applyQuaternion(
+        new THREE.Quaternion().setFromRotationMatrix(socketWorld(side)),
+      );
       for (const finger of FINGERS) {
-        let bone = bones[`${finger}${side}`];
         const angle = (finger === 'thumb' ? 0.3 : 0.55) * grips[side];
-        for (let depth = 0; bone && depth < 3; depth++) {
-          rotateAbout(bone, across, angle);
-          bone = bone.children.find((child) => child.isBone);
-        }
+        for (let joint = 1; joint <= 3; joint++)
+          rotateAbout(bones[`${finger}${side}${joint}`], across, angle);
       }
     }
   }
@@ -338,9 +389,10 @@ export function createCharacterRig(
   let stance = null;
   let pelvisDrop = 0;
   /**
-   * The lower foot carries the weight: it is pulled to the floor and pinned where it landed
-   * until the other foot takes over, so it cannot slide or hover. Standing still, both feet
-   * are pinned. The hips drop when a pinned foot would otherwise be out of the leg's reach.
+   * Walking, the stance foot (the one the animation moves least over the ground) is pinned
+   * where it landed and stays pinned until the other foot is clearly the slower one, so one
+   * foot is always planted: no skating through toe-off and heel-strike. Standing, both feet
+   * are pinned. The hips drop when a pinned foot would be out of the leg's reach.
    */
   function plantFeet(dt, enabled, groundY, moving) {
     const legs = [];
@@ -349,33 +401,44 @@ export function createCharacterRig(
       const upper = bones[`upperLeg${side}`];
       const lower = bones[`lowerLeg${side}`];
       if (!foot || !upper || !lower || footRest[side] === undefined) return;
-      legs.push({ side, foot, upper, lower, position: foot.getWorldPosition(v()) });
+      const position = foot.getWorldPosition(v());
+      const f = feet[side];
+      const speed = f.previous
+        ? Math.hypot(position.x - f.previous.x, position.z - f.previous.z) / Math.max(dt, 1e-3)
+        : 0;
+      f.previous = position.clone();
+      legs.push({ side, foot, upper, lower, position, speed, f });
     }
-    const [left, right] = legs;
     const floorOf = (leg) => groundY + footRest[leg.side];
-    const height = (leg) => leg.position.y - floorOf(leg);
-    // Hysteresis: the other foot takes the weight once it is clearly the lower one.
-    const margin = 0.012 * heightScale;
-    if (!stance || height(stance === 'L' ? right : left) < height(stance === 'L' ? left : right) - margin)
-      stance = height(left) <= height(right) ? 'L' : 'R';
+    const lift = (leg) => leg.position.y - floorOf(leg);
+    const bySide = { L: legs[0], R: legs[1] };
+    if (moving) {
+      const slower = legs[0].speed <= legs[1].speed ? legs[0] : legs[1];
+      if (!stance) stance = slower.side;
+      const other = bySide[stance === 'L' ? 'R' : 'L'];
+      // Hand over only once the other foot has clearly landed.
+      if (other.speed < bySide[stance].speed * 0.6 && lift(other) < 0.08 * heightScale)
+        stance = other.side;
+    } else stance = null;
     for (const leg of legs) {
-      const f = feet[leg.side];
+      const { f } = leg;
       const floor = floorOf(leg);
-      const lift = height(leg);
-      // Standing, both feet bear weight; walking, the stance foot does, until it lifts.
-      const bearing =
-        enabled && (moving ? leg.side === stance : lift < 0.06 * heightScale);
+      const bearing = enabled && (moving ? leg.side === stance : lift(leg) < 0.06 * heightScale);
       if (bearing && !f.lock) f.lock = leg.position.clone();
-      if (f.lock && Math.hypot(f.lock.x - leg.position.x, f.lock.z - leg.position.z) > 0.25 * heightScale) {
-        // Left a stride behind (a stop, a snap): plant again rather than stretch the leg.
+      if (
+        f.lock &&
+        Math.hypot(f.lock.x - leg.position.x, f.lock.z - leg.position.z) > 0.35 * heightScale
+      ) {
+        // Left far behind (a stop, a snap): plant again rather than stretch the leg.
         f.lock.copy(leg.position);
         f.weight = Math.min(f.weight, 0.3);
       }
-      f.weight = approach(f.weight, bearing ? 1 : 0, bearing ? 16 : 8, dt);
+      f.weight = approach(f.weight, bearing ? 1 : 0, bearing ? 20 : 9, dt);
       if (!bearing && f.weight < 0.02) f.lock = null;
       leg.target = leg.position.clone();
       if (f.lock) {
-        f.lock.y = floor;
+        // Keep the animation's heel lift; pin only where the foot is on the ground.
+        f.lock.y = Math.max(floor, leg.position.y);
         leg.target.lerp(f.lock, f.weight);
       }
       if (enabled) leg.target.y = Math.max(leg.target.y, floor);
@@ -383,15 +446,17 @@ export function createCharacterRig(
     // Pelvis: lower the hips just enough for every planted foot to reach its target.
     let drop = 0;
     for (const leg of legs) {
-      if (!feet[leg.side].lock) continue;
+      if (!leg.f.lock) continue;
       const hip = leg.upper.getWorldPosition(v());
       const reach = legLength[leg.side] * 0.995;
       const flat = Math.hypot(hip.x - leg.target.x, hip.z - leg.target.z);
       if (flat >= reach) continue;
       const need = hip.y - leg.target.y - Math.sqrt(reach * reach - flat * flat);
-      drop = Math.max(drop, need * feet[leg.side].weight);
+      drop = Math.max(drop, need * leg.f.weight);
     }
-    pelvisDrop = approach(pelvisDrop, enabled ? Math.min(drop, 0.12 * heightScale) : 0, 18, dt);
+    // Drop at once when a foot needs it (a lag would let the foot slide); rise back gently.
+    const need = enabled ? Math.min(drop, 0.12 * heightScale) : 0;
+    pelvisDrop = need > pelvisDrop ? need : approach(pelvisDrop, need, 8, dt);
     if (pelvisDrop > 1e-4) moveBoneWorld(bones.hips, s.a.set(0, -pelvisDrop, 0));
     for (const leg of legs) {
       const now = leg.foot.getWorldPosition(v());
