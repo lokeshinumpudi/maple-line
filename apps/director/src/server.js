@@ -14,6 +14,20 @@ const ALLOWED_ORIGINS = new Set([
   'http://localhost:4174',
 ]);
 
+/**
+ * Extra loopback game origins for a second local checkout, from DIRECTOR_DEV_ORIGINS
+ * (comma-separated, for example `http://127.0.0.1:4573`). Anything that is not an
+ * http loopback origin with a port is ignored, so the variable cannot open the server
+ * to another site.
+ * @param {string|undefined} value
+ */
+export function devOrigins(value) {
+  return String(value ?? '')
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter((origin) => /^http:\/\/(127\.0\.0\.1|localhost):\d{4,5}$/.test(origin));
+}
+
 /** @param {import('node:http').ServerResponse} response @param {number} status @param {unknown} body */
 function json(response, status, body) {
   response.writeHead(status, {
@@ -93,7 +107,9 @@ export function createDirectorHandler(options = {}) {
   const director = options.director ?? createDirector({ evaluate: gate.background });
   const worldPlanner = options.worldPlanner ?? createWorldPlanner({ evaluate: gate.foreground });
   const minds = options.minds ?? createMinds({ evaluate: gate.idle });
-  const allowedOrigins = new Set(options.allowedOrigins ?? ALLOWED_ORIGINS);
+  const allowedOrigins = new Set(
+    options.allowedOrigins ?? [...ALLOWED_ORIGINS, ...devOrigins(process.env.DIRECTOR_DEV_ORIGINS)],
+  );
   /** @param {import('node:http').IncomingMessage} request @param {import('node:http').ServerResponse} response */
   return async (request, response) => {
     try {
@@ -116,6 +132,7 @@ export function createDirectorHandler(options = {}) {
           '/api/director/minds',
           '/api/director/narration',
           '/api/director/narration/status',
+          '/api/director/narration/translate',
         ].includes(pathname)
       )
         return json(response, 404, { error: 'Not found.' });
@@ -141,6 +158,7 @@ export function createDirectorHandler(options = {}) {
           '/api/director/world',
           '/api/director/minds',
           '/api/director/narration',
+          '/api/director/narration/translate',
         ].includes(pathname) ||
         request.method !== 'POST'
       )
@@ -168,6 +186,18 @@ export function createDirectorHandler(options = {}) {
             'x-content-type-options': 'nosniff',
           });
           return response.end(result.audio);
+        } finally {
+          response.removeListener('close', cancel);
+        }
+      }
+      if (pathname === '/api/director/narration/translate') {
+        const controller = new AbortController();
+        const cancel = () => controller.abort();
+        response.once('close', cancel);
+        try {
+          const result = await narration.translate(body, controller.signal);
+          if (response.destroyed) return;
+          return json(response, 200, result);
         } finally {
           response.removeListener('close', cancel);
         }
