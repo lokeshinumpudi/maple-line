@@ -70,16 +70,13 @@ export function createRiverWater({
     distortionScale: 1.5,
     fog: true,
   });
+  // The mirror pass runs from capture(), before the main render, not from inside it. A
+  // render nested in onBeforeRender gets its own light state in three.js, so every
+  // material in the scene re-selected its shader program twice per mirror refresh.
   const reflectScene = water.onBeforeRender;
-  let refreshReflection = true;
+  water.onBeforeRender = () => {};
   let mirrorEnabled = quality.reflectionSize > 0;
   let refractionEnabled = quality.refraction !== false;
-  water.onBeforeRender = function (...args) {
-    if (refreshReflection && mirrorEnabled) {
-      reflectScene.apply(this, args);
-      refreshReflection = false;
-    }
-  };
   water.rotation.x = -Math.PI / 2;
   water.position.y = -0.4;
   scene.add(water);
@@ -231,7 +228,6 @@ export function createRiverWater({
       );
       material.uniforms.mirrorMix.value = mirrorEnabled ? 1 : 0;
       material.uniforms.refractionMix.value = refractionEnabled ? 1 : 0;
-      refreshReflection = true;
       resize();
     },
     getState: () => ({
@@ -239,15 +235,23 @@ export function createRiverWater({
       refraction: refractionEnabled,
     }),
     capture({ refreshReflection: refresh = true } = {}) {
-      refreshReflection = refresh;
-      if (!refractionEnabled) return;
       const previous = renderer.getRenderTarget();
-      const visible = water.visible;
-      water.visible = false;
-      renderer.setRenderTarget(refraction);
-      renderer.render(scene, camera);
+      if (refractionEnabled) {
+        const visible = water.visible;
+        water.visible = false;
+        renderer.setRenderTarget(refraction);
+        renderer.render(scene, camera);
+        water.visible = visible;
+      }
+      if (refresh && mirrorEnabled) {
+        // The mirror camera reads both world matrices; the refraction render updated them.
+        if (!refractionEnabled) {
+          scene.updateMatrixWorld();
+          camera.updateMatrixWorld();
+        }
+        reflectScene.call(water, renderer, scene, camera);
+      }
       renderer.setRenderTarget(previous);
-      water.visible = visible;
     },
     dispose() {
       scene.remove(water);

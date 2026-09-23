@@ -116,6 +116,28 @@ test('a missing or incomplete model file keeps the procedural train', async () =
   partial.dispose();
 });
 
+test('model materials draw one side and never mix plain and instanced meshes', async () => {
+  const model = setup();
+  await model.attachModel(fakeLoader(await loadModel()));
+  const users = new Map();
+  for (const car of model.cars)
+    car.traverse((object) => {
+      if (!object.isMesh || !object.material.name?.startsWith('train-')) return;
+      const kinds = users.get(object.material) ?? new Set();
+      kinds.add(object.isInstancedMesh ? 'instanced' : 'plain');
+      users.set(object.material, kinds);
+    });
+  assert.ok(users.size > 0);
+  for (const [material, kinds] of users) {
+    // One material on both kinds makes three.js pick a new program on every draw.
+    assert.equal(kinds.size, 1, `${material.name} is shared by plain and instanced meshes`);
+    // Blender exports double-sided materials; hidden back faces of closed parts z-fight.
+    if (material.name === 'train-glass') assert.equal(material.forceSinglePass, true);
+    else assert.equal(material.side, THREE.FrontSide, material.name);
+  }
+  model.dispose();
+});
+
 test('the train build report stays inside its budget', () => {
   assert.ok(report.trainTriangles <= 160000, `${report.trainTriangles} triangles`);
   assert.ok(report.glbBytes <= 800 * 1024, `${report.glbBytes} bytes`);
