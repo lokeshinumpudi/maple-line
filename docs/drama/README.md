@@ -2,23 +2,33 @@
 
 Maple Line can perform short dramas inside the running game. An episode is data: a cast, scenes and beats. The game stages it with the same systems a player uses — the director camera, the NPC minds, auto drive, doors, weather and time of day — so a writer or an agent can work on story without touching code.
 
-The first series is [_The 17:42_](THE-1742.md): one evening train, three episodes, the two minutes between a train that arrives at 17:42 and a bus that leaves at 17:40. It stays on the passenger side of the timetable problem in Haru's campaign and does not use or change the campaign's characters, dialogue or saves.
+The first series is [_The 17:42_](THE-1742.md). Tomorrow Grandma Fusae moves to a care home in the city; tonight she wants to hear Grandpa's old radio one last time, at home up the valley. Riko has it, freshly repaired. The last bus up the hill leaves Aonuma at 17:40, and Riko's train gets in at 17:42. Mr. Sato, on the same train, asks his daughter Aoi, who drives that bus, to wait. The series stays on the passenger side of the timetable problem in Haru's campaign and does not use or change the campaign's characters, dialogue or saves.
+
+A narrator (the shared `narrator` voice part, `shubh`, as in Haru's notebook) carries the setup and the turns in four to six short lines an episode. Narration is an ordinary dialogue line with cast `narrator`, so the runner, the render timeline and the voice manifest all list it with the characters; it is shown as a caption without a speaker label and never plays over a character's line.
+
+The story is written to read with the sound off: every key time is on screen as words (the timetable insert, captions, the clock), and the want is set up in two plain on-screen lines before anyone speaks.
 
 To watch, open **Places** and choose an episode under **Watch a short drama**. Pausing the ride pauses the episode.
 
 ## How an episode is built
 
-| Part  | What it holds                                                                                                                                                                                                                                         |
-| ----- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Cast  | Named parts with a short note and an optional `voice` (a part in the shared voice cast). Parts are not tied to a figure until a scene casts them.                                                                                                     |
-| Scene | A heading, optional scene settings (`location` with an `offset` in metres, `timeOfDay`, `weather`, `speedKmh`), an optional `stopAt` station where auto drive stops the train at the platform, and `actors` mapping parts to characters in the world. |
-| Beat  | One shot, optional place card (`caption`, `subtitle`), an on-screen `line`, `dialogue`, a minimum `hold`, an optional `waitFor` (`stopped` or `doors-closed`), and timed `cues`.                                                                      |
-| Line  | A cast part (or a free `speaker` label) and text up to 160 characters; `phone: true` sets it in italics; optional `emotion` (a delivery such as `dry`) and `translations` (`{ "te-IN": "…" }`).                                                       |
-| Cue   | Seconds `after` the beat starts and one action: an acting note (`direct` with mood, intent and hold), `doors`, a world `event`, `weather`, or `release` to let the train leave.                                                                       |
+| Part  | What it holds                                                                                                                                                                                                                                                                                                                                                                                                  |
+| ----- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Cast  | Named parts with a short note and an optional `voice` (a part in the shared voice cast). Parts are not tied to a figure until a scene casts them.                                                                                                                                                                                                                                                              |
+| Scene | A heading, optional scene settings (`location` with an `offset` in metres, `timeOfDay`, `weather`, `speedKmh`, `clock` as `HH:MM` for the station clocks), an optional `stopAt` station where auto drive stops the train at the platform or `holdAt` level crossing where it stops short of the road, `actors` mapping parts to characters in the world, and optional `marks` that stand parts on stage marks. |
+| Beat  | One shot, optional place card (`caption`, `subtitle`), an on-screen `line`, `dialogue`, a minimum `hold`, an optional `waitFor` (`stopped` or `doors-closed`), and timed `cues`.                                                                                                                                                                                                                               |
+| Line  | A cast part (or a free `speaker` label) and text up to 160 characters; `phone: true` sets it in italics; optional `emotion` (a delivery such as `dry`) and `translations` (`{ "te-IN": "…" }`).                                                                                                                                                                                                                |
+| Cue   | Seconds `after` the beat starts and one action: an acting note (`direct` with mood, intent and hold), `doors`, a world `event`, `weather`, `release` to let the train leave, `bus` (`{ state: 'wait' \| 'leave' \| 'arrive' }`) for the Aonuma village bus, or `move` (`{ cast, to: mark, pace: 'walk' \| 'run' }`).                                                                                           |
 
-Shot subjects can be a cast part (`{ "cast": "riko" }`) or a level crossing (`{ "crossing": "sakuragawa-farm-road" }`) as well as the director's own subjects. Dialogue is timed to reading speed (about 180 words a minute, 1.8–7 seconds a line), so a beat lasts as long as its lines need. The runner waits for the train only where a beat says so, and gives up after 45 seconds with a note in the log.
+Shot subjects can be a cast part (`{ "cast": "riko" }`), a level crossing (`{ "crossing": "sakuragawa-farm-road" }`) or a prop (`{ "prop": "momiji-timetable" }`, usually with an `insert` shot) as well as the director's own subjects. Props are listed in `apps/game/src/drama/drama-props.js`: the Momiji and Aonuma timetables and clocks, the bus from the platform end, its front door, and a wide of the stop from behind. Dialogue is timed to reading speed (about 180 words a minute, 1.8–7 seconds a line), so a beat lasts as long as its lines need. The runner waits for the train only where a beat says so, and gives up after 45 seconds with a note in the log.
 
-Casting uses characters the world already simulates. Momiji has commuters, residents and a newspaper reader; each regional station has eight residents (for example `aonuma-resident-5`, the kiosk vendor). Regional residents exist only while their station area is loaded, so cast them in scenes set at that station. If a cast figure is not on screen when its shot starts, the runner uses a platform or orbit shot instead and writes that in the log.
+### Stage marks and fixed roles
+
+Casting uses characters the world already simulates, and a scene can take one of them off the simulation with `marks` (`apps/game/src/drama/drama-stage.js`). A mark is a door of the front car (placed there means aboard and hidden until a `move` steps them out; arriving there boards), a seat in the front car (seated, moving with the train), a station-local spot, or a spot at the bus (the doorway, or aboard). The person's model follows the staged figure the way it follows a simulated one, so Riko is the Momiji student `commuter-2` in every episode: she boards the front car at Momiji, sits in it in Episode 2 and steps off it at Aonuma in Episode 3.
+
+`apps/game/src/drama/drama-roles.js` lists fixed named roles with the look each should wear: `riko`, `fusae` (grey bun, round glasses, patterned cardigan, blue dress) and `aoi` (young bus driver, teal and cream uniform and cap, ponytail). Fusae and Aoi have no simulated person; their VRMs are built from profiles of the same names in `asset-src/characters/vrm-cast` and are drawn only while an episode stands them on a mark. A crowd kit that dresses named roles can map these ids.
+
+Unstaged parts are played by the simulated people. Momiji has commuters, residents and a newspaper reader; each regional station has eight residents (for example `aonuma-resident-5`, the kiosk vendor). Regional residents exist only while their station area is loaded, so cast them in scenes set at that station. If a cast figure is not on screen when its shot starts, the runner uses a platform or orbit shot instead and writes that in the log.
 
 ## Working with the tools
 
@@ -102,18 +112,17 @@ Lines are written in English. For another language the director translates each 
 { cast: 'riko', text: 'Front car.', emotion: 'dry', translations: { 'te-IN': 'ముందు బోగీ.' } }
 ```
 
-Use `lineTranslations` on a beat for its on-screen `line`. Machine translation gets names right (Riko, Aonuma and Kaneda came out correctly in Telugu), but it misreads idioms and clock times: "Seventeen forty-two in" became inches, and "front car" became a motor car. Check the translated script before sharing a video, and add a `translations` entry for any line that reads wrong.
+Use `lineTranslations` on a beat for its on-screen `line`. Machine translation gets names right, but it misreads idioms and clock times: "Seventeen forty-two in" became inches, and "front car" became a motor car. Every line of _The 17:42_ now has a hand-written Telugu version (`translations`, `lineTranslations`, and `endCard.lineTranslations` for the closing line); the lines a native speaker should still check are listed at the end of [the script](THE-1742.md).
 
 A cast id that matches a part in the voice cast (`packages/voice-score`) is voiced by that part; `voice` on the cast entry picks another part. Lines with only a `speaker` label stay subtitles. The 17:42 cast:
 
-| Part       | Sarvam speaker (bulbul:v3) | Base pace | Casting intent                           |
-| ---------- | -------------------------- | --------- | ---------------------------------------- |
-| Riko       | `ishita`                   | 1.05      | Female, 17, a little quick               |
-| Mr. Sato   | `varun`                    | 0.98      | Mid-life male, even                      |
-| Mr. Ishida | `anand`                    | 0.88      | Male, slowed for an older man            |
-| Fusae      | `rupali`                   | 0.93      | Female, slower and dry, heard on a phone |
-| Mrs. Hara  | `neha`                     | 1.00      | Female, brisk shopkeeper                 |
-| Mr. Tanabe | `mohit`                    | 0.95      | Male, tired                              |
+| Part       | Sarvam speaker (bulbul:v3) | Base pace | Casting intent                |
+| ---------- | -------------------------- | --------- | ----------------------------- |
+| Riko       | `ishita`                   | 1.05      | Female, 17, a little quick    |
+| Mr. Sato   | `varun`                    | 0.98      | Mid-life male, even           |
+| Mr. Ishida | `anand`                    | 0.88      | Male, slowed for an older man |
+| Fusae      | `rupali`                   | 0.93      | Female, 80, slower and warm   |
+| Aoi        | `shreya`                   | 1.04      | Female, 24, bright bus driver |
 
 Sarvam does not publish ages or genders for its speakers; these were chosen by name and not auditioned against each other. Every part uses a different speaker from the campaign cast. `emotion` changes pace and the pause after a line (`anxious`, `dry` and `tired` were added for the drama); it does not change the voice.
 
@@ -178,10 +187,10 @@ Checked against Sarvam's documentation on 23 September 2026:
 
 ## Limits
 
-- Only Momiji's `commuter-1` (Mr. Sato), `commuter-2` (Riko in episode 1) and `reader-1` (Mr. Ishida) have character models with faces; their mouths move on their lines (VRM vowel shapes, or a jaw on the older Blender GLBs). Everyone else, including the Aonuma cast, is still a low-poly figure without a face. The [Blender asset skill](../../.agents/skills/maple-blender-assets/SKILL.md) covers adding more.
+- Mr. Sato (`commuter-1`), Riko (`commuter-2`), Mr. Ishida (`reader-1`) and the staged Fusae and Aoi have character models with faces; their mouths move on their lines. Everyone else is still a low-poly figure without a face. The radio has no sound of its own in a video; its static and music are an on-screen line. The [Blender asset skill](../../.agents/skills/maple-blender-assets/SKILL.md) covers adding more.
 - Voices need the local director and a Sarvam key; everywhere else dialogue is subtitles. Haru's campaign keeps its own narration. The jaw of a modelled figure moves for the length of the line, not in step with the words. A rendered video carries voice clips through an audio manifest.
 - Voice casting and the Telugu translations have been checked by reading, not by a listening review.
-- A part may be played by different figures in different scenes (Riko is a Momiji student in episode 1 and a standing Aonuma resident in episode 3).
+- Stage marks are fixed places; people walk straight lines between a mark's `via` points and do not avoid each other.
 - A portrait re-checks its view four times a second while it holds. After two blocked checks in a row it looks for a clearer angle and eases the camera there over about a second; it then waits 1.5 s before it may move again, so it does not flick between two angles. A figure's body heading stands in for where the face points, so a character who turns only their head can still be filmed at an angle.
 - The episode tools, like the other WebMCP tools, are registered only in development builds. The Places entry works in every build.
 - Places lists only the built-in series. A custom episode reaches players through an agent's `play_episode` (development builds) or a shared link. Links work in every build.

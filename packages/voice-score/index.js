@@ -65,9 +65,9 @@ export const VOICE_CAST = {
   },
   sato: { name: 'Mr. Sato', speaker: 'varun', pace: 0.98, gender: 'Male' },
   ishida: { name: 'Mr. Ishida', speaker: 'anand', pace: 0.88, gender: 'Male' },
-  fusae: { name: 'Fusae', speaker: 'rupali', pace: 0.93, gender: 'Female' },
-  aoi: { name: 'Mrs. Hara', speaker: 'neha', pace: 1.0, gender: 'Female' },
-  tanabe: { name: 'Mr. Tanabe', speaker: 'mohit', pace: 0.95, gender: 'Male' },
+  fusae: { name: 'Grandma Fusae', speaker: 'rupali', pace: 0.93, gender: 'Female' },
+  // Aoi, 24, drives the Aonuma bus: bright and quick. Not the campaign's Mika.
+  aoi: { name: 'Aoi', speaker: 'shreya', pace: 1.04, gender: 'Female' },
 };
 /** Direction is expressed through pace and timed silence, not unsupported emotion tags. */
 export const VOICE_DELIVERY = {

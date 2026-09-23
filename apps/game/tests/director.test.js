@@ -133,7 +133,7 @@ test('every shot type can be requested', () => {
   for (const type of SHOT_TYPES) {
     const { director, camera, context } = setup();
     director.update(context(900, { stop: { id: 'x', distance: 950 }, bridge: { distance: 1100 } }));
-    const subject = type === 'portrait' ? { point: [4, 0, 950] } : undefined;
+    const subject = ['portrait', 'insert'].includes(type) ? { point: [4, 0, 950] } : undefined;
     director.cut({ type, ...(subject ? { subject } : {}) });
     director.update(context(901, { stop: { id: 'x', distance: 950 }, bridge: { distance: 1100 } }));
     assert.equal(director.getState().shot.type, type);

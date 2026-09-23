@@ -137,7 +137,8 @@ if (language !== 'en-IN') {
       beat.line ? [[`${scene.id}/${beatIndex + 1}`, beat.line, beat.lineTranslations]] : [],
     ),
   );
-  if (episode.endCard?.line) texts.push(['end', episode.endCard.line, null]);
+  if (episode.endCard?.line)
+    texts.push(['end', episode.endCard.line, episode.endCard.lineTranslations]);
   for (const [id, text, authored] of texts)
     captions[id] =
       authored?.[language] ??
