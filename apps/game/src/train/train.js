@@ -2,13 +2,22 @@ import { CAR_COUNT, CAR_SPACING } from './consist.js';
 import { createCarInterior } from './interior.js';
 import { trainSystems } from './systems.js';
 import { TRAIN_FAMILIES, applyWeatherFinish, createWetnessTracker } from './weather-materials.js';
-/** Five articulated EMU carriages. The caller owns carriage positions along the route. */
+/** Blender-built bodies, doors, wheelsets and pantographs (asset-src/vehicles/momiji-emu). */
+export const TRAIN_MODEL_PATH = 'models/vehicles/momiji-emu.glb';
+const MODEL_PARTS = ['car-cab', 'car-middle', 'door-leaf', 'wheelset', 'pantograph'];
+
+/**
+ * Five articulated EMU carriages. The caller owns carriage positions along the route.
+ * The procedural carriages are built at once; `attachModel` swaps their exterior for the
+ * Blender GLB when it loads and leaves them in place if it does not.
+ */
 export function createTrain({ THREE, scene, wireHeight = 12.1 }) {
   const cars = [],
     geometries = new Set(),
     materials = new Set(),
     wheelAnimations = [],
     doorAnimations = [],
+    modelWheels = [],
     pantographs = [],
     wiperAnimations = [],
     doorIndicators = [],
@@ -131,7 +140,8 @@ export function createTrain({ THREE, scene, wireHeight = 12.1 }) {
     systemsTime = 0,
     lastDistance = null,
     platformSide = 'right',
-    systemsState = trainSystems();
+    systemsState = trainSystems(),
+    modelState = 'procedural';
   function createCar(index) {
     const car = new THREE.Group();
     car.name =
@@ -151,13 +161,15 @@ export function createTrain({ THREE, scene, wireHeight = 12.1 }) {
     cars.push(car);
     const batches = new Map(),
       doorBatches = new Map();
+    // 'shell' parts give way to the Blender body; 'keep' parts (cabin, seats) stay with it.
+    let layer = 'shell';
     function slidingDoor(mat, side, leaf, x, y, z, sx, sy, sz) {
       if (!doorBatches.has(mat)) doorBatches.set(mat, []);
       doorBatches.get(mat).push({ side, leaf, x, y, z, sx, sy, sz });
     }
     function part(geo, mat, x, y, z, sx, sy, sz, rotation = { x: 0, y: 0, z: 0 }, cast = true) {
-      const key = `${geo.uuid}:${mat.uuid}:${cast}`;
-      if (!batches.has(key)) batches.set(key, { geo, mat, cast, transforms: [] });
+      const key = `${geo.uuid}:${mat.uuid}:${cast}:${layer}`;
+      if (!batches.has(key)) batches.set(key, { geo, mat, cast, layer, transforms: [] });
       dummy.position.set(x, y, z);
       dummy.scale.set(sx, sy, sz);
       dummy.rotation.set(rotation.x || 0, rotation.y || 0, rotation.z || 0);
@@ -192,8 +204,9 @@ export function createTrain({ THREE, scene, wireHeight = 12.1 }) {
       dummy.quaternion.copy(q);
       dummy.scale.set(radius, v.length(), radius);
       dummy.updateMatrix();
-      const key = `${wheelGeometry.uuid}:${mat.uuid}:${cast}`;
-      if (!batches.has(key)) batches.set(key, { geo: wheelGeometry, mat, cast, transforms: [] });
+      const key = `${wheelGeometry.uuid}:${mat.uuid}:${cast}:${layer}`;
+      if (!batches.has(key))
+        batches.set(key, { geo: wheelGeometry, mat, cast, layer, transforms: [] });
       batches.get(key).transforms.push(dummy.matrix.clone());
     }
     // Thin side walls leave real openings at the four sliding doors.
@@ -227,6 +240,7 @@ export function createTrain({ THREE, scene, wireHeight = 12.1 }) {
       for (const x of [-1.4, -0.35, 0.35, 1.4])
         box(paints.cream, x, 2.73, end * 6.16, 0.2, 0.96, 0.08);
     }
+    layer = 'keep';
     box(paints.interior, 0, 1.035, 0, 2.9, 0.12, 12.2);
     box(paints.interior, 0, 3.3, 0, 2.88, 0.08, 12.2);
     for (const side of [-1, 1]) {
@@ -236,6 +250,7 @@ export function createTrain({ THREE, scene, wireHeight = 12.1 }) {
         cylinder(paints.bright, side * 0.94, 2.2, z, 0.025, 2.2, 'y', false);
     }
     box(paints.sign, 0, 3.23, 0, 0.23, 0.04, 9, false);
+    layer = 'shell';
     part(roofGeometry, paints.roof, 0, 3.36, 0, 1, 1, 1);
     box(paints.rubber, 0, 0.95, 0, 2.64, 0.2, 12.15);
     for (const side of [-1, 1]) {
@@ -515,6 +530,7 @@ export function createTrain({ THREE, scene, wireHeight = 12.1 }) {
     spokeMesh.name = 'Animated wheel spokes';
     spokeMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
     spokeMesh.frustumCulled = false;
+    spokeMesh.userData.trainLayer = 'shell';
     car.add(spokeMesh);
     wheelAnimations.push({ mesh: spokeMesh, wheels });
     // Roof hardware uses separate heights, preserving visible daylight under the scissor arms.
@@ -529,6 +545,7 @@ export function createTrain({ THREE, scene, wireHeight = 12.1 }) {
     for (const side of [-1, 1])
       rod(paints.bright, [side * 0.92, 3.81, -4.5], [side * 0.92, 3.81, 4.9], 0.026, false);
     if (index < 2) {
+      layer = 'pantograph';
       // Contact clearance is relative to the rail, including on mountain grades.
       const railHeight = 4.75,
         contactHeight = wireHeight - railHeight;
@@ -572,6 +589,7 @@ export function createTrain({ THREE, scene, wireHeight = 12.1 }) {
       });
       car.userData.pantographContactHeight = contactHeight;
     }
+    layer = 'keep';
     interiors.push(
       createCarInterior({
         THREE,
@@ -591,11 +609,13 @@ export function createTrain({ THREE, scene, wireHeight = 12.1 }) {
       mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
       mesh.frustumCulled = false;
       mesh.receiveShadow = true;
+      mesh.userData.trainLayer = 'shell';
       car.add(mesh);
       doorAnimations.push({ mesh, leaves });
     }
-    for (const { geo, mat, cast, transforms } of batches.values()) {
+    for (const { geo, mat, cast, layer, transforms } of batches.values()) {
       const mesh = new THREE.InstancedMesh(geo, mat, transforms.length);
+      mesh.userData.trainLayer = layer;
       mesh.name = `${car.name} / ${mat.name.split(' / ')[1]}${cast ? '' : ' / surface details'}`;
       for (let i = 0; i < transforms.length; i++) mesh.setMatrixAt(i, transforms[i]);
       mesh.castShadow = cast;
@@ -645,9 +665,9 @@ export function createTrain({ THREE, scene, wireHeight = 12.1 }) {
       for (let i = 0; i < leaves.length; i++) {
         const p = leaves[i],
           open = p.side * (direction >= 0 ? 1 : -1) > 0 ? doorProgress : 0;
-        dummy.position.set(p.x, p.y, p.z + p.leaf * 0.64 * open);
-        dummy.rotation.set(0, 0, 0);
-        dummy.scale.set(p.sx, p.sy, p.sz);
+        dummy.position.set(p.x, p.y, p.z + p.leaf * (p.slide ?? 0.64) * open);
+        dummy.rotation.set(0, p.rotY ?? 0, 0);
+        dummy.scale.set(p.sx ?? 1, p.sy ?? 1, p.sz ?? 1);
         dummy.updateMatrix();
         mesh.setMatrixAt(i, dummy.matrix);
       }
@@ -671,6 +691,16 @@ export function createTrain({ THREE, scene, wireHeight = 12.1 }) {
           matrix.copy(dummy.matrix);
           mesh.setMatrixAt(slot++, matrix);
         }
+      mesh.instanceMatrix.needsUpdate = true;
+    }
+    for (const { mesh, axles, y } of modelWheels) {
+      for (let i = 0; i < axles.length; i++) {
+        dummy.position.set(0, y, axles[i]);
+        dummy.rotation.set(wheelAngle, 0, 0);
+        dummy.scale.set(1, 1, 1);
+        dummy.updateMatrix();
+        mesh.setMatrixAt(i, dummy.matrix);
+      }
       mesh.instanceMatrix.needsUpdate = true;
     }
     systemsTime += Math.max(0, dt);
@@ -724,16 +754,142 @@ export function createTrain({ THREE, scene, wireHeight = 12.1 }) {
     frontBeam.intensity = systemsState.headlightOn && leadCar === 0 ? 48 : 0;
     rearBeam.intensity = systemsState.headlightOn && leadCar === CAR_COUNT - 1 ? 48 : 0;
   }
+  /** Every mesh a glTF node draws: the node itself, or one child per primitive. */
+  const meshesOf = (node) => (node.isMesh ? [node] : node.children.filter((child) => child.isMesh));
+  const modelMaterials = new Map();
+  function modelMaterial(source) {
+    if (source.name === 'train-sign') return paints.sign;
+    if (modelMaterials.has(source)) return modelMaterials.get(source);
+    const result = source;
+    if (source.name === 'train-paint')
+      applyWeatherFinish(result, TRAIN_FAMILIES.paint, exteriorWetness.uniform);
+    if (source.name === 'train-roof')
+      applyWeatherFinish(result, TRAIN_FAMILIES.roofPaint, exteriorWetness.uniform);
+    if (['train-metal', 'train-bright'].includes(source.name))
+      applyWeatherFinish(result, TRAIN_FAMILIES.steel, exteriorWetness.uniform);
+    if (source.name === 'train-glass') {
+      // Same depth rules as the procedural glazing, so cabin figures stay visible behind it.
+      result.transparent = true;
+      result.depthWrite = false;
+      result.side = THREE.DoubleSide;
+    }
+    materials.add(result);
+    modelMaterials.set(source, result);
+    return result;
+  }
+  function instanced(part, count, name, car) {
+    return meshesOf(part).map((source) => {
+      const mesh = new THREE.InstancedMesh(source.geometry, modelMaterial(source.material), count);
+      mesh.name = `${car.name} / ${name} / ${source.material.name}`;
+      mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+      mesh.frustumCulled = false;
+      mesh.castShadow = source.material.name !== 'train-glass';
+      mesh.receiveShadow = true;
+      mesh.userData.trainLayer = 'model';
+      geometries.add(source.geometry);
+      car.add(mesh);
+      return mesh;
+    });
+  }
+  /**
+   * Replace the procedural exterior with the Blender parts. Cabin, seats, passengers,
+   * lamps, wipers and door lamps stay procedural and keep their behaviour. Returns true
+   * when the model is in use; a missing or incomplete file leaves the train unchanged.
+   */
+  function applyModel(gltf) {
+    const parts = {};
+    gltf?.scene?.traverse((node) => {
+      if (MODEL_PARTS.includes(node.name) && !parts[node.name]) parts[node.name] = node;
+    });
+    if (MODEL_PARTS.some((name) => !parts[name])) return false;
+    const layout = parts['car-cab'].userData;
+    const contactHeight = parts.pantograph.userData.contactHeight;
+    for (const car of cars) {
+      const { carIndex } = car.userData;
+      const cab = carIndex === 0 || carIndex === CAR_COUNT - 1;
+      const body = parts[cab ? 'car-cab' : 'car-middle'].clone();
+      body.name = `${car.name} / Blender body`;
+      body.position.set(0, 0, 0);
+      // The rear driving car is the same cab body facing backwards.
+      body.rotation.set(0, carIndex === CAR_COUNT - 1 ? Math.PI : 0, 0);
+      for (const mesh of meshesOf(body)) {
+        mesh.material = modelMaterial(mesh.material);
+        mesh.castShadow = mesh.material.name !== 'train-glass';
+        mesh.receiveShadow = true;
+        geometries.add(mesh.geometry);
+      }
+      body.userData = { ...body.userData, trainLayer: 'model' };
+      car.add(body);
+      const leaves = [];
+      for (const side of [-1, 1])
+        for (const doorZ of layout.doorCentres)
+          for (const leaf of [-1, 1])
+            leaves.push({
+              side,
+              leaf,
+              x: side * layout.leafX,
+              y: layout.leafY,
+              z: doorZ + leaf * layout.leafOffset,
+              rotY: side > 0 ? 0 : Math.PI,
+              slide: layout.leafSlide,
+            });
+      for (const mesh of instanced(parts['door-leaf'], leaves.length, 'sliding door leaves', car))
+        doorAnimations.push({ mesh, leaves });
+      for (const mesh of instanced(parts.wheelset, layout.axles.length, 'wheelsets', car))
+        modelWheels.push({ mesh, axles: layout.axles, y: layout.wheelCentreY });
+      const pantograph =
+        Number.isFinite(car.userData.pantographContactHeight) &&
+        Math.abs(car.userData.pantographContactHeight - contactHeight) < 0.001;
+      if (pantograph) {
+        const arms = parts.pantograph.clone();
+        arms.name = `${car.name} / Blender pantograph`;
+        arms.position.set(0, 0, parts.pantograph.userData.baseZ);
+        for (const mesh of meshesOf(arms)) {
+          mesh.material = modelMaterial(mesh.material);
+          mesh.castShadow = true;
+          geometries.add(mesh.geometry);
+        }
+        car.add(arms);
+      }
+      for (const child of car.children) {
+        const hidden =
+          child.userData.trainLayer === 'shell' ||
+          (pantograph && child.userData.trainLayer === 'pantograph') ||
+          child.name.startsWith('Gangway lamp');
+        if (hidden) child.visible = false;
+        // Door lamps and wipers move onto the new skin and windscreen.
+        if (child.name === 'Door / amber interlock indicator')
+          child.position.x = Math.sign(child.position.x) * (layout.skinX + 0.03);
+        if (child.name === 'Cab / working windscreen wiper')
+          child.position.z = Math.sign(child.position.z) * (layout.windscreenZ + 0.05);
+      }
+    }
+    // Hidden procedural doors and spokes no longer need per-frame matrices.
+    for (const list of [doorAnimations, wheelAnimations])
+      for (let i = list.length - 1; i >= 0; i--) if (!list[i].mesh.visible) list.splice(i, 1);
+    update(0);
+    return true;
+  }
   update(0);
   return {
     cars,
     update,
+    /** Load the Blender train through a model loader (rendering/model-loader.js). */
+    attachModel(loader, path = TRAIN_MODEL_PATH) {
+      if (modelState !== 'procedural' || !loader) return Promise.resolve(modelState);
+      modelState = 'loading';
+      return loader.get(path).then((gltf) => {
+        modelState = applyModel(gltf) ? 'blender' : 'failed';
+        return modelState;
+      });
+    },
     getDoorState: () => ({
       openFraction: doorProgress,
       platformSide: platformSide,
     }),
     getSystemsState: () => ({
       ...systemsState,
+      model: modelState,
       wheelAngle,
       exteriorWetness: exteriorWetness.value,
       interiors: interiors.map((interior) => interior.state()),

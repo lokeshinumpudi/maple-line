@@ -3,6 +3,8 @@ import { Vector3 } from 'three';
 export const SUN_SHADOW_OFFSET = Object.freeze({ x: -90, y: 160, z: -65 });
 export const SUN_SHADOW_FRUSTUM = 220;
 export const SUN_SHADOW_MAP = 2048;
+/** Desktop covers a tighter square around the view with the same map for sharper shadows. */
+export const SUN_SHADOW_FRUSTUM_DESKTOP = 150;
 
 function finiteVec(v) {
   return Number.isFinite(v.x) && Number.isFinite(v.y) && Number.isFinite(v.z);
