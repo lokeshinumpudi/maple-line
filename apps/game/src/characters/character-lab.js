@@ -3,10 +3,11 @@
  * renderer settings and Momiji evening light, without driving to the station. Not part of
  * the production build. Query parameters:
  *
- *   cast=riko,sato,ishida   who stands in the row (default: all three)
+ *   cast=riko,sato,ishida   who stands in the row (default: all three); any other name loads
+ *                           models/characters/vrm/<name>.vrm (riko-test: the older test Riko)
  *   clip=idle               clip to play (any hero-cast clip name)
  *   expr=happy:1,aa:0.6     VRM expressions to hold
- *   view=full|face|three    camera framing
+ *   view=full|face|three|side|back    camera framing
  *   compare=1               add the older Blender GLB of each person beside them
  *   t=1.2                   seconds into the clip, then freeze (for stills)
  */
@@ -78,7 +79,7 @@ const mixers = [];
 async function addVrm(name, x) {
   const member = MOMIJI_CAST.find((m) => m.vrm.endsWith(`/${name}.vrm`));
   const [loaded, clipSet] = await Promise.all([
-    loader.vrm(member.vrm),
+    loader.vrm(member?.vrm ?? `models/characters/vrm/${name}.vrm`),
     loader.animations(VRM_CLIPS),
   ]);
   if (!loaded) return null;
@@ -122,7 +123,7 @@ await Promise.all(
     await addVrm(name, x);
     if (compare) {
       const member = MOMIJI_CAST.find((m) => m.vrm.endsWith(`/${name}.vrm`));
-      await addGlb(member, x + spacing);
+      if (member) await addGlb(member, x + spacing);
     }
   }),
 );
@@ -137,6 +138,12 @@ function frame() {
       .getWorldPosition(new THREE.Vector3());
     camera.position.set(head.x + 0.12, head.y + 0.06, 0.95);
     camera.lookAt(head.x, head.y + 0.07, head.z);
+  } else if (view === 'side') {
+    camera.position.set(width * 0.5 + 3.4, tallest * 0.58, 0);
+    camera.lookAt(0, tallest * 0.5, 0);
+  } else if (view === 'back') {
+    camera.position.set(0, tallest * 0.58, -(2.6 + width * 0.9));
+    camera.lookAt(0, tallest * 0.5, 0);
   } else if (view === 'three') {
     camera.position.set(width * 0.45 + 1.2, tallest * 0.75, 3.6 + width * 0.5);
     camera.lookAt(0, tallest * 0.5, 0);

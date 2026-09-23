@@ -1,0 +1,82 @@
+{
+  "cast": "riko",
+  "person": "commuter-2",
+  "title": "Riko",
+  "height": 1.55,
+  "views": {
+    "front": "ref/riko-front.jpg",
+    "side": "ref/riko-side.jpg",
+    "back": "ref/riko-back.jpg"
+  },
+  "notes": [
+    "Pixel coordinates are in the 1024 x 1024 view crops, x right and y down.",
+    "The front view keeps the image-right half (her left, no bag) below `bagRow` and mirrors it; the back view keeps the image-left half.",
+    "The side view shows her left side facing image left. `sideCuts` remove the bag and its strap; `sideClip` is her hair clip, left out when the side view paints her right flank."
+  ],
+  "keepHalf": { "front": "right", "back": "left" },
+  "bagRow": 204,
+  "sideCuts": [
+    [
+      [544, 226],
+      [760, 226],
+      [760, 563],
+      [567, 563],
+      [536, 421],
+      [544, 405]
+    ]
+  ],
+  "frontClip": [
+    [591, 71],
+    [611, 71],
+    [611, 100],
+    [591, 100]
+  ],
+  "sideClip": [
+    [470, 74],
+    [503, 74],
+    [503, 101],
+    [470, 101]
+  ],
+  "rows": {
+    "shoulder": 214,
+    "waist": 402,
+    "skirtTop": 396,
+    "neck": 196
+  },
+  "armDepthPx": 481,
+  "clipSide": [487, 88],
+  "toePx": 408,
+  "head": {
+    "front": {
+      "chin": [557, 185],
+      "eyeRow": 128,
+      "eyeSpacing": 52,
+      "mouth": [554, 163],
+      "brow": 103,
+      "faceHalfWidth": 44,
+      "cheekRow": 142,
+      "earRow": 138
+    },
+    "side": {
+      "chin": [443, 180],
+      "nose": [427, 140],
+      "eye": [450, 127],
+      "ear": [497, 138],
+      "forehead": [431, 100],
+      "neckFront": 473,
+      "neckBack": 510
+    }
+  },
+  "colors": {
+    "skin": "#f7d9c1",
+    "skinShade": "#e8a99a",
+    "hair": "#2b2224",
+    "iris": "#3a2219",
+    "irisLight": "#74492f",
+    "lash": "#2a1a18",
+    "brow": "#3a2622",
+    "mouth": "#b0524e",
+    "blush": "#f29a90",
+    "clip": "#c8373a"
+  }
+}
