@@ -51,7 +51,7 @@ A test fails if a line the game plays is missing from the committed script.
 
 ## Limits
 
-- Only Momiji's `commuter-1` (Mr. Sato), `commuter-2` (Riko in episode 1) and `reader-1` (Mr. Ishida) have Blender models with faces and a jaw that moves on their lines. Everyone else, including the Aonuma cast, is still a low-poly figure without a face. The [Blender asset skill](../../.agents/skills/maple-blender-assets/SKILL.md) covers adding more.
+- Only Momiji's `commuter-1` (Mr. Sato), `commuter-2` (Riko in episode 1) and `reader-1` (Mr. Ishida) have character models with faces; their mouths move on their lines (VRM vowel shapes, or a jaw on the older Blender GLBs). Everyone else, including the Aonuma cast, is still a low-poly figure without a face. The [Blender asset skill](../../.agents/skills/maple-blender-assets/SKILL.md) covers adding more.
 - Dialogue is subtitles. It is not voiced; Haru's campaign keeps its own narration.
 - A part may be played by different figures in different scenes (Riko is a Momiji student in episode 1 and a standing Aonuma resident in episode 3).
 - Shots are planned when they start. A character who walks far can leave the frame; portraits follow them but do not re-plan the angle.
