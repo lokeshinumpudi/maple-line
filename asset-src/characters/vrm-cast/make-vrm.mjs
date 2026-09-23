@@ -2,9 +2,14 @@
  * Turns a Blender GLB from build.py into a VRM 1.0 file: adds VRMC_vrm (meta, humanoid,
  * expressions, look-at), VRMC_springBone (hair chains and body colliders) and
  * VRMC_materials_mtoon, reading everything from the `<cast>.vrm.json` sidecar that
- * build.py writes. Geometry is not touched.
+ * build.py writes. Geometry is not touched. A textured material keeps its base colour
+ * texture and uses the same texture, tinted, for the MToon shaded side.
  *
  *   node asset-src/characters/vrm-cast/make-vrm.mjs riko [sato ishida]
+ *   node asset-src/characters/vrm-cast/make-vrm.mjs --from asset-src/characters/concept-cast/build riko
+ *
+ * `--from` reads the GLB and sidecar from another build folder (default: this folder's
+ * build/); `--out-name` writes a different file name for a single cast.
  */
 import { mkdirSync } from 'node:fs';
 import { readFileSync } from 'node:fs';
@@ -60,7 +65,8 @@ export function makeVrm(json, spec) {
       name: spec.title,
       version: '0.1.0',
       authors: ['Maple Line'],
-      copyrightInformation: 'Built by asset-src/characters/vrm-cast/build.py. No outside assets.',
+      copyrightInformation:
+        spec.copyright ?? 'Built by asset-src/characters/vrm-cast/build.py. No outside assets.',
       licenseUrl: 'https://vrm.dev/licenses/1.0/',
       avatarPermission: 'everyone',
       allowExcessivelyViolentUsage: false,
@@ -77,7 +83,7 @@ export function makeVrm(json, spec) {
     firstPerson: { meshAnnotations: [{ node: faceNode, type: 'thirdPersonOnly' }] },
     lookAt: {
       type: 'expression',
-      offsetFromHeadBone: [0, round(0.06 * (spec.height / 1.58), 4), 0],
+      offsetFromHeadBone: [0, spec.lookAtOffset ?? round(0.06 * (spec.height / 1.58), 4), 0],
       rangeMapHorizontalInner: range,
       rangeMapHorizontalOuter: range,
       rangeMapVerticalDown: range,
@@ -121,6 +127,9 @@ export function makeVrm(json, spec) {
     if (settings.emissive) material.emissiveFactor = [1, 1, 1].map((c) => c * settings.emissive);
     const shade = base.map((c, i) => round(c * settings.shadeTint[i], 4));
     const outline = settings.outline * (spec.height / 1.58);
+    // A painted texture shades with itself: shade = texture x tint.
+    const texture = pbr.baseColorTexture ? { index: pbr.baseColorTexture.index } : null;
+    const outlineColor = settings.outlineColor ?? darken(base, 0.32);
     material.extensions = {
       ...material.extensions,
       VRMC_materials_mtoon: {
@@ -128,6 +137,7 @@ export function makeVrm(json, spec) {
         transparentWithZWrite: false,
         renderQueueOffsetNumber: 0,
         shadeColorFactor: shade,
+        ...(texture ? { shadeMultiplyTexture: texture } : {}),
         shadingShiftFactor: settings.shift,
         shadingToonyFactor: settings.toony,
         giEqualizationFactor: 0.9,
@@ -138,7 +148,7 @@ export function makeVrm(json, spec) {
         parametricRimLiftFactor: 0.04,
         outlineWidthMode: outline > 0 ? 'worldCoordinates' : 'none',
         outlineWidthFactor: round(outline, 5),
-        outlineColorFactor: darken(base, 0.32),
+        outlineColorFactor: outlineColor,
         outlineLightingMixFactor: 1,
         uvAnimationScrollXSpeedFactor: 0,
         uvAnimationScrollYSpeedFactor: 0,
@@ -162,14 +172,27 @@ export function makeVrm(json, spec) {
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  const casts = process.argv.slice(2);
-  if (!casts.length) throw new Error('usage: make-vrm.mjs <cast> [cast...]');
+  const args = process.argv.slice(2);
+  const option = (name) => {
+    const i = args.indexOf(name);
+    if (i < 0) return null;
+    const [, value] = args.splice(i, 2);
+    return value;
+  };
+  const from = option('--from');
+  const outName = option('--out-name');
+  const buildDir = from ? join(root, from) : join(here, 'build');
+  const casts = args;
+  if (!casts.length) {
+    throw new Error('usage: make-vrm.mjs [--from <dir>] [--out-name <file>] <cast> [cast...]');
+  }
+  if (outName && casts.length > 1) throw new Error('--out-name takes a single cast');
   mkdirSync(outDir, { recursive: true });
   for (const cast of casts) {
-    const glb = readGlb(join(here, 'build', `${cast}.glb`));
-    const spec = JSON.parse(readFileSync(join(here, 'build', `${cast}.vrm.json`), 'utf8'));
+    const glb = readGlb(join(buildDir, `${cast}.glb`));
+    const spec = JSON.parse(readFileSync(join(buildDir, `${cast}.vrm.json`), 'utf8'));
     makeVrm(glb.json, spec);
-    const out = join(outDir, `${cast}.vrm`);
+    const out = join(outDir, outName ?? `${cast}.vrm`);
     writeGlb(out, glb);
     console.log(`wrote ${out}`);
   }

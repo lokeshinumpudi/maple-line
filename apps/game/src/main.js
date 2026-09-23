@@ -78,7 +78,7 @@ import { createEpisodeVoice } from './drama/episode-voice.js';
 import { createManifestVoice } from './drama/voice-manifest.js';
 import { NARRATION_LANGUAGES } from '@maple-line/voice-score';
 import { createModelLoader, createGltfLoader } from './rendering/model-loader.js';
-import { createHeroCast, MOMIJI_CAST } from './world/hero-cast.js';
+import { castMember, createHeroCast, MOMIJI_CAST } from './world/hero-cast.js';
 import { createVrmLoader } from './characters/vrm-loader.js';
 import { findHeadNode } from './characters/humanoid-bones.js';
 import { createStationModules } from './world/station-modules.js';
@@ -956,9 +956,11 @@ const heroWorld = {
   setStandIn: (id, enabled) => worldDetails.setStandIn?.(id, enabled),
   figureOf: (id) => worldDetails.figureOf?.(id) ?? null,
 };
-// VRM (anime) cast first; `?cast=blender` keeps the older Blender GLBs for comparison.
-const vrmLoader =
-  new URLSearchParams(location.search).get('cast') === 'blender' ? null : createVrmLoader();
+// VRM (anime) cast first; `?cast=blender` keeps the older Blender GLBs for comparison and
+// `?vrm=test` the older primitive-built test VRMs where a cast member has one.
+const castQuery = new URLSearchParams(location.search);
+const vrmLoader = castQuery.get('cast') === 'blender' ? null : createVrmLoader();
+const useTestVrm = castQuery.get('vrm') === 'test';
 const heroCasts = MOMIJI_CAST.map((member) =>
   createHeroCast({
     THREE,
@@ -968,7 +970,7 @@ const heroCasts = MOMIJI_CAST.map((member) =>
     mobile: mobilePlay,
     worldDetails: heroWorld,
     minds,
-    ...member,
+    ...castMember(member, { useTest: useTestVrm }),
   }),
 );
 // Development: motion measurement scripts switch rig layers and read bones through this.

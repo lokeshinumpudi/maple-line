@@ -24,6 +24,8 @@ async function parse(path, plugin) {
   const bytes = readFileSync(new URL(path, publicDir));
   const loader = new GLTFLoader();
   loader.setMeshoptDecoder(MeshoptDecoder);
+  // Node has no image decoder; the pose checks need bones, not pixels (Riko's VRM is painted).
+  loader.register(() => ({ name: 'test-textures', loadTexture: async () => new THREE.Texture() }));
   loader.register(plugin);
   return loader.parseAsync(
     bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.length),

@@ -100,9 +100,11 @@ test('hand props are separate socket-space nodes, also shipped alone for other r
   );
   assert.equal(paper.extras.hold, 'two');
   assert.equal(paper.extras.grip2.length, 7);
+  // Riko's radio carries a small painted texture (asset-src/characters/concept-cast/props.py).
+  const propBudget = { sato: 16, riko: 64, ishida: 16 };
   for (const cast of ['sato', 'riko', 'ishida']) {
     const { json, size } = glbJson(`apps/game/public/models/characters/props/${cast}.glb`);
-    assert.ok(size < 16 * 1024, `props/${cast}.glb is ${size} bytes`);
+    assert.ok(size < propBudget[cast] * 1024, `props/${cast}.glb is ${size} bytes`);
     assert.ok(json.nodes.every((node) => node.extras?.prop));
   }
 });

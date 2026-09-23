@@ -30,8 +30,11 @@ export const HERO_WALK_SPEED = 1.15;
 export const HERO_HURRY_SPEED = 1.75;
 
 /**
- * Momiji people who have a model. `vrm` files are built by asset-src/characters/vrm-cast;
- * `path` GLBs and the hand-prop `props` GLBs by asset-src/characters/momiji-cast.
+ * Momiji people who have a model. `vrm` files are built by asset-src/characters/vrm-cast,
+ * except Riko's, which asset-src/characters/concept-cast builds from the approved concept
+ * art (her radio and phone props too); `path` GLBs and the other `props` GLBs come from
+ * asset-src/characters/momiji-cast. `testVrm` is the older primitive-built test figure,
+ * kept for comparison behind `?vrm=test`.
  */
 export const MOMIJI_CAST = Object.freeze([
   {
@@ -46,6 +49,7 @@ export const MOMIJI_CAST = Object.freeze([
     personId: 'commuter-2',
     path: 'models/characters/student-riko.glb',
     vrm: 'models/characters/vrm/riko.vrm',
+    testVrm: 'models/characters/vrm/riko-test.vrm',
     props: 'models/characters/props/riko.glb',
     // Riko keeps her phone in a pocket and takes it out to check it; her hands are for the
     // radio she is carrying home.
@@ -64,6 +68,12 @@ export const MOMIJI_CAST = Object.freeze([
     seatHeight: 0.61,
   },
 ]);
+
+/** A cast entry with its older test VRM swapped in when `useTest` is set and it has one. */
+export function castMember(member, { useTest = false } = {}) {
+  const { testVrm, ...rest } = member;
+  return useTest && testVrm ? { ...rest, vrm: testVrm } : rest;
+}
 
 /**
  * The shared clip set for every VRM: Quaternius UAL 1 and 2, retargeted offline by

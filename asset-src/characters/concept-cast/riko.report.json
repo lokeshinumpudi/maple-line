@@ -1,0 +1,57 @@
+{
+  "blender": "5.2.2 LTS",
+  "cast": "riko",
+  "facing": "-Y in Blender, +Z in three.js (VRM 1.0)",
+  "heightMetres": 1.539,
+  "hipsMetres": 0.845,
+  "materials": [
+    "blush",
+    "body",
+    "brow",
+    "clip",
+    "eye-highlight",
+    "eye-white",
+    "hair",
+    "iris",
+    "iris-light",
+    "lash",
+    "mouth",
+    "nose",
+    "pupil",
+    "scalp",
+    "skin",
+    "skirt"
+  ],
+  "shapeKeys": [
+    "blinkL",
+    "blinkR",
+    "happy",
+    "relaxed",
+    "surprised",
+    "aa",
+    "ih",
+    "ou",
+    "ee",
+    "oh",
+    "lookUp",
+    "lookDown",
+    "lookLeft",
+    "lookRight"
+  ],
+  "springs": [
+    "hair0",
+    "hair1",
+    "hair2",
+    "hair3",
+    "hair4",
+    "hair5"
+  ],
+  "triangles": 13591,
+  "trianglesPerMesh": {
+    "Body": 5998,
+    "Face": 305,
+    "Hair": 4724,
+    "Head": 1604,
+    "Skirt": 960
+  }
+}

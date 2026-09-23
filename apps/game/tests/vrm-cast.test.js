@@ -76,10 +76,17 @@ function glbJson(url) {
   return { json: JSON.parse(bytes.subarray(20, 20 + length).toString('utf8')), size: bytes.length };
 }
 
+// Node has no image decoder: painted VRMs (Riko's atlas) get a blank texture per image.
+const blankTextures = () => ({
+  name: 'test-blank-textures',
+  loadTexture: () => Promise.resolve(new THREE.Texture()),
+});
+
 async function parse(path, plugin) {
   const bytes = readFileSync(new URL(path, publicDir));
   const loader = new GLTFLoader();
   loader.setMeshoptDecoder(MeshoptDecoder);
+  loader.register(blankTextures);
   loader.register(plugin);
   return loader.parseAsync(
     bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.length),

@@ -1,0 +1,8 @@
+{
+  "blender": "5.2.2 LTS",
+  "out": "apps/game/public/models/characters/props/riko.glb",
+  "triangles": {
+    "phone": 44,
+    "radio": 192
+  }
+}

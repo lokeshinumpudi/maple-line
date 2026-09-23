@@ -25,6 +25,25 @@ Installed with pnpm into `apps/game` on 23 September 2026. The lockfile pins the
 | `@pixiv/types-vrmc-vrm-1.0`                               | 3.5.5   | MIT     | https://registry.npmjs.org/@pixiv/types-vrmc-vrm-1.0/-/types-vrmc-vrm-1.0-3.5.5.tgz                                                             | 4,571   | `330fb026e39b765f164ac5e1dbabde62e4359e1cf102373f9405317a500a7a60` |
 | `@pixiv/types-vrmc-vrm-animation-1.0`                     | 3.5.5   | MIT     | https://registry.npmjs.org/@pixiv/types-vrmc-vrm-animation-1.0/-/types-vrmc-vrm-animation-1.0-3.5.5.tgz                                         | 2,255   | `d1bfd948153ef9b6a3b81a6102829546e9a039c8264d14c23fc4977a4e017407` |
 
+## Generated concept art
+
+The Riko VRM (`apps/game/public/models/characters/vrm/riko.vrm`) and her radio prop are built by `asset-src/characters/concept-cast/` from concept art that the project owner generated with the image model `openai/gpt-image-2.5-flare` through the Vercel AI Gateway on 23 September 2026. The owner approved the look and cut the turnaround sheet into front, side and back views, each padded to a square 1024 × 1024 on the paper colour. The build uses the images as silhouettes and as paint projected onto the meshes; it downloads nothing. No other image generation was used: the face, hair and rig are drawn by the Blender scripts.
+
+The committed copies are JPEG (quality 90 for the views, 80 for the sheets) under `asset-src/characters/concept-cast/ref/`.
+
+| File              | What it is                                             | Source file (SHA-256 of the PNG)                                                                 | Bytes   | SHA-256                                                            |
+| ----------------- | ------------------------------------------------------ | ------------------------------------------------------------------------------------------------ | ------- | ------------------------------------------------------------------ |
+| `riko-front.jpg`  | Front view cut from the turnaround sheet               | `views/riko-gpt25flare-front.png`                                                                | 157,014 | `57caf16096f27afa60756c720f951c3932590568c2b666250e1995d03f9ab90b` |
+| `riko-side.jpg`   | Side view (her left side)                              | `views/riko-gpt25flare-side.png`                                                                 | 139,703 | `51702ffc68687def7b7bb580e7677a3a588c528d7801aba468958c68fa0e1746` |
+| `riko-back.jpg`   | Back view                                              | `views/riko-gpt25flare-back.png`                                                                 | 148,206 | `53079cc8b9e60a70ace1f52438656d852c873018f49d347d7e65e39a52d5f7aa` |
+| `riko-sheet.jpg`  | The whole turnaround sheet, scaled to 1024 px wide     | `riko-gpt25flare.png` (`7f3aae9d9020a3d0a987a498d243a7221b4d09e8fc17f38559fe42b2cad65425`)       | 130,366 | `e765b08999be20be7c3ff09025d9ea3a5b52d641630997e9fa58a4fb43f4df87` |
+| `radio-sheet.jpg` | The radio prop sheet, scaled to 1024 px wide           | `c-radio.png` (`5b59d075e4bfe598014d1bef274364e92ecf2b616946034a31d0e68bbf047b8a`)               | 153,866 | `2da1249b9de3bd87e7ea167f121e374aa1c07b492f14020bd1e1035b88e1f650` |
+
+Prompts, as sent (model `openai/gpt-image-2.5-flare`, size `1536x1024`, one image each):
+
+- Riko turnaround sheet: "Character turnaround sheet for a cozy slice-of-life anime film in the Japanese countryside, warm hand-painted Ghibli-like feel, cute stylized proportions (head about 1/5 of height, large expressive eyes, soft rounded shapes). Same character three times in neutral A-pose: front, side, back; full body; plain warm paper background; no text. Character: Riko, 17, short dark bob with a red hair clip, navy sailor school uniform with red ribbon, pleated skirt, white knee socks, brown loafers, canvas shoulder bag."
+- Radio sheet: "Prop design sheet for a cozy anime film: an old 1960s Japanese transistor radio in warm cream and wood with a round speaker grille, tuning dial and leather carry strap, shown from front, side, back and top, plain warm paper background, no text."
+
 ## Models, textures and motion
 
 ### Quaternius Universal Animation Library 1 and 2 [Standard]
