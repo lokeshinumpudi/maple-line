@@ -261,3 +261,21 @@ export function humanoidRigFor(root, mapping = null) {
     restPose: null,
   };
 }
+
+/**
+ * The head joint of any loaded character, for cameras that frame a face. Tries the rig
+ * vocabulary above, then any joint whose name ends in "head" (VRoid's J_Bip_C_Head,
+ * three-vrm's Normalized_head). Returns null when the model has no head joint.
+ */
+export function findHeadNode(root) {
+  const rigged = humanoidRigFor(root).bones.head;
+  if (rigged) return rigged;
+  let bone = null;
+  let node = null;
+  root.traverse((item) => {
+    if (!/(^|[^a-z])head$/i.test(item.name ?? '')) return;
+    if (item.isBone) bone ??= item;
+    else node ??= item;
+  });
+  return bone ?? node;
+}

@@ -883,6 +883,9 @@ export function createTrain({ THREE, scene, wireHeight = 12.1 }) {
         return modelState;
       });
     },
+    /** World positions of seated passengers' heads in one car (see interior.js). */
+    interiorHeads: (index) =>
+      interiors.find((interior) => interior.state().carIndex === index)?.heads() ?? [],
     getDoorState: () => ({
       openFraction: doorProgress,
       platformSide: platformSide,

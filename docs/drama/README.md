@@ -38,7 +38,8 @@ A useful loop is: read the catalog, write a scene, validate, play it, read the l
 - **An arrival:** give the scene a `stopAt`, put the train a few hundred metres back with `location` and a negative `offset`, show a `platform` shot with `waitFor: "stopped"`, then open doors in the next beat.
 - **A departure:** close doors in a cue, add a beat with `waitFor: "doors-closed"`, then `release` in the next beat and cut to a `trackside` shot.
 - **Weather turning:** a `weather` cue changes the sky over about half a second; follow it with a `rain-start` event so characters react and shelter.
-- **Close shots:** portraits frame a person's chest from the side they face, try eight angles and then a higher, wider pass, and avoid walls, shelters and benches near the subject.
+- **Close shots:** a portrait puts the person's eyes on the upper third of the frame, from the side their face points, with room in front of the face. It tests sightlines to the head and chest against buildings, shelters, benches, the train and other people. If the planned angle is blocked it tries nearby angles (15–90° round, higher, lower, closer) and writes the move in the log.
+- **Conversations:** when a line is spoken by a cast member on screen, the camera cuts to that speaker as the line starts, even in a beat whose shot is a window or platform shot. When the camera was on the listener, the reverse is over the listener's shoulder, and every shot of the pair stays on the same side of the line between them. It crosses that line only when no angle on its side is clear, and the log says so. A beat's portrait can name the listener with `"partner": { "cast": "sato" }` and choose `"framing": "single"`, `"ots"` or `"two"` (both people in frame). Over-the-shoulder and two-shots need the pair within 7.5 m; otherwise a single is used. A speaker who is not on screen (aboard the train, say) keeps the beat's shot.
 
 ## Sharing an episode
 
@@ -181,6 +182,6 @@ Checked against Sarvam's documentation on 23 September 2026:
 - Voices need the local director and a Sarvam key; everywhere else dialogue is subtitles. Haru's campaign keeps its own narration. The jaw of a modelled figure moves for the length of the line, not in step with the words. A rendered video carries voice clips through an audio manifest.
 - Voice casting and the Telugu translations have been checked by reading, not by a listening review.
 - A part may be played by different figures in different scenes (Riko is a Momiji student in episode 1 and a standing Aonuma resident in episode 3).
-- Shots are planned when they start. A character who walks far can leave the frame; portraits follow them but do not re-plan the angle.
+- A portrait re-checks its view four times a second while it holds. After two blocked checks in a row it looks for a clearer angle and eases the camera there over about a second; it then waits 1.5 s before it may move again, so it does not flick between two angles. A figure's body heading stands in for where the face points, so a character who turns only their head can still be filmed at an angle.
 - The episode tools, like the other WebMCP tools, are registered only in development builds. The Places entry works in every build.
 - Places lists only the built-in series. A custom episode reaches players through an agent's `play_episode` (development builds) or a shared link. Links work in every build.

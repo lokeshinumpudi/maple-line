@@ -80,6 +80,7 @@ import { NARRATION_LANGUAGES } from '@maple-line/voice-score';
 import { createModelLoader, createGltfLoader } from './rendering/model-loader.js';
 import { createHeroCast, MOMIJI_CAST } from './world/hero-cast.js';
 import { createVrmLoader } from './characters/vrm-loader.js';
+import { findHeadNode } from './characters/humanoid-bones.js';
 import { createStationModules } from './world/station-modules.js';
 import { createMindsClient, mindRegion } from './agent/minds-client.js';
 import { registerMindTools } from './agent/mind-tools.js';
@@ -1337,8 +1338,16 @@ const filmDirector = createDirector({
       const person = worldDetails
         .getPopulationState()
         .people.find((item) => item.id === subject.person && item.visible);
-      if (person) return [person.position.x, person.position.y, person.position.z];
-      return mindStandingPoint(subject.person);
+      if (!person) return mindStandingPoint(subject.person);
+      const figure = heroWorld.figureOf(subject.person);
+      const point = [person.position.x, person.position.y, person.position.z];
+      const seated = /sit|seat|bench|read/.test(figure?.pose ?? '');
+      return {
+        point,
+        // The model's head bone when a hero stands in; otherwise a figure's head height.
+        head: castHead(subject.person) ?? [point[0], point[1] + (seated ? 1.1 : 1.5), point[2]],
+        heading: figure?.heading ?? null,
+      };
     }
     if (subject.stop) {
       const stop = routeStops.find((item) => item.id === subject.stop);
@@ -1374,18 +1383,157 @@ const filmDirector = createDirector({
       });
   },
   onCaption: (caption) => filmCaptions.show(caption),
-  obstructed(from, to) {
-    directorRay.set(from, directorDirection.subVectors(to, from).normalize());
-    directorRay.far = Math.max(0.2, from.distanceTo(to) - 0.8);
-    return directorRay.intersectObjects(shotObstacles(to), false).length > 0;
-  },
+  onNote: (message) => directorNote(message),
+  interiorHeads: () => trainModel.interiorHeads(1),
+  obstructed: sightlineBlocked,
 });
+/**
+ * Is the sightline from `from` to `to` blocked? Scenery near `to` always counts. For
+ * people shots (`people`, `train`) the train and people count too, except `ignore`d
+ * people. The ray is cast both ways, so a camera standing inside a wall or just behind
+ * one is caught, and it stops short of the target so the subject's own body does not count.
+ */
+function sightlineBlocked(
+  from,
+  to,
+  { people = false, train: withTrain = false, ignore = [] } = {},
+) {
+  const length = from.distanceTo(to);
+  if (length < 0.3) return false;
+  const meshes = shotObstacles(to);
+  const clearOfSubject = people ? 0.45 : 0.8;
+  directorDirection.subVectors(to, from).normalize();
+  directorRay.set(from, directorDirection);
+  directorRay.near = 0.05;
+  directorRay.far = Math.max(0.1, length - clearOfSubject);
+  if (directorRay.intersectObjects(meshes, false).some(solidHit)) return true;
+  if (withTrain && trainBlocks(from, directorDirection, 0.05, length - clearOfSubject)) return true;
+  if (people) {
+    directorRay.set(to, directorDirection.negate());
+    directorRay.near = clearOfSubject;
+    directorRay.far = length - 0.05;
+    if (directorRay.intersectObjects(meshes, false).some(solidHit)) return true;
+    if (castBlocks(from, to, ignore, clearOfSubject)) return true;
+  }
+  return false;
+}
+// Framing notes go to the episode log while an episode plays (set once the runner exists).
+let directorNote = () => {};
+/** Glass, wires and particles never block a shot. */
+function solidHit(hit) {
+  const material = Array.isArray(hit.object.material)
+    ? hit.object.material[hit.face?.materialIndex ?? 0]
+    : hit.object.material;
+  if (!material || material.visible === false) return false;
+  if (material.transparent && material.opacity < 0.75) return false;
+  if (material.transmission > 0.3) return false;
+  return !SEE_THROUGH.test(`${hit.object.name} ${material.name}`);
+}
+const SEE_THROUGH = /glass|window|wire|cable|catenary|particle|leaf|leaves|rain|snow|mote|spark/i;
+// Cast models: their skinned meshes are costly to raycast, so each counts as a capsule.
+const castRoots = new Map();
+// Frame count for the sightline caches: frames, not wall time, so video renders repeat exactly.
+let sightFrame = 0;
+function castRoot(id) {
+  let entry = castRoots.get(id);
+  if (!entry || (!entry.root && sightFrame - entry.at > 30) || entry.root?.parent === null) {
+    const root = scene.getObjectByName(`Hero / ${id}`) ?? null;
+    entry = { root, head: root ? findHeadNode(root) : null, at: sightFrame };
+    castRoots.set(id, entry);
+  }
+  return entry.root?.visible ? entry : null;
+}
+const castHeadPoint = new THREE.Vector3();
+/** World position of a cast model's head bone, or null when no model stands in. */
+function castHead(id) {
+  const entry = castRoot(id);
+  if (!entry?.head) return null;
+  return entry.head.getWorldPosition(castHeadPoint).toArray();
+}
+const capsulePoint = new THREE.Vector3();
+/**
+ * People as upright capsules: the cast models (head bone for the top) and the visible
+ * figures of the population. Rebuilt every few frames; people move slowly.
+ */
+let peopleCache = { at: -Infinity, list: [] };
+function peopleCapsules() {
+  if (sightFrame - peopleCache.at < 4) return peopleCache.list;
+  const list = [];
+  const heroes = new Set(MOMIJI_CAST.map((member) => member.personId));
+  for (const id of heroes) {
+    const entry = castRoot(id);
+    if (!entry) continue;
+    const base = entry.root.position;
+    const top = entry.head ? entry.head.getWorldPosition(capsulePoint).y + 0.14 : base.y + 1.7;
+    list.push({ id, x: base.x, z: base.z, bottom: base.y, top });
+  }
+  for (const person of worldDetails.getPopulationState().people) {
+    if (!person.visible || heroes.has(person.id)) continue;
+    const { x, y, z } = person.position;
+    list.push({ id: person.id, x, z, bottom: y, top: y + 1.65 });
+  }
+  peopleCache = { at: sightFrame, list };
+  return list;
+}
+function castBlocks(from, to, ignore, clearOfSubject) {
+  const length = from.distanceTo(to);
+  const dx = to.x - from.x,
+    dz = to.z - from.z;
+  const flat = dx * dx + dz * dz;
+  for (const person of peopleCapsules()) {
+    if (ignore.includes(person.id)) continue;
+    // Closest approach of the sightline to the figure's vertical axis, in the ground plane.
+    const u = flat > 1e-6 ? ((person.x - from.x) * dx + (person.z - from.z) * dz) / flat : 0;
+    if (u <= 0 || u * length > length - clearOfSubject) continue;
+    const px = from.x + dx * u,
+      pz = from.z + dz * u,
+      py = from.y + (to.y - from.y) * u;
+    if (Math.hypot(px - person.x, pz - person.z) < 0.24 && py > person.bottom && py < person.top)
+      return true;
+  }
+  return false;
+}
 /** Where a character tracked by the minds stands: platform or ground height plus the body lift. */
 function mindStandingPoint(id) {
   const place = minds.positionOf(id);
   if (!place?.visible) return null;
   const base = place.platform ? railPoint(place.z).y : terrain(place.x - center(place.z), place.z);
   return [place.x, base + 0.62, place.z];
+}
+// Each car body counts as one solid box: raycasting the car meshes costs about 1 ms a ray.
+const carBoxes = new WeakMap();
+const carRay = new THREE.Ray();
+const carInverse = new THREE.Matrix4();
+const carHit = new THREE.Vector3();
+function carBox(car) {
+  const cached = carBoxes.get(car);
+  if (cached && cached.children === car.children.length) return cached.box;
+  car.updateMatrixWorld(true);
+  carInverse.copy(car.matrixWorld).invert();
+  const box = new THREE.Box3();
+  const part = new THREE.Box3();
+  car.traverseVisible((node) => {
+    if (!node.isMesh || node.isInstancedMesh || SEE_THROUGH.test(node.name)) return;
+    if (!node.geometry.boundingBox) node.geometry.computeBoundingBox();
+    part.copy(node.geometry.boundingBox).applyMatrix4(node.matrixWorld).applyMatrix4(carInverse);
+    box.union(part);
+  });
+  // The roof gear (pantograph, horns) is thin: stop the box at the roof.
+  box.max.y = Math.min(box.max.y, box.min.y + 4.2);
+  carBoxes.set(car, { box, children: car.children.length });
+  return box;
+}
+function trainBlocks(origin, direction, near, far) {
+  for (const car of train) {
+    if (car.position.distanceTo(origin) > far + 16) continue;
+    carInverse.copy(car.matrixWorld).invert();
+    carRay.set(origin, direction).applyMatrix4(carInverse);
+    const hit = carRay.intersectBox(carBox(car), carHit);
+    if (!hit) continue;
+    const distance = hit.applyMatrix4(car.matrixWorld).distanceTo(origin);
+    if (distance >= near && distance <= far) return true;
+  }
+  return false;
 }
 // Buildings, shelters and benches near a shot's subject. Terrain and instanced trees are
 // handled by the height checks; the list is rebuilt only when the subject moves along the line.
@@ -1399,6 +1547,7 @@ function shotObstacles(point) {
       // Small instanced batches (benches, shelters, people) block a view; forests do not.
       if (!node.isMesh || node.name === 'Mountain and valley terrain') return;
       if (node.isInstancedMesh && node.count > 300) return;
+      if (SEE_THROUGH.test(node.name)) return;
       if (node.isInstancedMesh) {
         if (!node.boundingSphere) node.computeBoundingSphere();
         sphere.copy(node.boundingSphere).applyMatrix4(node.matrixWorld);
@@ -1544,6 +1693,9 @@ const episodeRunner = createEpisodeRunner(
     onEvent: (event) => renderTimeline?.record(event, renderEventTime),
   },
 );
+directorNote = (message) => {
+  if (episodeRunner.playing) episodeRunner.note(`camera: ${message}`);
+};
 const episodeLibrary = createEpisodeLibrary(embedded ? null : globalThis.localStorage);
 const validateEpisode = (data) =>
   normalizeEpisode(data, {
@@ -2028,6 +2180,7 @@ let reflectionElapsed = 1,
 function frame(now) {
   // Render mode has no animation-frame loop; the capture script calls frame().
   if (!renderMode) requestAnimationFrame(frame);
+  sightFrame += 1;
   if (embedded && (embedSuspended || document.hidden)) {
     last = now;
     return;
@@ -3741,6 +3894,16 @@ function installRenderControl() {
         frames: videoFrames,
       }),
     log: () => episodeRunner.getState().log,
+    /** The director's current shot and framing, and where each cast member's head is. */
+    framing: () => ({
+      shot: filmDirector.getState().shot,
+      camera: camera.position.toArray().map((value) => Number(value.toFixed(2))),
+      cast: MOMIJI_CAST.map(({ personId }) => ({
+        id: personId,
+        head: castHead(personId)?.map((value) => Number(value.toFixed(2))) ?? null,
+        heading: heroWorld.figureOf(personId)?.heading ?? null,
+      })),
+    }),
   });
 }
 updateCamera(1, true);
