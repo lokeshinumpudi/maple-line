@@ -44,6 +44,7 @@ export function installMobileHUD({ store }) {
   shortcuts.setAttribute('aria-label', 'Ride actions');
   const targets = [
     ['Places', '#places-toggle'],
+    ['Network', '#network-toggle'],
     ['Notebook', '.ml-story-launch'],
     ['Sound', '#sound'],
     ['Drive yourself', '#ride-driving'],

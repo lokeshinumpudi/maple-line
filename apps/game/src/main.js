@@ -58,7 +58,7 @@ import { THE_1742 } from './drama/series/the-1742.js';
 import { registerDramaTools, createEpisodeLibrary } from './agent/drama-tools.js';
 import { installEpisodePicker } from './ui/episode-picker.js';
 import { createModelLoader, createGltfLoader } from './rendering/model-loader.js';
-import { createHeroCast } from './world/hero-cast.js';
+import { createHeroCast, MOMIJI_CAST } from './world/hero-cast.js';
 import { createStationModules } from './world/station-modules.js';
 import { createMindsClient, mindRegion } from './agent/minds-client.js';
 import { registerMindTools } from './agent/mind-tools.js';
@@ -84,6 +84,18 @@ import { addRailwayBridge } from './world/railway-bridge.js';
 import { createGameStore } from './state/game-store.js';
 import { attachPreferenceStorage } from './state/preference-storage.js';
 import { registerGameWebMCP } from './agent/webmcp.js';
+import { networkToolsExtension } from './agent/network-tools.js';
+import {
+  createCharacterGrab,
+  installGrabPointer,
+  registerGrabTools,
+} from './agent/character-grab.js';
+import './ui/character-grab.css';
+import { createRailNetwork } from './simulation/rail-network.js';
+import { createBusiness } from './simulation/business.js';
+import { createMissions } from './simulation/missions.js';
+import { mountNetworkPanel, renderMissionChip } from './ui/network-panel.js';
+import './ui/network-panel.css';
 import { createDirectorClient, directorCruiseSpeed, regionAt } from './agent/ai-director.js';
 import { createCanopyGrid } from './world/canopy-grid.js';
 import { createLeafClusterGeometry, createLeafClusterTexture } from './world/tree-foliage.js';
@@ -150,7 +162,10 @@ let authoredWorld,
   railwayPoints,
   storyLevels,
   routeChoice,
-  routePanel;
+  routePanel,
+  networkPanel,
+  missionChip,
+  characterGrab;
 const camera = new THREE.PerspectiveCamera(48, innerWidth / innerHeight, 0.5, 1800);
 const hemi = new THREE.HemisphereLight('#dce8db', '#646544', 2.25);
 scene.add(hemi);
@@ -716,6 +731,13 @@ const routeStops = [
   { id: 'momiji', name: 'Momiji', japanese: 'もみじ', z: stationZ, theme: 'riverside' },
   ...additionalStops,
 ].map((stop) => ({ ...stop, distance: distanceAtZ(track, trackLength, stop.z) }));
+// The regional network is simulated on a map only; missions are played on the Maple Line.
+// Stop distances are read live, so the Kawasemi loop moves the mission platforms too.
+const railNetwork = createRailNetwork({ mapleStops: routeStops });
+const business = createBusiness({ network: railNetwork });
+const missionBoard = createMissions({ network: railNetwork, business });
+// Missions count loading where the door interlock allows the doors to open.
+const missionStopAt = () => alignedPlatformStop() ?? null;
 const regionalOptions = document.createElement('optgroup');
 regionalOptions.label = 'Regional stations';
 for (const stop of additionalStops)
@@ -836,21 +858,18 @@ const modelLoader = createModelLoader({
   load: (path) => gltfLoader.then((load) => load(path)),
   onError: (path) => controlMessage(`${path} could not load; showing the simple version.`),
 });
-const heroCast = createHeroCast({
-  THREE,
-  scene,
-  loader: modelLoader,
-  // worldDetails is replaced when a generated valley is built, so resolve it each call.
-  worldDetails: {
-    setStandIn: (id, enabled) => worldDetails.setStandIn?.(id, enabled),
-    figureOf: (id) => worldDetails.figureOf?.(id) ?? null,
-  },
-  minds,
-});
+// worldDetails is replaced when a generated valley is built, so resolve it each call.
+const heroWorld = {
+  setStandIn: (id, enabled) => worldDetails.setStandIn?.(id, enabled),
+  figureOf: (id) => worldDetails.figureOf?.(id) ?? null,
+};
+const heroCasts = MOMIJI_CAST.map((member) =>
+  createHeroCast({ THREE, scene, loader: modelLoader, worldDetails: heroWorld, minds, ...member }),
+);
 const stationModules = createStationModules({ THREE, loader: modelLoader, parent: station });
 if (import.meta.hot)
   import.meta.hot.dispose(() => {
-    heroCast.dispose();
+    for (const hero of heroCasts) hero.dispose();
     stationModules.dispose();
   });
 if (import.meta.hot) import.meta.hot.dispose(() => mindsClient.dispose());
@@ -971,7 +990,11 @@ function controlMessage(message) {
   }, 3200);
 }
 function platformDoorAligned() {
-  return routeStops.some((stop) => {
+  return Boolean(alignedPlatformStop());
+}
+/** The stop whose platform lines up with any car door, using the door interlock's spans. */
+function alignedPlatformStop() {
+  return routeStops.find((stop) => {
     const span = stop.id === 'momiji' ? [-40, 13] : [-26, 26];
     for (let car = 0; car < train.length; car++) {
       const t = THREE.MathUtils.clamp(
@@ -1331,7 +1354,7 @@ const episodeRunner = createEpisodeRunner(
     },
     cut: (shot) => filmDirector.cut(shot),
     say(line) {
-      if (line.entity && line.entity === heroCast.personId) heroCast.talk(line.seconds);
+      if (line.entity) heroCasts.find((hero) => hero.personId === line.entity)?.talk(line.seconds);
       filmCaptions.show({ kind: 'dialogue', ...line });
     },
     card: (caption) => filmCaptions.show(caption),
@@ -1600,6 +1623,9 @@ function jumpTo(z) {
   gameStore.setPreferences({ mode: 'explore' });
   $('mode').value = 'explore';
   const distance = distanceAtZ(track, trackLength, z);
+  // A jump still takes network time: the trip at the Maple Line's 120 km/h limit.
+  // Otherwise missions and connections could be finished with the clock standing still.
+  if (state.started) railNetwork.tick(Math.abs(distance - state.distance) / (120 / 3.6) / 60);
   reset({ preserveRoute: true });
   changeDrive((next) => {
     next.distance = distance;
@@ -1737,6 +1763,7 @@ if (import.meta.hot)
     rainImpacts.dispose();
   });
 let last = performance.now(),
+  missionChipRenderedAt = 0,
   hold = 0;
 document.addEventListener('visibilitychange', () => {
   last = performance.now();
@@ -1902,6 +1929,23 @@ function frame(now) {
   if (!state.paused) waterMat.uniforms.time.value += dt * (weather === 'rain' ? 1.8 : 1);
   waterMat.uniforms.distortionScale.value = weather === 'rain' ? 3.1 : 1.6;
   episodeRunner.update(dt);
+  characterGrab?.update({ viewportAspect: camera.aspect });
+  // One game minute per real minute of riding; dialogs and pause hold the clock.
+  const networkDt = state.started && !state.paused ? dt : 0;
+  if (networkDt > 0) railNetwork.tick(networkDt / 60);
+  missionBoard.update({
+    dtSeconds: networkDt,
+    gameMinutes: railNetwork.now(),
+    distance: state.distance,
+    speedMps: state.speed,
+    doorsOpen: state.doorsOpen,
+    stopAt: missionStopAt,
+  });
+  networkPanel?.update({ playerDistance: state.distance });
+  if (missionChip && now - missionChipRenderedAt > 250) {
+    missionChipRenderedAt = now;
+    renderMissionChip(missionChip, missionBoard.getState());
+  }
   updateCamera(dt);
   storyLevels?.update({
     position: train[0].position,
@@ -2020,7 +2064,7 @@ function frame(now) {
     stationActivity: activeDirectorDecision()?.stationActivity ?? 'commute',
     minds,
   });
-  heroCast.update(state.paused ? 0 : dt, { paused: state.paused });
+  for (const hero of heroCasts) hero.update(state.paused ? 0 : dt, { paused: state.paused });
   mindsStop ??= nearestUpcomingStop();
   mindsStopAge += realDt;
   if (mindsStopAge > 0.5) {
@@ -2276,6 +2320,124 @@ storyGuests = createStoryGuests({
   railPoint,
   terrainHeight: (x, z) => terrain(x - center(z), z),
 });
+/** Everyone a grab can find: Momiji people, loaded regional residents, and story figures. */
+function grabbableCharacters() {
+  const list = [];
+  for (const person of worldDetails.getPopulationState?.().people ?? []) {
+    if (!person.visible) continue;
+    const figure = worldDetails.figureOf?.(person.id);
+    const at = figure?.position ?? person.position;
+    list.push({
+      id: person.id,
+      kind: 'momiji',
+      name: person.role,
+      position: [at.x, at.y, at.z],
+      heading: figure?.heading,
+      height: person.pose === 'reading' ? 1.3 : 1.7,
+    });
+  }
+  for (const station of extendedWorld.getResidents())
+    for (const resident of station.residents)
+      if (resident.world)
+        list.push({
+          id: resident.id,
+          kind: 'regional',
+          name: resident.role,
+          position: resident.world,
+          heading: resident.worldHeading,
+          height: resident.seated ? 1.3 : 1.7,
+          station: station.station,
+        });
+  for (const [kind, host, focus] of [
+    ['story-cast', storyCast, 0.9],
+    ['story-guest', storyGuests, 0.85],
+  ]) {
+    const figures = host?.getState();
+    if (!figures?.visible) continue;
+    for (const figure of figures.characters)
+      if (figure.headFocus)
+        list.push({
+          id: figure.id,
+          kind,
+          name: figure.name,
+          position: [
+            figure.headFocus[0],
+            figure.headFocus[1] - figure.height * focus,
+            figure.headFocus[2],
+          ],
+          heading: Math.atan2(figure.facing[0], figure.facing[2]),
+          height: figure.height,
+          beatId: figures.beatId,
+        });
+  }
+  return list;
+}
+/** The simulation, mind, model, episode and story details behind one grabbed character. */
+function describeCharacter(character) {
+  const mind = minds.getState().entities.find((entity) => entity.id === character.id);
+  const person =
+    character.kind === 'momiji'
+      ? worldDetails.getPopulationState?.().people.find((item) => item.id === character.id)
+      : null;
+  const resident =
+    character.kind === 'regional'
+      ? extendedWorld
+          .getResidents()
+          .flatMap((station) => station.residents)
+          .find((item) => item.id === character.id)
+      : null;
+  const episode = episodeRunner.getState();
+  const parts = Object.entries(episode.scene?.actors ?? {})
+    .filter(([, entity]) => entity === character.id)
+    .map(([part]) => part);
+  const story = storyEngine.getState();
+  return {
+    station: character.station ?? (person ? 'momiji' : null),
+    state: person?.state ?? resident?.activity ?? (character.beatId ? 'in a story scene' : null),
+    simulation: person
+      ? {
+          role: person.role,
+          state: person.state,
+          destination: person.destination,
+          walking: person.walking,
+          pose: person.pose,
+        }
+      : resident
+        ? {
+            role: resident.role,
+            activity: resident.activity,
+            walking: resident.walking,
+            seated: resident.seated,
+            frame: resident.frame ?? 'station',
+          }
+        : null,
+    mind: mind
+      ? {
+          mood: mind.mood,
+          intent: mind.intent,
+          source: mind.source,
+          expiresIn: mind.expiresIn,
+          needs: mind.needs,
+          persona: mind.persona,
+        }
+      : null,
+    model: heroCasts.find((hero) => hero.personId === character.id)?.getState() ?? null,
+    episode:
+      parts.length && episode.status === 'playing'
+        ? { title: episode.episode?.title, scene: episode.scene?.id, parts }
+        : null,
+    story: character.beatId
+      ? { beatId: character.beatId, activeBeat: story.activeBeat?.id ?? null }
+      : null,
+    camera: { view, position: camera.position.toArray().map((v) => Number(v.toFixed(2))) },
+  };
+}
+characterGrab = createCharacterGrab({
+  THREE,
+  camera,
+  listCharacters: grabbableCharacters,
+  describe: describeCharacter,
+});
 storyCinematics = createStoryCinematics({
   THREE,
   camera,
@@ -2525,6 +2687,9 @@ if (import.meta.env.DEV) {
         brake = number(value.brake ?? state.brake, 0, 1);
       if (value.speedKmh !== undefined) number(value.speedKmh, 0, 160);
       if (!state.started) start();
+      // Same path as the lever: manual driving shows the controller, so a player can see
+      // and change a notch an agent left behind instead of riding a hidden P5.
+      gameStore.setPreferences({ manualControls: true });
       setDrive(power, brake);
       if (value.speedKmh !== undefined)
         changeDrive((next) => {
@@ -2616,6 +2781,8 @@ if (import.meta.env.DEV) {
   const webmcp = registerGameWebMCP({
     inspector,
     extensions: [
+      networkToolsExtension({ network: railNetwork, missions: missionBoard, business }),
+      ({ tool }) => registerGrabTools({ tool, grabber: characterGrab }),
       ({ tool }) =>
         registerDramaTools({
           tool,
@@ -2670,7 +2837,7 @@ if (import.meta.env.DEV) {
           getContext: () => ({
             ...directorContext(),
             models: {
-              hero: heroCast.getState(),
+              heroes: heroCasts.map((hero) => hero.getState()),
               modules: stationModules.getState(),
               files: modelLoader.getState(),
             },
@@ -2779,6 +2946,11 @@ if (import.meta.env.DEV) {
     a.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
+  const removeGrabPointer = installGrabPointer({
+    domElement: renderer.domElement,
+    grabber: characterGrab,
+  });
+  if (import.meta.hot) import.meta.hot.dispose(removeGrabPointer);
   const inspectButton = document.createElement('button');
   inspectButton.id = 'inspect-world';
   inspectButton.textContent = 'Inspect world';
@@ -2807,6 +2979,24 @@ document.body.classList.toggle('hud-hidden', !gameStore.getState().preferences.h
 $('restore-hud').hidden = gameStore.getState().preferences.hudVisible;
 const unsubscribeSimpleHUD = installSimpleHUD({ store: gameStore });
 routePanel = mountRouteChoicePanel({ routeChoice, onChoose: chooseRoute });
+networkPanel = mountNetworkPanel({
+  network: railNetwork,
+  missions: missionBoard,
+  business,
+  onJumpToStop: (id) => {
+    const stop = routeStops.find((item) => item.id === id);
+    if (stop) jumpTo(stop.z);
+  },
+});
+document.querySelector('.simple-header-actions')?.prepend(networkPanel.trigger);
+missionChip = document.createElement('button');
+missionChip.type = 'button';
+missionChip.id = 'mission-chip';
+missionChip.className = 'mission-chip';
+missionChip.title = 'Open the mission board';
+missionChip.hidden = true;
+missionChip.onclick = () => networkPanel.open();
+document.querySelector('.ride-controls')?.append(missionChip);
 const dutyPanel = mountStationDutiesPanel({ duties: stationDuties, onAction: railwayAction });
 const storyPanel = mountStoryPanel({
   fetchDirector,

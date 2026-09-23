@@ -1077,6 +1077,12 @@ export function createExtendedWorld({ THREE, scene, railPoint, center = routeCen
         result = Math.max(result, active.get(i)?.canopy.get(key) ?? -Infinity);
       return result;
     },
+    /** Loaded stations' residents only; cheaper than getState() for per-frame tools. */
+    getResidents() {
+      return [...active.values()].flatMap((chunk) =>
+        chunk.residents.map((resident) => resident.getState()),
+      );
+    },
     getState() {
       return {
         loadedChunks: [...active.keys()],

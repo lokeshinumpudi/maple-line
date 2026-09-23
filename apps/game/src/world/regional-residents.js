@@ -275,6 +275,7 @@ export function createRegionalResidents({ THREE, parent, stop, local, yaw = 0, p
   }
   const dummy = new THREE.Object3D();
   const body = new THREE.Object3D();
+  const worldPoint = new THREE.Vector3();
   const color = new THREE.Color();
   const matrix = new THREE.Matrix4();
   let boxCount = 0,
@@ -331,7 +332,9 @@ export function createRegionalResidents({ THREE, parent, stop, local, yaw = 0, p
     return target;
   }
   function update(elapsed = 0, context = {}) {
-    if (disposed || Math.abs(elapsed - lastTime) < 1 / 24) return;
+    // Pose every frame that time moves. A lower pose rate made figures step against a
+    // smoothly moving director camera, which read as sliding back and lurching forward.
+    if (disposed || Math.abs(elapsed - lastTime) < 1e-4) return;
     const dt = lastTime === -Infinity ? 0 : Math.max(0, elapsed - lastTime);
     lastTime = elapsed;
     minds = context.minds ?? null;
@@ -348,6 +351,11 @@ export function createRegionalResidents({ THREE, parent, stop, local, yaw = 0, p
         body.position.copy(local(pose.x, 0.62, pose.z));
         body.rotation.set(0, yaw + pose.yaw, 0);
       }
+      // World point at the feet (the body origin sits 0.62 m up), for inspection tools.
+      group.updateWorldMatrix(true, false);
+      worldPoint.copy(body.position).applyMatrix4(group.matrixWorld);
+      pose.world = [worldPoint.x, worldPoint.y - 0.62, worldPoint.z];
+      pose.worldHeading = body.rotation.y;
       // Optional NPC minds: report the pose, then read a small expression for visual cues.
       const expression = minds ? senseMind(resident, pose) : undefined;
       let headY = 0,

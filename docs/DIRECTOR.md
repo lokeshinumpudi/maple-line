@@ -47,17 +47,20 @@ Story conversations keep their own camera: the director pauses while a conversat
 
 These register through `registerGameWebMCP({ extensions })` in development builds, next to the existing game tools. Arguments are validated against the schemas in `agent/director-tools.js` and `camera/director.js` before anything moves.
 
-| Tool                 | Purpose                                                                                             |
-| -------------------- | --------------------------------------------------------------------------------------------------- |
-| `get_director_state` | Active shot, lens, queue, recent history, film look, nearby stop/bridge/tunnel and visible people   |
-| `direct_shot`        | Cut to one shot now; the editor continues afterwards                                                |
-| `play_sequence`      | 1–40 shots with an optional title card; each shot can carry `caption`, `subtitle`, `line` and `set` |
-| `stop_sequence`      | Clear queued shots                                                                                  |
-| `set_film_look`      | Change quality, or force letterbox bars outside the director                                        |
-| `get_npc_minds`      | Persona, mood, needs, intent and source (`local`, `jev`, `directed`) for background characters      |
-| `direct_npc`         | Give one character an acting note (`mood`, `intent`) for 1–300 seconds                              |
-| `cue_npc_event`      | Tell characters something happened (rain, a late train, a horn)                                     |
-| `get_world_state` …  | Existing game, story, route, duty and level-building tools                                          |
+| Tool                        | Purpose                                                                                             |
+| --------------------------- | --------------------------------------------------------------------------------------------------- |
+| `get_director_state`        | Active shot, lens, queue, recent history, film look, nearby stop/bridge/tunnel and visible people   |
+| `direct_shot`               | Cut to one shot now; the editor continues afterwards                                                |
+| `play_sequence`             | 1–40 shots with an optional title card; each shot can carry `caption`, `subtitle`, `line` and `set` |
+| `stop_sequence`             | Clear queued shots                                                                                  |
+| `set_film_look`             | Change quality, or force letterbox bars outside the director                                        |
+| `get_npc_minds`             | Persona, mood, needs, intent and source (`local`, `jev`, `directed`) for background characters      |
+| `direct_npc`                | Give one character an acting note (`mood`, `intent`) for 1–300 seconds                              |
+| `cue_npc_event`             | Tell characters something happened (rain, a late train, a horn)                                     |
+| `grab_character`            | Grab the character at a screen point (NDC) or by id; see below                                      |
+| `list_grabbable_characters` | Visible characters with their screen centre, nearest first                                          |
+| `get_grabbed_characters`    | Recent grabs, including characters a person Alt-clicked                                             |
+| `get_world_state` …         | Existing game, story, route, duty and level-building tools                                          |
 
 `set` accepts `weather`, `timeOfDay` (`daylight`, `sunrise`, `sunset`, `dusk`), `location` (a place id or route z) and `speedKmh`. It runs through the same actions as the UI, including Places travel for location jumps, and the cut fades through black. Unfinished station duties block location jumps here, as they block Places.
 
@@ -88,13 +91,19 @@ Caption text is set with `textContent` and limited to 160 characters. Captions a
 
 Before the portrait, `direct_npc` with `{ "entityId": "commuter-3", "mood": "anxious", "intent": "check-phone", "holdSeconds": 60 }` gives the character the matching behaviour. Use `get_director_state` to find visible people.
 
+### Grabbing a character
+
+In a development build, **Alt-click** (Option-click on a Mac) a person in the game to grab them. A card shows who they are, what they are doing and how far they moved, and the record is kept for agents. An agent grabs the same way with `grab_character` (x and y in normalized device coordinates, as `pick_world` uses, or an id) and reads grabs with `get_grabbed_characters`.
+
+A record holds the id, kind (`momiji`, `regional`, `story-cast`, `story-guest`), position and heading, the simulation state, the NPC mind (mood, intent, source, needs), the Blender model's clip, the episode part the person plays, the story beat for Haru and Emi, and the camera. Its `motion` summary covers the last 4 seconds, sampled 10 times a second: path length, net displacement, speed and the number of direction reversals. A figure that paces or jitters shows up as many reversals with a small net displacement, and `path` lists the samples.
+
 ## Episodes
 
 For whole scenes with a cast, dialogue and train staging, write an episode instead of a shot list. See [writing episodes](drama/README.md).
 
 ## Limits
 
-- Characters are the existing low-poly figures. Portraits frame them well but do not add facial animation.
+- Three Momiji people (`commuter-1`, `commuter-2`, `reader-1`) have Blender models with blinks, smiles and a talking jaw. Everyone else is a low-poly figure without a face. A portrait of Mr. Ishida from the front shows his newspaper, not his face.
 - Narration lines are on-screen text. They are not voiced; Haru's story keeps its own narration.
 - The director tools are registered only in development builds, like the other WebMCP tools.
 - Only Momiji station buildings count as obstructions for shot planning.

@@ -1,0 +1,23 @@
+/* Alt-click grab card. Matches the game's dark green menus. */
+#grab-card {
+  position: fixed;
+  z-index: 60;
+  max-width: 290px;
+  padding: 10px 12px;
+  border: 1px solid #e9d9a746;
+  border-radius: 12px;
+  background: #142f2af2;
+  color: #f6ecd1;
+  font-size: 12px;
+  line-height: 1.45;
+  pointer-events: none;
+  box-shadow: 0 12px 40px #061c2360;
+}
+#grab-card > div:first-child {
+  color: #f0d49b;
+  font-weight: 600;
+}
+#grab-card > div:last-child {
+  margin-top: 4px;
+  opacity: 0.7;
+}

@@ -252,7 +252,8 @@ export function createStoryGuests({ THREE, scene, railPoint, terrainHeight }) {
       root.visible = true;
       hiddenReason = null;
       elapsed += Math.max(0, Math.min(Number.isFinite(dt) ? dt : 0, 0.1));
-      if (elapsed - lastPose >= 1 / 30) pose();
+      // Every frame that time moves, so a guest does not step against the story camera.
+      if (elapsed - lastPose >= 1e-4) pose();
     }
   }
   function getState() {

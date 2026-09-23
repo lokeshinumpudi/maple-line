@@ -79,7 +79,9 @@ The express tuning reaches 60 km/h in about 11 seconds and 120 km/h in about 23 
 
 **Places → Watch a short drama** plays episodes of _The 17:42_, a three-part companion series staged with the director, NPC acting notes, auto drive, doors and weather. Episodes are data that agents can write, validate and play through WebMCP; see [writing episodes](drama/README.md).
 
-The first Blender-built assets are in the game: a hero commuter at Momiji (a rigged character with face shapes and walk, idle, wave and check-phone clips that follow the NPC mind) and a timber station shelter on the Momiji platform. Both are made by Python build scripts in `asset-src/`; missing files fall back to the procedural figure and platform. See [asset sources](../asset-src/README.md).
+Three Momiji people are Blender-built characters: Mr. Sato the office commuter, Riko the student with her grandmother's radio, and Mr. Ishida, who reads the paper on the bench. They have face shapes (blinks, smile, a moving jaw for episode lines) and eleven clips that follow the simulation and the NPC mind: walk, hurry, sit, board, idle, wave, check-phone, watch-train, shelter, chat and stretch. A timber station shelter stands on the Momiji platform. All are made by Python build scripts in `asset-src/`; missing files fall back to the procedural figures and platform. See [asset sources](../asset-src/README.md).
+
+**Network** beside Places opens a schematic map of five other fictional lines with timetabled trains, a mission board and a company ledger. Missions (passengers, freight, express mail, connections) are played on the Maple Line: stop at the platform with the doors open to load and unload. An eight-step campaign unlocks the other lines. Only the Maple Line is drawn in 3D. See [regional network and missions](NETWORK-AND-MISSIONS.md).
 
 Seven level crossings between Sakuragawa and Minato have warning lamps, a procedural two-tone bell, lowering arms and small cars. Cars make the legally required stop at the line, queue while the arms are down and cross once they rise. Crossings stay closed until the whole train has cleared.
 
@@ -142,7 +144,7 @@ Between memories, drive manually or leave automatic driving on. The **Continue t
 
 ## Agent access
 
-The development inspector can read scene state, find objects, raycast the current view, and apply reversible local object edits. WebMCP registers game, story, railway-duty, scene-task, and building tools when a supported browser provides `document.modelContext` or the older `navigator.modelContext`.
+The development inspector can read scene state, find objects, raycast the current view, and apply reversible local object edits. Alt-click a character to grab their position, state, mind and last 4 seconds of motion; agents use `grab_character` and `get_grabbed_characters` (see [director tools](DIRECTOR.md)). WebMCP registers game, story, railway-duty, scene-task, and building tools when a supported browser provides `document.modelContext` or the older `navigator.modelContext`.
 
 Native WebMCP discovery listed the game and building tools in an isolated Chrome for Testing session with the testing feature enabled. The existing Chrome Agent session on port 9229 currently uses the labelled page-local fallback, `window.mapleWebMCP`; that fallback does not make tools appear in native `webmcp list`. No remote server or manual snapshot copying is required for an agent with access to the local page.
 
@@ -194,7 +196,7 @@ The operating profile anticipates slower bridge, tunnel, passing-loop, and mount
 
 The original valley remains allocated. The regional world maintains up to five nearby 600 m chunks, while spatial groups restrict visible vegetation, rails, and nearby shadow casters. Rendering targets 60 fps with a two-million-pixel budget, adaptive resolution, and 20 Hz shadow/reflection updates. Reflection and refraction still add render passes; use the live performance tool to measure the active view. Weather changes remain viewable while paused, including atmospheric precipitation.
 
-Traffic crossings, full multi-station timetables, and saved driving sessions remain future work. Regional station visitors currently use simpler arrival/waiting routines; the original Momiji station has the detailed boarding and local-resident simulation. See the [world plan](docs/WORLD-PLAN.md) for proposed phases; its historical baseline and roadmap are not a list of completed features.
+A timetable for the player's own train and saved driving sessions remain future work. Regional station visitors currently use simpler arrival/waiting routines; the original Momiji station has the detailed boarding and local-resident simulation. See the [world plan](docs/WORLD-PLAN.md) for proposed phases; its historical baseline and roadmap are not a list of completed features.
 
 Google Fonts supplies optional UI fonts with system fallbacks. Three.js and Zustand are bundled locally.
 

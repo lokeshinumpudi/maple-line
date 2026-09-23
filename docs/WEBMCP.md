@@ -12,6 +12,8 @@ In development, `apps/game/src/agent/webmcp.js` registers seven tools when the b
 | `patch_world_object` | Temporary local transform, visibility or material edit           |
 | `undo_world_patch`   | Revert the last object patch                                     |
 
+A `drive` control switches the ride to manual driving, as moving the lever does, so the controller is visible and the player sees the notch an agent set. Manual driving is not capped at the local limit; the speedometer warns, and full power reaches 160 km/h on level track. Send `autopilot: true` (or press **Sit back**) to hand control back.
+
 ## Integration
 
 The app is `@maple-line/game` in the pnpm/Turborepo workspace. Start it from `/Users/lokeshinumpudi/Desktop/maple-line` with `pnpm dev`; the inspector and tool registration are development-only. The following imports are relative to `apps/game/src/main.js`.

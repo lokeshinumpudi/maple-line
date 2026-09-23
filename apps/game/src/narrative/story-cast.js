@@ -356,7 +356,8 @@ export function createStoryCast({ THREE, scene, railPoint, terrainHeight }) {
       animationTime = Number.isFinite(elapsed)
         ? Math.max(0, elapsed)
         : animationTime + Math.max(0, Math.min(Number.isFinite(dt) ? dt : 0, 0.1));
-      if (Math.abs(animationTime - lastRenderedTime) >= 1 / 30) renderPose(animationTime);
+      // Every frame that time moves, so the cast does not step against the story camera.
+      if (Math.abs(animationTime - lastRenderedTime) >= 1e-4) renderPose(animationTime);
     }
   }
 

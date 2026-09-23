@@ -218,7 +218,12 @@ export function createEpisodeRunner(host, { stops = [], crossings = [] } = {}) {
           : null,
         scene:
           episode && status === 'playing'
-            ? { index: sceneIndex, id: scene().id, heading: scene().heading }
+            ? {
+                index: sceneIndex,
+                id: scene().id,
+                heading: scene().heading,
+                actors: { ...scene().actors },
+              }
             : null,
         beat:
           episode && status === 'playing'

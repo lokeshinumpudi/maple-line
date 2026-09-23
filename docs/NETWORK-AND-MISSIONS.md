@@ -6,7 +6,9 @@ Maple Line sits inside a small fictional rail network. You still drive only the 
 
 ## Status
 
-The modules, tests, dialog and agent tools exist as standalone files. They are not yet wired into `main.js`, so the Network button and HUD chip do not appear in the running game until someone adds the integration described at the end of this page. Browser behavior of the dialog has not been checked in the running game.
+The network runs in every build. **Network** sits in the header beside **Places** (and in the phone Settings shortcuts); a mission chip in the ride controls shows the most urgent mission and opens the board. The six agent tools register with the other WebMCP tools in development builds.
+
+Checked in the Chrome Agent session on the development build: campaign step 1 was accepted, loaded at Momiji, delivered at Aonuma for ¥9,590, raised Momiji reputation to 15, unlocked the Kagami Lake Branch and offered step 2.
 
 | File                                         | What it does                                             |
 | -------------------------------------------- | -------------------------------------------------------- |
@@ -37,7 +39,7 @@ Every station has a population and industries. An industry has a supply rate and
 
 ## Game clock
 
-The network uses game minutes. Minute 0 is 00:00 on day 1, and a fresh network starts at 06:00. The simulation advances in fixed 0.25-minute steps, so one `tick(10)` gives the same state as ten `tick(1)` calls. The suggested rate is one game minute per real minute of unpaused riding, which keeps the Maple Line drive and the map on the same scale.
+The network uses game minutes. Minute 0 is 00:00 on day 1, and a fresh network starts at 06:00. The simulation advances in fixed 0.25-minute steps, so one `tick(10)` gives the same state as ten `tick(1)` calls. The game advances it one game minute per real minute of unpaused riding, which keeps the Maple Line drive and the map on the same scale. Open dialogs hold the clock. A Places jump (or the board's **Travel to** button) advances the clock by the time the trip would take at 120 km/h, so jumping cannot finish a mission or catch a connection with the clock standing still.
 
 ## AI trains and the dispatcher
 
@@ -85,7 +87,7 @@ Missions are always played on the Maple Line. A demand entry that starts or ends
 | Express    | Reach B by the deadline; arriving more than 10 minutes early lowers punctuality | 4 s / 4 s     |
 | Connection | Reach a junction before a named off-map train leaves                            | 6 s / 5 s     |
 
-Loading and unloading count only while the train is stopped (0.1 m/s or less) within 26 m of the right platform with the doors open. If the doors close, the train moves or it is the wrong platform, the count starts again from zero. The missions module only reads distance, speed, doors and the clock; it never changes speed, doors or power.
+Loading and unloading count only while the train is stopped (0.1 m/s or less) at the right platform with the doors open. "At the platform" uses the same rule as the door interlock: some car's doors line up with the platform, so wherever the player may open the doors, loading counts. If the doors close, the train moves or it is the wrong platform, the count starts again from zero. The missions module only reads distance, speed, doors and the clock; it never changes speed, doors or power.
 
 Lifecycle: offered → accepted → loading → in-transit → unloading → completed or failed.
 
@@ -131,9 +133,9 @@ Missions, campaign step, unlocks, ledger and the game clock are saved in browser
 
 None of these tools drive the train. Loading still needs the train stopped at the platform with doors open.
 
-## Integrating into the game
+## How the game wires it
 
-`main.js` needs to create the three modules after `routeStops` exists, advance the clock in `frame()` while the ride runs, pass drive state to `missions.update`, mount the dialog and register the tools through the `extensions` option of `registerGameWebMCP`. Use `routeStops` (not `additionalStops`) so Momiji is included and distances follow the selected Kawasemi route.
+`main.js` creates the three modules from `routeStops` (so Momiji is included and distances follow the selected Kawasemi route), ticks the clock and calls `missions.update` in `frame()`, mounts the dialog after the HUD, and registers the tools with `networkToolsExtension` in the `extensions` option of `registerGameWebMCP`.
 
 ## Limits
 
@@ -141,4 +143,4 @@ None of these tools drive the train. Loading still needs the train stopped at th
 - Timetables repeat every day; there are no disruptions, breakdowns or weather effects off the map.
 - The mission board does not know which way the train is heading, so a mission behind you needs a turnaround at a terminal or a Places jump.
 - Station capacity is unlimited, which is simpler than a real single-track railway.
-- Tests cover the network, business and missions logic and the tool validation. The dialog has no automated test and has not been checked in a browser.
+- Tests cover the network, business and missions logic and the tool validation. The dialog has no automated test; it was checked by hand in one desktop browser. Some map labels overlap (Momiji, Kawasemi, Shirakaba and the prefecture names).
