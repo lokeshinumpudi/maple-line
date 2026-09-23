@@ -1,5 +1,13 @@
 import { defineConfig } from 'vite';
 
+// A second local checkout can run its own director (for example on 4575) without
+// editing this file: MAPLE_DIRECTOR_PROXY=http://127.0.0.1:4575 pnpm exec vite --port 4573
+const directorTarget = /^http:\/\/(127\.0\.0\.1|localhost):\d{4,5}$/.test(
+  process.env.MAPLE_DIRECTOR_PROXY ?? '',
+)
+  ? process.env.MAPLE_DIRECTOR_PROXY
+  : 'http://127.0.0.1:4175';
+
 export default defineConfig(({ mode }) => ({
   base: mode.endsWith('-embed')
     ? './'
@@ -60,14 +68,14 @@ export default defineConfig(({ mode }) => ({
     port: 4173,
     strictPort: true,
     allowedHosts: true,
-    proxy: { '/api/director': 'http://127.0.0.1:4175' },
+    proxy: { '/api/director': directorTarget },
   },
   preview: {
     host: '127.0.0.1',
     port: 4174,
     strictPort: true,
     allowedHosts: true,
-    proxy: { '/api/director': 'http://127.0.0.1:4175' },
+    proxy: { '/api/director': directorTarget },
   },
   build: {
     // Source maps let browser debugging point back to the authored modules.

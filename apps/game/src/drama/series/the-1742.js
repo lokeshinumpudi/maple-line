@@ -67,29 +67,70 @@ export const THE_1742 = Object.freeze({
             {
               shot: { type: 'portrait', subject: { cast: 'riko' } },
               dialogue: [
-                { cast: 'riko', text: 'Seventeen forty-two in. Seventeen forty out.' },
-                { cast: 'riko', text: 'That isn’t a connection. That’s a race.' },
+                {
+                  cast: 'riko',
+                  text: 'Seventeen forty-two in. Seventeen forty out.',
+                  emotion: 'anxious',
+                  translations: {
+                    'te-IN': 'రైలు ఐదు నలభై రెండుకి వస్తుంది. బస్సు ఐదు నలభైకే వెళ్ళిపోతుంది.',
+                  },
+                },
+                {
+                  cast: 'riko',
+                  text: 'That isn’t a connection. That’s a race.',
+                  emotion: 'dry',
+                  translations: { 'te-IN': 'ఇది కనెక్షన్ కాదు. ఇది పరుగు పందెం.' },
+                },
               ],
             },
             {
               shot: { type: 'portrait', subject: { cast: 'sato' }, side: 'right' },
               dialogue: [
-                { cast: 'sato', text: 'What’s in the box?' },
+                { cast: 'sato', text: 'What’s in the box?', emotion: 'curious' },
                 {
                   cast: 'riko',
                   text: 'My grandmother’s radio. She says the new one talks too fast.',
+                  emotion: 'warm',
                 },
-                { cast: 'sato', text: 'The bus waits, if the driver’s in a good mood.' },
-                { cast: 'riko', text: 'Is he usually?' },
-                { cast: 'sato', text: 'It’s a she. And no.' },
+                {
+                  cast: 'sato',
+                  text: 'The bus waits, if the driver’s in a good mood.',
+                  emotion: 'dry',
+                },
+                {
+                  cast: 'riko',
+                  text: 'Is he usually?',
+                  emotion: 'curious',
+                  // Machine translation made the driver "she" here, which spoils the reply.
+                  translations: { 'te-IN': 'అతను మామూలుగా మంచి మూడ్‌లో ఉంటాడా?' },
+                },
+                {
+                  cast: 'sato',
+                  text: 'It’s a she. And no.',
+                  emotion: 'dry',
+                  translations: { 'te-IN': 'అతను కాదు, ఆమె. ఇక మూడ్ అంటావా, ఉండదు.' },
+                },
               ],
             },
             {
               shot: { type: 'portrait', subject: { cast: 'ishida' }, lens: 40 },
               dialogue: [
-                { cast: 'ishida', text: 'Ride in the front car. The bus stop is by the kiosk.' },
-                { cast: 'riko', text: 'Thank you.' },
-                { cast: 'ishida', text: 'Don’t thank me. I’ve never made it.' },
+                {
+                  cast: 'ishida',
+                  text: 'Ride in the front car. The bus stop is by the kiosk.',
+                  emotion: 'reassuring',
+                  // "Car" is a railway carriage (బోగీ), not a motor car.
+                  translations: { 'te-IN': 'ముందు బోగీలో ఎక్కు. బస్ స్టాప్ కియోస్క్ పక్కనే ఉంది.' },
+                },
+                { cast: 'riko', text: 'Thank you.', emotion: 'warm' },
+                {
+                  cast: 'ishida',
+                  text: 'Don’t thank me. I’ve never made it.',
+                  emotion: 'dry',
+                  translations: {
+                    'te-IN': 'నాకు థ్యాంక్స్ చెప్పకు. నేను ఒక్కసారి కూడా ఆ బస్సు అందుకోలేదు.',
+                  },
+                },
               ],
             },
             {
@@ -119,7 +160,9 @@ export const THE_1742 = Object.freeze({
               shot: { type: 'window' },
               waitFor: 'doors-closed',
               hold: 3,
-              dialogue: [{ cast: 'riko', text: 'Front car.' }],
+              dialogue: [
+                { cast: 'riko', text: 'Front car.', translations: { 'te-IN': 'ముందు బోగీ.' } },
+              ],
             },
             {
               shot: { type: 'trackside', aperture: 'shallow' },
@@ -157,25 +200,39 @@ export const THE_1742 = Object.freeze({
               caption: 'Between Momiji and Sakuragawa',
               subtitle: '17:09',
               dialogue: [
-                { cast: 'riko', text: 'Grandma, don’t come to the stop. It’s cold.' },
+                {
+                  cast: 'riko',
+                  text: 'Grandma, don’t come to the stop. It’s cold.',
+                  emotion: 'warm',
+                },
                 {
                   cast: 'fusae',
                   phone: true,
                   text: 'I’m not coming for you. I’m coming for the radio.',
+                  emotion: 'dry',
                 },
               ],
             },
             {
               shot: { type: 'telephoto' },
               dialogue: [
-                { cast: 'riko', text: 'The train gets in at 17:42. The bus goes at 17:40.' },
+                {
+                  cast: 'riko',
+                  text: 'The train gets in at 17:42. The bus goes at 17:40.',
+                  emotion: 'anxious',
+                },
                 {
                   cast: 'fusae',
                   phone: true,
                   text: 'Kaneda’s girl drives it now. She waits if she sees the train.',
                 },
-                { cast: 'riko', text: 'And if she doesn’t see it?' },
-                { cast: 'fusae', phone: true, text: 'Then you walk, and I make tea.' },
+                { cast: 'riko', text: 'And if she doesn’t see it?', emotion: 'anxious' },
+                {
+                  cast: 'fusae',
+                  phone: true,
+                  text: 'Then you walk, and I make tea.',
+                  emotion: 'warm',
+                },
               ],
             },
             {
@@ -192,13 +249,23 @@ export const THE_1742 = Object.freeze({
             {
               shot: { type: 'wheels' },
               dialogue: [
-                { cast: 'riko', text: 'Why don’t they just move the bus five minutes?' },
+                {
+                  cast: 'riko',
+                  text: 'Why don’t they just move the bus five minutes?',
+                  emotion: 'curious',
+                },
                 {
                   cast: 'fusae',
                   phone: true,
                   text: 'The bus belongs to the town. The train belongs to the railway.',
+                  emotion: 'dry',
                 },
-                { cast: 'fusae', phone: true, text: 'They don’t eat at the same table.' },
+                {
+                  cast: 'fusae',
+                  phone: true,
+                  text: 'They don’t eat at the same table.',
+                  emotion: 'dry',
+                },
               ],
             },
             {
@@ -208,9 +275,10 @@ export const THE_1742 = Object.freeze({
                   cast: 'fusae',
                   phone: true,
                   text: 'Bring the radio anyway. If you miss her, it can tell me the weather.',
+                  emotion: 'playful',
                 },
                 { cast: 'riko', text: 'It only gets one station.' },
-                { cast: 'fusae', phone: true, text: 'It’s the right one.' },
+                { cast: 'fusae', phone: true, text: 'It’s the right one.', emotion: 'warm' },
               ],
             },
             {
@@ -278,14 +346,18 @@ export const THE_1742 = Object.freeze({
                 { after: 0, doors: 'open' },
                 { after: 0, direct: { cast: 'riko', mood: 'anxious', intent: 'hurry', hold: 20 } },
               ],
-              dialogue: [{ cast: 'riko', text: 'Was that the bus?' }],
+              dialogue: [{ cast: 'riko', text: 'Was that the bus?', emotion: 'anxious' }],
             },
             {
               shot: { type: 'portrait', subject: { cast: 'aoi' } },
               dialogue: [
                 { cast: 'aoi', text: 'Two minutes ago. She waited one.' },
-                { cast: 'riko', text: 'One.' },
-                { cast: 'aoi', text: 'Last week it was none. You’re doing well.' },
+                { cast: 'riko', text: 'One.', emotion: 'tired' },
+                {
+                  cast: 'aoi',
+                  text: 'Last week it was none. You’re doing well.',
+                  emotion: 'playful',
+                },
               ],
             },
             {
@@ -294,9 +366,13 @@ export const THE_1742 = Object.freeze({
                 { after: 0, direct: { cast: 'tanabe', mood: 'tired', intent: 'sit', hold: 90 } },
               ],
               dialogue: [
-                { cast: 'tanabe', text: 'I’ve written to the railway twice.' },
-                { cast: 'aoi', text: 'And?' },
-                { cast: 'tanabe', text: 'They wrote back that the bus isn’t the railway.' },
+                { cast: 'tanabe', text: 'I’ve written to the railway twice.', emotion: 'tired' },
+                { cast: 'aoi', text: 'And?', emotion: 'curious' },
+                {
+                  cast: 'tanabe',
+                  text: 'They wrote back that the bus isn’t the railway.',
+                  emotion: 'dry',
+                },
               ],
             },
           ],
@@ -331,8 +407,12 @@ export const THE_1742 = Object.freeze({
                 { after: 0, direct: { cast: 'aoi', mood: 'cheerful', intent: 'wave', hold: 8 } },
               ],
               dialogue: [
-                { cast: 'aoi', text: 'Come under here, both of you.' },
-                { cast: 'aoi', text: 'The roof is the only free thing I sell.' },
+                { cast: 'aoi', text: 'Come under here, both of you.', emotion: 'warm' },
+                {
+                  cast: 'aoi',
+                  text: 'The roof is the only free thing I sell.',
+                  emotion: 'playful',
+                },
               ],
             },
             {
@@ -344,13 +424,19 @@ export const THE_1742 = Object.freeze({
                 },
               ],
               dialogue: [
-                { cast: 'aoi', text: 'Seventeen forty-two. Seventeen forty.' },
+                {
+                  cast: 'aoi',
+                  text: 'Seventeen forty-two. Seventeen forty.',
+                  emotion: 'reflective',
+                  translations: { 'te-IN': 'ఐదు నలభై రెండు. ఐదు నలభై.' },
+                },
                 {
                   cast: 'aoi',
                   text: 'Write it down on the back of a receipt. Somebody reads these things.',
+                  emotion: 'warm',
                 },
-                { cast: 'riko', text: 'Who?' },
-                { cast: 'aoi', text: 'The radio, maybe.' },
+                { cast: 'riko', text: 'Who?', emotion: 'curious' },
+                { cast: 'aoi', text: 'The radio, maybe.', emotion: 'playful' },
               ],
             },
             {
@@ -362,9 +448,18 @@ export const THE_1742 = Object.freeze({
                 },
               ],
               dialogue: [
-                { cast: 'riko', text: 'Grandma? I missed it. Yes, I have the radio.' },
-                { cast: 'fusae', phone: true, text: 'Then turn it on. Tell me what it says.' },
-                { cast: 'riko', text: 'It says rain.' },
+                {
+                  cast: 'riko',
+                  text: 'Grandma? I missed it. Yes, I have the radio.',
+                  emotion: 'tired',
+                },
+                {
+                  cast: 'fusae',
+                  phone: true,
+                  text: 'Then turn it on. Tell me what it says.',
+                  emotion: 'warm',
+                },
+                { cast: 'riko', text: 'It says rain.', emotion: 'reflective' },
               ],
             },
             {

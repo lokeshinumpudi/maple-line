@@ -57,6 +57,8 @@ import { createEpisodeRunner } from './drama/episode-runner.js';
 import { THE_1742 } from './drama/series/the-1742.js';
 import { registerDramaTools, createEpisodeLibrary } from './agent/drama-tools.js';
 import { installEpisodePicker } from './ui/episode-picker.js';
+import { createEpisodeVoice } from './drama/episode-voice.js';
+import { NARRATION_LANGUAGES } from '@maple-line/voice-score';
 import { createModelLoader, createGltfLoader } from './rendering/model-loader.js';
 import { createHeroCast, MOMIJI_CAST } from './world/hero-cast.js';
 import { createStationModules } from './world/station-modules.js';
@@ -1321,6 +1323,29 @@ const directorLocations = {
 };
 // Short dramas: episodes are data played through the director, captions, minds and drive.
 let episodeStopDistance = null;
+let episodePicker = null;
+// Voices and translated subtitles use the story narration routes; ambience ducks while a
+// line plays, and an offline director or missing key leaves labelled subtitles.
+const episodeAudio = document.createElement('audio');
+episodeAudio.hidden = true;
+episodeAudio.dataset.source = 'sarvam-drama';
+document.body.append(episodeAudio);
+const episodeVoice = createEpisodeVoice({
+  audio: episodeAudio,
+  fetchImpl: fetchDirector,
+  hosted: ['signal', 'static'].includes(document.documentElement.dataset.hosting),
+  onPlaying: (playing) =>
+    window.dispatchEvent(new CustomEvent('maple:narration-state', { detail: { playing } })),
+  onStatus: (status) => {
+    episodePicker?.setStatus(status);
+    if (episodeRunner?.playing && status.reason)
+      filmCaptions.show({ kind: 'note', text: status.reason, seconds: 6 });
+  },
+});
+const syncEpisodeVoice = () => {
+  const { narrationLanguage, episodeVoice: enabled } = gameStore.getState().preferences;
+  episodeVoice.configure({ language: narrationLanguage, enabled });
+};
 const ensureAutoDrive = () => {
   if (!state.autopilot && !state.doorsOpen && !state.doorsClosing && !state.emergency)
     $('autopilot').click();
@@ -1369,6 +1394,7 @@ const episodeRunner = createEpisodeRunner(
       toggleDoors();
       return (action === 'open') === state.doorsOpen;
     },
+    voice: episodeVoice,
     // At rest, below the 0.2 m/s door interlock, so a door cue after arrival is accepted.
     isStopped: () => Math.abs(state.speed) < 0.05,
     doorsClosed: () => !state.doorsOpen && !state.doorsClosing,
@@ -1393,11 +1419,20 @@ const episodeRunner = createEpisodeRunner(
   },
 );
 const episodeLibrary = createEpisodeLibrary(embedded ? null : globalThis.localStorage);
+syncEpisodeVoice();
+gameStore.subscribe(
+  (value) => [value.preferences.narrationLanguage, value.preferences.episodeVoice].join('|'),
+  syncEpisodeVoice,
+);
 function watchEpisode(source) {
   if (!state.started) start();
   if (state.paused) pause();
   if (view !== 'director') selectCamera('director');
-  return episodeRunner.play(source);
+  episodeVoice.unblock();
+  const result = episodeRunner.play(source);
+  const voice = episodeVoice.status();
+  if (voice.reason) filmCaptions.show({ kind: 'note', text: voice.reason, seconds: 6 });
+  return result;
 }
 function updateCamera(dt, snap = false) {
   storyCinematics?.restoreBaseCamera();
@@ -1928,7 +1963,9 @@ function frame(now) {
   });
   if (!state.paused) waterMat.uniforms.time.value += dt * (weather === 'rain' ? 1.8 : 1);
   waterMat.uniforms.distortionScale.value = weather === 'rain' ? 3.1 : 1.6;
-  episodeRunner.update(dt);
+  // Pausing the ride holds the episode and any line being spoken.
+  episodeVoice.setPaused(menuOpen || state.paused || document.hidden);
+  episodeRunner.update(state.paused ? 0 : dt);
   characterGrab?.update({ viewportAspect: camera.aspect });
   // One game minute per real minute of riding; dialogs and pause hold the clock.
   const networkDt = state.started && !state.paused ? dt : 0;
@@ -2789,6 +2826,11 @@ if (import.meta.env.DEV) {
           runner: episodeRunner,
           series: [THE_1742],
           library: episodeLibrary,
+          configureVoice: ({ language, enabled }) =>
+            gameStore.setPreferences({
+              ...(language ? { narrationLanguage: language } : {}),
+              ...(enabled !== undefined ? { episodeVoice: enabled } : {}),
+            }),
           activate: () => {
             if (!state.started) start();
             if (state.paused) pause();
@@ -3049,9 +3091,21 @@ const wakeFilmHUD = () => {
 window.addEventListener('pointermove', wakeFilmHUD, { passive: true });
 window.addEventListener('pointerdown', wakeFilmHUD, { passive: true });
 window.addEventListener('keydown', wakeFilmHUD);
-installEpisodePicker({
+episodePicker = installEpisodePicker({
   dialog: document.getElementById('places-picker'),
   series: THE_1742,
+  voice: {
+    languages: NARRATION_LANGUAGES,
+    get: () => ({
+      language: gameStore.getState().preferences.narrationLanguage,
+      enabled: gameStore.getState().preferences.episodeVoice,
+    }),
+    set: ({ language, enabled }) =>
+      gameStore.setPreferences({
+        ...(language ? { narrationLanguage: language } : {}),
+        ...(enabled !== undefined ? { episodeVoice: enabled } : {}),
+      }),
+  },
   onPlay: (episode) => {
     try {
       watchEpisode(episode);
@@ -3059,6 +3113,11 @@ installEpisodePicker({
       controlMessage(error.message);
     }
   },
+});
+episodePicker?.setStatus(episodeVoice.status());
+// Opening Places asks the director again, so a director started later is picked up.
+document.getElementById('places-picker')?.addEventListener('toggle', (event) => {
+  if (event.newState === 'open' && !episodeRunner.playing) void episodeVoice.check();
 });
 $('film-look').value = gameStore.getState().preferences.filmLook;
 $('film-look').onchange = () => gameStore.setPreferences({ filmLook: $('film-look').value });

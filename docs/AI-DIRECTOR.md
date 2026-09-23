@@ -18,7 +18,7 @@ It listens on `127.0.0.1:4175`. `DIRECTOR_PORT` may select another local port. T
 
 Without a Gateway key, decisions use deterministic local rules and return `source: "fallback"`. Provider failures, unsupported answers, deadlines, paused journeys, an occupied evaluation slot, or cooldown also return an explicitly labeled fallback. A configured key alone does not prove a provider request succeeded: only a decision response with `source: "jev"` indicates a validated Jev answer.
 
-The browser uses a Vite proxy from `/api/director` to `http://127.0.0.1:4175`. Direct CORS access permits loopback game origins on ports 4173 and 4174. The server binds to loopback and rejects other Host values. The Vercel adapter uses configured public origins and `/tmp` narration caching. It does not provide user authentication; see [hosting](HOSTING.md).
+The browser uses a Vite proxy from `/api/director` to `http://127.0.0.1:4175`. Direct CORS access permits loopback game origins on ports 4173 and 4174. A second checkout can run its own pair without editing either file: start the director with `DIRECTOR_PORT=4575 DIRECTOR_DEV_ORIGINS=http://127.0.0.1:4573` and the game with `MAPLE_DIRECTOR_PROXY=http://127.0.0.1:4575 pnpm --filter @maple-line/game exec vite --port 4573`. Both variables accept only `http` loopback origins with a port; anything else is ignored. The server binds to loopback and rejects other Host values. The Vercel adapter uses configured public origins and `/tmp` narration caching. It does not provide user authentication; see [hosting](HOSTING.md).
 
 ## Contract
 
@@ -99,6 +99,16 @@ The minds route uses the lowest priority on the shared evaluation slot. It runs 
 In the browser, `apps/game/src/agent/minds-client.js` sends one request at most every 25 seconds, only while AI life is on, with a 10-second deadline and one request at a time. It picks the most salient visible characters: near the camera, recently changed mood, or requested by an agent. It discards the whole answer if weather, dusk, region, or train phase changed while waiting, and drops any character that despawned or respawned. Accepted choices hold for 45 seconds of game time and are labelled `source: "jev"`; other choices are `local`. The Signal and static builds report `offline` and keep local minds running.
 
 Agents can steer characters through `setDirective(id, { mood, intent, holdSeconds })`. A directive holds for 1–300 seconds of game time, wins over Jev and local choices, and is labelled `directed`. `apps/game/src/agent/mind-tools.js` exposes read and direction tools through the validated WebMCP executor. Minds change visible behaviour only: walking speed within 0.6–1.4×, short pauses, shelter, and facing. A mind can delay a waiting passenger's walk to an open door by at most two seconds. It never slows platform passengers while a train is being served and never stops boarding. It has no action for doors, signals, or the train.
+
+## Voices and translation
+
+The same server voices Haru's story and the drama episodes with Sarvam (`SARVAM_API_KEY` in the root `.env`); see [narration](NARRATION.md) and [episode voices](drama/README.md#voices-and-languages). Jev is not involved.
+
+- `POST /api/director/narration` turns one line into a WAV. It accepts `{ text, language, character?, emotion?, priority?, textLanguage? }`. With `textLanguage` equal to `language`, the text is already translated and goes straight to speech; otherwise a non-English request is translated first.
+- `POST /api/director/narration/translate` accepts exactly `{ text, language, character? }` and returns `{ text, language, source }`, where `source` is `original` (English), `cache` or `sarvam`. The speaker's gender from the voice cast is sent to Sarvam so verbs agree. Translations are stored as small JSON files in `.cache/narration/translations/`, next to the audio.
+- `GET /api/director/narration/status` reports `configured`, the voice and translation models, languages, cast and cache counters. It never returns the key.
+
+Both POST routes share the 4,096-byte body limit, origin rules and the two-at-a-time provider limit. A missing key returns HTTP 503 with a plain message, which the game shows as "No Sarvam key on the director · subtitles only". `SARVAM_VOICE_MODEL` may select `bulbul:v4-flash` when Sarvam opens it; any other value keeps `bulbul:v3`.
 
 ## Request limits
 

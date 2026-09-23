@@ -131,3 +131,17 @@ body.film-mode:not(.film-pointer):not(:has(dialog[open], [popover]:popover-open,
   opacity: 0;
   pointer-events: none;
 }
+/* Voice fallback label: small, top corner, never over the subtitle. */
+.film-note {
+  position: absolute;
+  top: calc(var(--film-bar, 0px) + 14px);
+  right: max(16px, 3vw);
+  max-width: min(70vw, 360px);
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: #0008;
+  font-size: 12px;
+  letter-spacing: 0.02em;
+  opacity: 0;
+  transition: opacity 600ms ease;
+}

@@ -39,7 +39,10 @@ export function mountFilmCaptions(root = document.body) {
   const barBottom = document.createElement('div');
   barTop.className = 'film-bar film-bar-top';
   barBottom.className = 'film-bar film-bar-bottom';
-  layer.append(barTop, barBottom, place, line, card);
+  const note = document.createElement('div');
+  note.className = 'film-note';
+  note.setAttribute('role', 'status');
+  layer.append(barTop, barBottom, place, line, card, note);
   root.append(layer);
   const timers = new Map();
   function show(element, seconds) {
@@ -56,6 +59,11 @@ export function mountFilmCaptions(root = document.body) {
     /** caption: { kind: 'place'|'shot'|'title'|'end', title, native, subtitle, line, seconds } */
     show(caption) {
       const seconds = caption.seconds ?? 6;
+      if (caption.kind === 'note') {
+        note.textContent = caption.text ?? '';
+        if (caption.text) show(note, seconds);
+        return;
+      }
       if (caption.kind === 'dialogue') {
         const wait = titleUntil - performance.now();
         if (wait > 0) {
@@ -100,7 +108,7 @@ export function mountFilmCaptions(root = document.body) {
       layer.classList.toggle('draws-bars', drawBars);
     },
     hide() {
-      for (const element of [place, line, card]) element.classList.remove('is-shown');
+      for (const element of [place, line, card, note]) element.classList.remove('is-shown');
     },
     dispose() {
       for (const timer of timers.values()) clearTimeout(timer);
