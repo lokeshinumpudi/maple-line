@@ -71,6 +71,7 @@ The Blender build uses the same rule, so its props are stored in socket space. P
 - **One hand:** Sato's phone (right), Riko's radio (left, by its handle).
 - **Two hands:** the reader's paper is held by the right hand; the left hand reaches its `grip2` point by arm IK.
 - **Cradle:** while standing still, Riko brings the radio up in front of her with both hands, and lets it down again to walk. The pose is defined in `PROP_GRIPS` in `character-motion.js`.
+- **Tuned grips:** `characters/cast-tuning.json`, written by the [character studio](CHARACTER-STUDIO.md), overrides a model's grips (offset, rotation, hand, hold, second-hand point, cradle). Riko's radio is turned 90° in her hand so it hangs from its handle in `walk-carry`; `cradle.rotation` turns the cradling hand back so the cradle keeps its look.
 - **Pocket:** Riko's phone only appears while she checks it (`pocketed` in `MOMIJI_CAST`).
 - **Grip:** a hand holding something closes. Rigs with finger bones curl them; the Blender figures, which have none, use `grip-l` and `grip-r` shape keys. The UAL clips animate fingers, so each finger joint is only topped up to the grip angle, never bent further.
 - **Carry:** Riko walks with `walk-carry`, whose arms stay in front without a swing. The radio stays in her left hand and no arm IK runs while she walks; standing, she cradles it again.
@@ -139,6 +140,6 @@ The measurement scripts are kept with the captures (`artifacts/screenshots/ual/m
 - The cradle pose and grip points are tuned for these three people. A new cast member needs its own `PROP_GRIPS` entries or props with extras.
 - The VRM clip set has no `turn` clip, so VRM figures turn on the spot in their idle pose; a foot left behind lets go and plants again.
 - UAL's walk is slower (0.92 m/s for Riko) than the residents' 1.05–1.29 m/s, so walks play up to 1.6 times faster than authored. The hurry clip is a quicker walk with a forward lean, not a run.
-- Riko's folded-arms clips (watch-train, shelter) and the cradle both want her arms; the cradle wins while she stands still, and the radio sticks out while it blends in.
+- Riko's folded-arms clips (watch-train, shelter) and the cradle both want her arms; the cradle wins while she stands still. The radio used to stick out in front of her in `walk-carry` (a box-carry walk, palm down) and while the cradle blended in; the tuned grip fixed that.
 - `wave` and `stretch` are spliced from other clips; the stretch keeps the hands in front of the face rather than overhead.
 - Only Mr. Ishida sits in the simulation. Sitting down and standing up were checked on him in the game (standing up) and in tests (both).

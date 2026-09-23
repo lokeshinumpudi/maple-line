@@ -430,6 +430,9 @@ export function createCharacterRig(
             .applyMatrix4(root.matrixWorld);
           const turn = new THREE.Quaternion().setFromAxisAngle(axes.y, prop.cradle.turn ?? 0);
           const orient = turn.multiply(rootQ).multiply(hangingSocket[prop.side]);
+          // An optional socket-space turn of the cradling hand (cast-tuning.json), so a prop
+          // rotated for carrying can keep its cradle look.
+          if (prop.cradle.rotation) orient.multiply(tmpQ.fromArray(prop.cradle.rotation));
           reachSocket(prop.side, new THREE.Matrix4().compose(place, orient, ONE), w);
           if (prop.cradle.grip2) secondHand(prop, prop.cradle.grip2, w);
         }
