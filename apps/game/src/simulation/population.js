@@ -18,6 +18,13 @@ const PAUSING_INTENTS = new Set([
   'shake-no',
   'eat',
 ]);
+/**
+ * Station-local x of the Momiji reading bench (world-details.js draws it). The platform runs
+ * from x 2.5 to 7.5 and the station building's wall stands at x 5.5, so the bench sits just
+ * in front of the wall.
+ */
+export const READING_BENCH_X = 4.75;
+
 // Deterministic residents and passengers. No renderer or random position changes.
 export function createPopulation({ center, terrain, homes = [], stationZ = 525 }) {
   const stationX = center(stationZ) + 28,
@@ -167,7 +174,7 @@ export function createPopulation({ center, terrain, homes = [], stationZ = 525 }
     p.visible = true;
   }
   // Three additional station regulars have small, repeatable off-track routines.
-  const readingSeat = stationPoint(6.1, -19);
+  const readingSeat = stationPoint(READING_BENCH_X, -19);
   const readerHomeData = homes[7] ??
     homes[0] ?? { u: 48, z: -113, y: terrain(48, -113) + 0.3, w: 8 };
   const readerHome = {
@@ -193,7 +200,7 @@ export function createPopulation({ center, terrain, homes = [], stationZ = 525 }
     home: readerHome,
     seat: readingSeat,
     inbound: [
-      stationPoint(5.2, -19),
+      stationPoint(READING_BENCH_X - 0.9, -19),
       rampTop,
       rampBottom,
       entry,
@@ -206,12 +213,12 @@ export function createPopulation({ center, terrain, homes = [], stationZ = 525 }
       entry,
       rampBottom,
       rampTop,
-      stationPoint(5.2, -19),
+      stationPoint(READING_BENCH_X - 0.9, -19),
       readingSeat,
     ],
   });
   const shopperStart = stationPoint(5.2, -33);
-  const bagSpot = stationPoint(5.2, -19.8);
+  const bagSpot = stationPoint(READING_BENCH_X - 0.9, -19.8);
   const helperHome = stationPoint(5.6, -7);
   const shopper = person(
     'shopper-visitor',

@@ -137,6 +137,68 @@ test('the runner plays beats in order, waits for the train and releases the stop
   assert.equal(host.calls.filter((call) => call[0] === 'cut').length, 4);
 });
 
+test('dialogue lines are filmed on their speaker, with the reverse over the listener', () => {
+  const episode = tiny({
+    cast: { a: { name: 'A' }, b: { name: 'B' }, c: { name: 'C' } },
+  });
+  const scene = episode.scenes[0];
+  scene.actors = { a: 'commuter-1', b: 'commuter-2', c: 'reader-1' };
+  scene.beats[0].dialogue = [
+    { cast: 'a', text: 'First line.' },
+    { cast: 'b', text: 'An answer.' },
+    { cast: 'a', text: 'A reply.' },
+    { cast: 'c', text: 'Someone who is not on screen.' },
+  ];
+  // Shots cannot be authored with a partner for a cast member missing from the scene.
+  assert.throws(
+    () =>
+      normalizeEpisode(
+        {
+          ...episode,
+          scenes: [
+            {
+              ...scene,
+              beats: [
+                { ...scene.beats[0], shot: { ...scene.beats[0].shot, partner: { cast: 'z' } } },
+              ],
+            },
+          ],
+        },
+        context,
+      ),
+    /partner\.cast/,
+  );
+  const host = fakeHost({
+    resolve: (s) => (s.entity === 'reader-1' ? null : { person: s.entity }),
+  });
+  const runner = createEpisodeRunner(host, context);
+  runner.play(episode);
+  run(runner, 20);
+  const cuts = host.calls.filter((call) => call[0] === 'cut').map((call) => call[1]);
+  // The beat's own portrait of A knows who A is talking to.
+  assert.deepEqual(cuts[0].subject, { person: 'commuter-1' });
+  assert.deepEqual(cuts[0].partner, { person: 'commuter-2' });
+  // B answers: over A's shoulder. A replies: over B's shoulder.
+  assert.deepEqual(cuts[1].subject, { person: 'commuter-2' });
+  assert.equal(cuts[1].framing, 'ots');
+  assert.deepEqual(cuts[1].partner, { person: 'commuter-1' });
+  assert.deepEqual(cuts[2].subject, { person: 'commuter-1' });
+  assert.equal(cuts[2].framing, 'ots');
+  // C is not on screen: the shot is kept and the log says why.
+  assert.ok(!cuts.some((cut) => cut.subject?.person === 'reader-1'));
+  assert.match(
+    runner
+      .getState()
+      .log.map((item) => item.message)
+      .join(' '),
+    /C is not on screen/,
+  );
+  // Each coverage cut happens with its line, before the subtitle is shown.
+  const order = host.calls.filter((call) => call[0] === 'cut' || call[0] === 'say');
+  const answer = order.findIndex((call) => call[0] === 'say' && call[1].text === 'An answer.');
+  assert.equal(order[answer - 1][0], 'cut');
+});
+
 test('missing actors fall back to a safe shot and the log says so', () => {
   const host = fakeHost({ resolve: () => null });
   const runner = createEpisodeRunner(host, context);

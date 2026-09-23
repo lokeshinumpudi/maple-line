@@ -168,6 +168,8 @@ export function createCarInterior({
     batch.mesh.setMatrixAt(batch.count++, dummy.matrix);
   }
   let time = 0;
+  // Car-local head centres of the seated passengers drawn this frame, for camera framing.
+  const headSpots = [];
   function update({ dt = 0, speed = 0, power = 0, brake = 0, passengers = [], cabinOn = false }) {
     time += Math.max(0, dt);
     // A little material fill keeps faces readable inside a lit carriage without extra lights.
@@ -176,6 +178,7 @@ export function createCarInterior({
       mat.emissiveIntensity = cabinOn ? 0.24 : 0.08;
     }
     for (const batch of batches.values()) batch.count = 0;
+    headSpots.length = 0;
     for (let i = 0; i < slots.length; i++) {
       const p = slots[i];
       p.visible =
@@ -198,6 +201,7 @@ export function createCarInterior({
       instance(boxGeometry, coat, x + inward * 0.02, 2.16, z + sway, 0.27, 0.09, 0.5);
       instance(boxGeometry, paints.interior, x + inward * 0.09, 2.2, z + sway, 0.12, 0.05, 0.16);
       instance(headGeo, face, headX, headY, z + sway, 0.145, 0.185, 0.145, headYaw);
+      headSpots.push([headX, headY, z + sway]);
       instance(headGeo, hair, headX - inward * 0.04, headY + 0.11, z + sway, 0.146, 0.095, 0.148);
       // Nose follows the head turn so the facing direction is legible from the aisle.
       instance(
@@ -303,8 +307,14 @@ export function createCarInterior({
             : Math.min(Math.max(brake, 0), 1) * 1.5;
   }
   update({});
+  const world = new THREE.Vector3();
   return {
     update,
+    /** World positions of the seated passengers' heads, as [x, y, z]. */
+    heads() {
+      car.updateMatrixWorld();
+      return headSpots.map(([x, y, z]) => car.localToWorld(world.set(x, y, z)).toArray());
+    },
     state: () => ({
       carIndex: index,
       cab: isCab,

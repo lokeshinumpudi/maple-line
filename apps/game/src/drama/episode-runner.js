@@ -38,6 +38,11 @@ import { lineId, beatId } from './render-timeline.js';
  *
  * Advance with update(dt) using simulation time, so pauses and menus hold the episode.
  *
+ * Dialogue coverage: when a line's speaker is a cast member on screen and the camera is not
+ * on them, the runner cuts to a portrait of the speaker as the line starts (over the
+ * listener's shoulder when the camera was on the listener). A speaker who is not on screen
+ * keeps the beat's own shot.
+ *
  * onEvent (optional) hears the timeline as it plays, for video renders and voice:
  *   { type: 'episode', id, title } · { type: 'scene', id, heading, index }
  *   { type: 'beat', id, scene, index, shot } · { type: 'end' }
@@ -141,8 +146,63 @@ export function createEpisodeRunner(host, { stops = [], crossings = [], onEvent 
     speaker.prepare(items);
   }
 
+  /** A cast member's director subject in this scene, or null when they are not on screen. */
+  function castSubject(cast) {
+    const entity = scene().actors?.[cast];
+    if (!entity) return null;
+    const resolved = host.resolve({ cast, entity });
+    return resolved?.person ? resolved : null;
+  }
+
+  // Who the camera is on for the current line, so dialogue coverage cuts only on a change.
+  let framed = { cast: null };
+
+  /** The other cast speaker nearest this line in the beat (previous first), or null. */
+  function listenerFor(cast, lineIndex) {
+    const dialogue = beat().dialogue;
+    for (let i = lineIndex - 1; i >= 0; i--)
+      if (dialogue[i].cast && dialogue[i].cast !== cast && !dialogue[i].phone)
+        return dialogue[i].cast;
+    for (let i = lineIndex + 1; i < dialogue.length; i++)
+      if (dialogue[i].cast && dialogue[i].cast !== cast && !dialogue[i].phone)
+        return dialogue[i].cast;
+    const authored = beat().shot.subject?.cast;
+    return authored && authored !== cast ? authored : null;
+  }
+
+  /**
+   * Dialogue coverage: a line spoken by a cast member on screen is filmed on that speaker.
+   * When the camera was on the listener, the reverse is over the listener's shoulder; the
+   * director keeps both on the same side of the line between them.
+   */
+  function coverLine(spoken, lineIndex) {
+    const cast = spoken.cast;
+    if (!cast || spoken.phone || framed.cast === cast || !scene().actors?.[cast]) return;
+    const subject = castSubject(cast);
+    if (!subject) {
+      if (framed.note !== cast) note(`${speakerOf(spoken)} is not on screen; keeping the shot`);
+      framed.note = cast;
+      return;
+    }
+    const listener = listenerFor(cast, lineIndex);
+    const partner = listener ? castSubject(listener) : null;
+    host.cut({
+      type: 'portrait',
+      subject,
+      ...(partner ? { partner, framing: framed.cast === listener ? 'ots' : 'single' } : {}),
+      aperture: 'shallow',
+      duration: Math.min(60, Math.max(2, planned - beatElapsed + 3)),
+    });
+    framed = { cast };
+  }
+
   function resolveShot(shot) {
     const subject = shot.subject;
+    if (shot.partner && typeof shot.partner === 'object' && 'cast' in shot.partner) {
+      const partner = castSubject(shot.partner.cast);
+      const { partner: _drop, ...rest } = shot;
+      return resolveShot(partner ? { ...rest, partner } : rest);
+    }
     if (!subject || typeof subject !== 'object' || !('cast' in subject || 'crossing' in subject))
       return shot;
     const resolved =
@@ -179,7 +239,15 @@ export function createEpisodeRunner(host, { stops = [], crossings = [], onEvent 
     });
     planned = beatSeconds(current, known) + lead;
     floor = lead + Math.max(current.hold ?? 4, ...current.cues.map((cue) => cue.after + 1));
-    const shot = resolveShot(current.shot);
+    let shot = resolveShot(current.shot);
+    framed = { cast: shot.subject?.person ? (current.shot.subject?.cast ?? null) : null };
+    // A portrait in a conversation knows the listener: it sets the line of action and
+    // which way the speaker looks.
+    if (shot.type === 'portrait' && framed.cast && !shot.partner) {
+      const listener = listenerFor(framed.cast, -1);
+      const partner = listener ? castSubject(listener) : null;
+      if (partner) shot = { ...shot, partner };
+    }
     onEvent({
       type: 'beat',
       id: beatId(scene().id, index),
@@ -208,6 +276,7 @@ export function createEpisodeRunner(host, { stops = [], crossings = [], onEvent 
   /** Show (and, when voiced, play) the line that has waited long enough for its voice. */
   function beginLine(current) {
     const spoken = beat().dialogue[lines.index];
+    coverLine(spoken, lines.index);
     const speaker = voice();
     const handle = speaker ? speaker.play(current.item) : null;
     if (speaker && !handle && current.item.voice && speaker.status().mode === 'voice')
@@ -414,6 +483,10 @@ export function createEpisodeRunner(host, { stops = [], crossings = [], onEvent 
       schedule = [];
       prerolling = false;
       lines = { index: 0, nextAt: 0, lastEnd: 0, current: null };
+    },
+    /** Add a message to the episode log (the director's framing substitutions). */
+    note(message) {
+      if (status === 'playing') note(String(message).slice(0, 200));
     },
     /** A detached copy of the last episode played (normalized), or null. */
     current() {

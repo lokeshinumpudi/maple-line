@@ -1,5 +1,15 @@
 import { CAR_SPACING, CAR_COUNT } from '../train/consist.js';
 import { cabPose, interiorPose } from './camera.js';
+import {
+  bearing,
+  composeAim,
+  createFramingMonitor,
+  faceVisible,
+  lineSide,
+  placeView,
+  searchView,
+  thirds,
+} from './shot-framing.js';
 
 /**
  * Film director camera. Plans shots the way a railway documentary crew would:
@@ -58,6 +68,8 @@ const DEFAULT_DURATION = {
 const APERTURE = { deep: 0, normal: 4, shallow: 9 };
 const INTERIOR = new Set(['cab', 'window']);
 const PERSON_SUBJECT = new Set(['portrait', 'orbit']);
+/** A seated passenger's head closer than this may not appear in a window shot. */
+const WINDOW_FACE_RANGE = 3.2;
 
 /** How much of a landscape frame's width a tall frame keeps, by framing and shot scale. */
 const PORTRAIT_WIDTH = {
@@ -77,6 +89,26 @@ export function lensToFov(lensMm, aspect = 16 / 9, { framing = 'wide', scale = '
   const width = (PORTRAIT_WIDTH[framing] ?? PORTRAIT_WIDTH.wide)[scale] ?? 1.5;
   const widened = 2 * Math.atan((Math.tan(vertical / 2) * width) / Math.max(aspect, 0.3));
   return Math.min(75, (widened * 180) / Math.PI);
+}
+
+/** Portrait framings: one face, over the listener's shoulder, or both people. */
+const FRAMINGS = ['single', 'ots', 'two'];
+
+function validSubject(s, trainParts) {
+  return (
+    (trainParts && ['lead', 'middle', 'rear'].includes(s)) ||
+    (s && typeof s === 'object' && typeof s.person === 'string' && s.person.length <= 48) ||
+    (trainParts &&
+      s &&
+      typeof s === 'object' &&
+      typeof s.stop === 'string' &&
+      s.stop.length <= 48) ||
+    (s &&
+      typeof s === 'object' &&
+      Array.isArray(s.point) &&
+      s.point.length === 3 &&
+      s.point.every(Number.isFinite))
+  );
 }
 
 /** Validates an agent or editor shot request; returns a normalized copy. */
@@ -111,21 +143,21 @@ export function normalizeShot(spec) {
     shot.transition = spec.transition;
   }
   if (spec.subject !== undefined) {
-    const s = spec.subject;
-    const ok =
-      ['lead', 'middle', 'rear'].includes(s) ||
-      (s && typeof s === 'object' && typeof s.person === 'string' && s.person.length <= 48) ||
-      (s && typeof s === 'object' && typeof s.stop === 'string' && s.stop.length <= 48) ||
-      (s &&
-        typeof s === 'object' &&
-        Array.isArray(s.point) &&
-        s.point.length === 3 &&
-        s.point.every(Number.isFinite));
-    if (!ok)
+    if (!validSubject(spec.subject, true))
       throw new TypeError(
         'subject must be lead, middle, rear, {person: id}, {stop: id} or {point: [x, y, z]}.',
       );
-    shot.subject = typeof s === 'string' ? s : structuredClone(s);
+    shot.subject = typeof spec.subject === 'string' ? spec.subject : structuredClone(spec.subject);
+  }
+  if (spec.partner !== undefined) {
+    if (!validSubject(spec.partner, false))
+      throw new TypeError('partner must be {person: id} or {point: [x, y, z]}.');
+    shot.partner = structuredClone(spec.partner);
+  }
+  if (spec.framing !== undefined) {
+    if (!FRAMINGS.includes(spec.framing))
+      throw new TypeError(`framing must be one of: ${FRAMINGS.join(', ')}.`);
+    shot.framing = spec.framing;
   }
   if (PERSON_SUBJECT.has(shot.type) && shot.type === 'portrait' && typeof shot.subject !== 'object')
     throw new TypeError('A portrait needs a person, stop or point subject.');
@@ -163,8 +195,12 @@ export function createDirector({
   canopyAt = () => -Infinity,
   obstructed = () => false,
   resolveSubject = () => null,
+  // World positions of the seated passengers' heads in the car a window shot films.
+  interiorHeads = () => [],
   onSet = () => {},
   onCaption = () => {},
+  // Framing substitutions (a blocked angle replaced, a line crossed), for the episode log.
+  onNote = () => {},
   seed = 1907,
   portraitFraming = 'wide',
 }) {
@@ -234,7 +270,8 @@ export function createDirector({
     if (subject === 'rear') return trainPoint(rearD());
     if (Array.isArray(subject.point)) return new THREE.Vector3(...subject.point);
     const resolved = resolveSubject(subject);
-    return resolved ? new THREE.Vector3(...resolved) : trainPoint(midD());
+    if (!resolved) return trainPoint(midD());
+    return new THREE.Vector3(...(Array.isArray(resolved) ? resolved : resolved.point));
   }
   const ground = (point) => {
     const y = groundAt(point.x, point.z);
@@ -265,6 +302,259 @@ export function createDirector({
   }
   const sideSign = (spec, fallback) =>
     spec.side === 'left' ? 1 : spec.side === 'right' ? -1 : fallback;
+
+  // ---- people: faces, lines of action and clear sightlines ----
+
+  /**
+   * Where a person's face is. resolveSubject may answer [x, y, z] (the figure's feet) or
+   * { point, head, heading } with the head bone and body heading. Points and stops keep
+   * the old aim, 1.25 m above the point.
+   */
+  function personPose(subject) {
+    if (!subject || typeof subject !== 'object') return null;
+    const data = Array.isArray(subject.point)
+      ? { point: subject.point, aimLift: 1.25 }
+      : resolveSubject(subject);
+    if (!data) return null;
+    const value = Array.isArray(data) ? { point: data } : data;
+    const feet = new THREE.Vector3(...value.point);
+    const eyes = value.head
+      ? new THREE.Vector3(...value.head).addScaledVector(up, 0.06)
+      : feet.clone().addScaledVector(up, value.aimLift ?? (subject.person ? 1.4 : 1.25));
+    // A figure's heading turns it about y from facing +z, so its forward is (sin h, cos h).
+    const facing = Number.isFinite(value.heading)
+      ? Math.atan2(Math.cos(value.heading), Math.sin(value.heading))
+      : null;
+    return {
+      id: subject.person ?? null,
+      feet,
+      eyes,
+      chest: eyes.clone().addScaledVector(up, value.head ? -0.42 : -0.35),
+      facing,
+    };
+  }
+  const flatDistance = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
+  /** Terrain only: a few samples along the sightline must stay above the ground. */
+  function terrainClear(from, to) {
+    for (let i = 1; i < 8; i++) {
+      tmp.lerpVectors(from, to, i / 8);
+      if (tmp.y < ground(tmp) + 0.15) return false;
+    }
+    return true;
+  }
+  /** Share of the weighted target points a camera at `from` can see. */
+  function sightScore(from, targets, ignore) {
+    if (from.y < ground(from) + 0.5) return 0;
+    let seen = 0,
+      total = 0;
+    for (const { point, weight } of targets) {
+      total += weight;
+      if (
+        terrainClear(from, point) &&
+        !obstructed(from, point, { people: true, train: true, ignore })
+      )
+        seen += weight;
+    }
+    return total ? seen / total : 0;
+  }
+  // The side of the last dialogue line of action, so a conversation keeps its screen sides.
+  let axis = null;
+  const pairKey = (a, b) => [a.id ?? 'point', b.id ?? 'point'].sort().join('|');
+  /** Side sign relative to the line from `speaker` to `partner`, stored per pair. */
+  const storedSide = (speaker, partner) => {
+    if (!axis || axis.key !== pairKey(speaker, partner)) return null;
+    return (speaker.id ?? 'point') <= (partner.id ?? 'point') ? axis.side : -axis.side;
+  };
+  const rememberSide = (speaker, partner, side) => {
+    const first = (speaker.id ?? 'point') <= (partner.id ?? 'point');
+    axis = { key: pairKey(speaker, partner), side: first ? side : -side };
+  };
+
+  /**
+   * Plans a person shot: the framing's base viewpoint, its targets, the 180° line, then the
+   * clearest nearby viewpoint. Stored on the shot so the held shot can re-check it.
+   */
+  function planPerson(next, spec) {
+    const speaker =
+      personPose(spec.subject) ??
+      (() => {
+        const point = subjectPoint(spec.subject);
+        return {
+          id: null,
+          feet: point,
+          eyes: point.clone().addScaledVector(up, 1.25),
+          chest: point.clone(),
+          facing: null,
+        };
+      })();
+    const partner = spec.partner ? personPose(spec.partner) : null;
+    const separation = partner ? flatDistance(speaker.eyes, partner.eyes) : 0;
+    let framing = spec.framing ?? 'single';
+    if (framing !== 'single' && (!partner || separation < 0.5 || separation > 7.5)) {
+      if (partner) onNote(`${framing} framing needs two people within 7.5 m; using a single`);
+      framing = 'single';
+    }
+    const rail = railNearZ(speaker.feet.z);
+    // Without a partner, people on platforms face the railway: the line runs along their look.
+    const lineAngle = partner
+      ? bearing(speaker.eyes, partner.eyes)
+      : (speaker.facing ?? bearing(speaker.feet, rail));
+    let lensMm =
+      spec.lens ??
+      (framing === 'ots'
+        ? THREE.MathUtils.clamp(38 + separation * 7, 50, 85)
+        : framing === 'two'
+          ? 35
+          : 50);
+    const vfov =
+      (lensToFov(lensMm, camera.aspect, { framing: portraitFraming, scale: 'close' }) * Math.PI) /
+      180;
+    const baseFor = (side) => {
+      if (framing === 'ots') {
+        // Behind the listener, just off the shoulder on the camera's side of the line.
+        const back = partner.eyes
+          .clone()
+          .add(new THREE.Vector3(Math.cos(lineAngle), 0, Math.sin(lineAngle)).multiplyScalar(0.95))
+          .add(
+            new THREE.Vector3(
+              Math.cos(lineAngle + (side * Math.PI) / 2),
+              0,
+              Math.sin(lineAngle + (side * Math.PI) / 2),
+            ).multiplyScalar(0.55),
+          );
+        return {
+          angle: bearing(speaker.eyes, back),
+          reach: flatDistance(speaker.eyes, back),
+          rise: partner.eyes.y - speaker.eyes.y + 0.1,
+        };
+      }
+      if (framing === 'two') {
+        const width = separation + 1.4;
+        const reach = THREE.MathUtils.clamp(
+          width / 2 / Math.tan(Math.atan(Math.tan(vfov / 2) * camera.aspect)),
+          2.5,
+          14,
+        );
+        return { angle: lineAngle + (side * Math.PI) / 2, reach, rise: 0.1 };
+      }
+      // A single is a front three-quarter view: 35° off the way the face points, on the
+      // wanted side of the line when either turn allows it.
+      let angle = lineAngle + side * 0.55;
+      if (speaker.facing !== null) {
+        const turns = [0.6, -0.6].map((turn) => speaker.facing + turn);
+        angle = turns.reduce((best, next) =>
+          Math.sin(next - lineAngle) * side > Math.sin(best - lineAngle) * side ? next : best,
+        );
+      }
+      // A tall frame is narrow: stand closer so the face is not lost in the height.
+      const reach = spec.distance ?? (camera.aspect < 1 ? 2.5 : 3.2);
+      return { angle, reach, rise: spec.height ?? 0.05 };
+    };
+    // Side of the line: an authored side, then the conversation's side, then whichever
+    // side shows more of the face, then a coin toss.
+    let side = spec.side ? sideSign(spec, 1) : partner ? storedSide(speaker, partner) : null;
+    if (side === null && speaker.facing !== null) {
+      const front = (s) => Math.cos(baseFor(s).angle - speaker.facing);
+      side = front(1) >= front(-1) ? 1 : -1;
+    }
+    side ??= next.sign;
+    const pivot =
+      framing === 'two' ? speaker.eyes.clone().lerp(partner.eyes, 0.5) : speaker.eyes.clone();
+    const targets =
+      framing === 'two'
+        ? [
+            { point: speaker.eyes, weight: 0.45 },
+            { point: partner.eyes, weight: 0.35 },
+            { point: speaker.chest, weight: 0.2 },
+          ]
+        : [
+            { point: speaker.eyes, weight: 0.6 },
+            { point: speaker.chest, weight: 0.4 },
+          ];
+    const ignore = speaker.id ? [speaker.id] : [];
+    const score = (view) =>
+      sightScore(new THREE.Vector3().copy(placeView(pivot, view)), targets, ignore);
+    // Dialogue needs the face: never the back of the speaker's head.
+    const accept = (view) =>
+      view.rise > -0.7 &&
+      view.rise < 2.4 &&
+      view.reach > 0.9 &&
+      (framing === 'two' || faceVisible(speaker.facing, view.angle));
+    let base = baseFor(side);
+    // Over a shoulder the speaker is turned away from: film them as a single instead.
+    if (framing === 'ots' && !faceVisible(speaker.facing, base.angle, (80 * Math.PI) / 180)) {
+      onNote(
+        `ots of ${speaker.id ?? 'the subject'}: turned away from the listener; using a single`,
+      );
+      framing = 'single';
+      lensMm = spec.lens ?? 50;
+      base = baseFor(side);
+    }
+    const found = searchView({ base, score, accept, lineAngle, side });
+    const chosenSide = lineSide(lineAngle, found.view.angle);
+    if (partner) rememberSide(speaker, partner, chosenSide);
+    const who = speaker.id ?? 'the subject';
+    if (found.flipped)
+      onNote(`${framing} of ${who}: no clear angle on this side; crossed the line`);
+    else if (found.fallback)
+      onNote(
+        `${framing} of ${who}: no fully clear angle; best view ${Math.round(found.score * 100)}% clear`,
+      );
+    else if (found.view.cost > 0.01)
+      onNote(
+        `${framing} of ${who}: planned angle blocked; moved ${describeMove(base, found.view)}`,
+      );
+    next.person = {
+      framing,
+      who,
+      lens: lensMm,
+      accept,
+      ignore,
+      pivot,
+      view: found.view,
+      base,
+      side: chosenSide,
+      lineAngle,
+      score: found.score,
+      monitor: createFramingMonitor(),
+      substitutions: found.view.cost > 0.01 || found.flipped ? 1 : 0,
+    };
+    return true;
+  }
+  function describeMove(from, to) {
+    const parts = [];
+    const turn = Math.round(
+      (THREE.MathUtils.euclideanModulo(to.angle - from.angle + Math.PI, 2 * Math.PI) - Math.PI) *
+        57.3,
+    );
+    if (Math.abs(turn) >= 5) parts.push(`${Math.abs(turn)}° round`);
+    if (Math.abs(to.rise - from.rise) > 0.1) parts.push(to.rise > from.rise ? 'up' : 'down');
+    if (to.reach < from.reach * 0.9) parts.push('in');
+    if (to.reach > from.reach * 1.1) parts.push('back');
+    return parts.join(', ') || 'slightly';
+  }
+  /** Live pivot and targets for a held person shot (people move). */
+  function personLive(spec, framing) {
+    const speaker = personPose(spec.subject);
+    if (!speaker) return null;
+    const partner = spec.partner ? personPose(spec.partner) : null;
+    const two = framing === 'two' && partner;
+    return {
+      speaker,
+      partner,
+      pivot: two ? speaker.eyes.clone().lerp(partner.eyes, 0.5) : speaker.eyes.clone(),
+      targets: two
+        ? [
+            { point: speaker.eyes, weight: 0.45 },
+            { point: partner.eyes, weight: 0.35 },
+            { point: speaker.chest, weight: 0.2 },
+          ]
+        : [
+            { point: speaker.eyes, weight: 0.6 },
+            { point: speaker.chest, weight: 0.4 },
+          ],
+    };
+  }
 
   /** Resolves anchors once, when a shot starts. Returns false when no clear view exists. */
   function prepare(next) {
@@ -311,16 +601,29 @@ export function createDirector({
     if (next.type === 'platform') {
       const stop = ctx.stop;
       if (!stop) return false;
-      const along = stop.distance + ctx.direction * 38;
-      const { p, side } = frameAt(along);
-      for (const sign of [next.sign, -next.sign]) {
-        const candidate = p.clone().addScaledVector(side, sign * 5.2);
-        candidate.y = p.y + 2.6;
-        if (blocked(candidate, trainPoint(leadD())) < 0.25) {
-          next.anchor = candidate;
-          return true;
+      // Shelter posts and roofs stand along the platform: step along it, sideways and up
+      // before giving up on the shot.
+      for (const sign of [next.sign, -next.sign])
+        for (const [ahead, lateral, height] of [
+          [38, 5.2, 2.6],
+          [32, 5.2, 2.6],
+          [44, 5.2, 2.6],
+          [38, 4.2, 2.6],
+          [38, 6.4, 3.2],
+          [30, 4.4, 3.4],
+        ]) {
+          const { p, side } = frameAt(stop.distance + ctx.direction * ahead);
+          const candidate = p.clone().addScaledVector(side, sign * lateral);
+          candidate.y = p.y + height;
+          if (blocked(candidate, trainPoint(leadD())) < 0.25) {
+            if (ahead !== 38 || lateral !== 5.2 || sign !== next.sign)
+              onNote(
+                `platform: first position blocked; moved to ${ahead} m along, ${lateral} m out`,
+              );
+            next.anchor = candidate;
+            return true;
+          }
         }
-      }
       return false;
     }
     if (next.type === 'bridge-low') {
@@ -345,45 +648,70 @@ export function createDirector({
       next.anchorD = leadD() + ctx.direction * (moving ? 70 : 0);
       return true;
     }
-    if (next.type === 'portrait') {
-      // People on platforms and lanes face the railway, so start from the track side
-      // for a three-quarter view, then work round; keep the first clear sightline.
-      const subject = subjectPoint(spec.subject);
-      const chest = subject.clone().addScaledVector(up, 1.25);
-      const radius = spec.distance ?? 4.6;
-      const { f, side } = frameAt(midD());
-      const rail = railNearZ(subject.z).sub(subject);
-      const facing = rail.lengthSq() > 1 ? Math.atan2(rail.dot(f), rail.dot(side)) : 0;
-      const turn = spec.side === 'left' ? -1 : spec.side === 'right' ? 1 : next.sign;
-      // A second pass stands further back and higher, over benches and low walls.
-      for (const [reach, rise] of [
-        [radius, spec.height ?? 0.25],
-        [radius * 1.6, (spec.height ?? 0.25) + 1.6],
-      ])
-        for (const offset of [0.45, -0.45, 0.9, -0.9, 0, 1.4, -1.4, Math.PI]) {
-          const angle = facing + offset * turn;
-          const candidate = chest
-            .clone()
-            .addScaledVector(side, Math.cos(angle) * reach)
-            .addScaledVector(f, Math.sin(angle) * reach);
-          candidate.y = chest.y + rise;
-          lift(candidate, 1.2);
-          if (
-            blocked(candidate, chest) < 0.2 &&
-            !obstructed(chest, candidate) &&
-            !obstructed(candidate, chest)
-          ) {
-            next.angle = angle;
-            next.reach = reach;
-            next.rise = rise;
-            return true;
-          }
-        }
-      next.angle = facing + 0.45 * turn;
-      return true;
+    if (next.type === 'portrait') return planPerson(next, spec);
+    if (next.type === 'window') return planWindow(next);
+    return true;
+  }
+
+  // ---- window shots: never a seated passenger's face filling the frame ----
+
+  const probe = new THREE.PerspectiveCamera();
+  const headPoint = new THREE.Vector3();
+  /** How far inside WINDOW_FACE_RANGE the nearest passenger face in frame sits; 0 when none. */
+  function windowCrowding(yaw, lensMm) {
+    const view = interiorPose(
+      track,
+      ctx.distance,
+      getTrackLength(),
+      ctx.direction,
+      true,
+      yaw,
+      -0.05,
+    );
+    probe.fov = lensToFov(lensMm, camera.aspect, { framing: portraitFraming, scale: 'close' });
+    probe.aspect = camera.aspect;
+    probe.near = 0.05;
+    probe.far = 100;
+    probe.position.copy(view.eye);
+    probe.lookAt(view.target);
+    probe.updateProjectionMatrix();
+    probe.updateMatrixWorld(true);
+    let worst = 0;
+    for (const head of interiorHeads() ?? []) {
+      headPoint.set(head[0] ?? head.x, head[1] ?? head.y, head[2] ?? head.z);
+      const range = headPoint.distanceTo(view.eye);
+      if (range >= WINDOW_FACE_RANGE) continue;
+      headPoint.project(probe);
+      if (headPoint.z < 1 && Math.abs(headPoint.x) < 1.25 && Math.abs(headPoint.y) < 1.25)
+        worst = Math.max(worst, WINDOW_FACE_RANGE - range);
     }
-    if (next.type === 'window') next.yaw = next.sign * (1.15 + rand() * 0.25);
-    return !(INTERIOR.has(next.type) && false);
+    return worst;
+  }
+  /** Picks a window bearing with no passenger face closer than WINDOW_FACE_RANGE in frame. */
+  function windowYaw(sign, lensMm, preferred) {
+    const signs = [sign, -sign];
+    const yaws = [preferred];
+    for (const s of signs) for (const y of [1.2, 1.35, 1.05, 1.5, 0.85]) yaws.push(s * y);
+    let best = null;
+    for (const yaw of yaws) {
+      const crowding = windowCrowding(yaw, lensMm);
+      if (crowding === 0) return { yaw, clear: true };
+      if (!best || crowding < best.crowding) best = { yaw, crowding };
+    }
+    return { yaw: best.yaw, clear: false };
+  }
+  function planWindow(next) {
+    const lensMm = next.spec.lens ?? 30;
+    const preferred = next.sign * (1.15 + rand() * 0.25);
+    const { yaw, clear } = windowYaw(next.sign, lensMm, preferred);
+    if (!clear)
+      onNote('window: a passenger face is within 3.2 m at every angle; using the least crowded');
+    else if (yaw !== preferred)
+      onNote('window: a passenger sat close to the lens; turned to a clear window');
+    next.yaw = yaw;
+    next.yawNow = yaw;
+    next.windowCheck = 0;
+    return true;
   }
 
   function start(spec, { scripted = false } = {}) {
@@ -587,13 +915,32 @@ export function createDirector({
         break;
       }
       case 'window': {
+        // Riders board while the shot holds: re-check twice a second and turn away smoothly.
+        shot.windowCheck = (shot.windowCheck ?? 0) + dt;
+        if (shot.windowCheck > 0.5) {
+          shot.windowCheck = 0;
+          const lensMm = spec.lens ?? 30;
+          if (windowCrowding(shot.yaw, lensMm) > 0) {
+            const next = windowYaw(shot.yaw >= 0 ? 1 : -1, lensMm, shot.yaw);
+            if (next.yaw !== shot.yaw) {
+              shot.yaw = next.yaw;
+              onNote('window: a passenger came into frame close to the lens; turned away');
+            }
+          }
+        }
+        shot.yawNow = THREE.MathUtils.damp(
+          shot.yawNow ?? shot.yaw ?? 1.2,
+          shot.yaw ?? 1.2,
+          2.2,
+          dt,
+        );
         const view = interiorPose(
           track,
           ctx.distance,
           getTrackLength(),
           ctx.direction,
           true,
-          shot.yaw ?? 1.2,
+          shot.yawNow ?? shot.yaw ?? 1.2,
           -0.05,
         );
         eye.copy(view.eye);
@@ -626,26 +973,108 @@ export function createDirector({
         handheld = 0.001;
         break;
       }
-      case 'portrait':
+      case 'portrait': {
+        const person = shot.person;
+        const live = personLive(spec, person.framing);
+        if (live) person.pivot = live.pivot;
+        const pivot = person.pivot ?? personPose(spec.subject)?.eyes ?? subjectPoint(spec.subject);
+        // A slow drift round the chosen bearing, turning away from the line of action.
+        const drift = t * 0.008 * person.side;
+        const placed = placeView(pivot, { ...person.view, angle: person.view.angle + drift });
+        eye.set(placed.x, placed.y, placed.z);
+        if (person.blend) {
+          person.blend.t += dt;
+          const u = THREE.MathUtils.clamp(person.blend.t / person.blend.duration, 0, 1);
+          eye.lerpVectors(person.blend.from, eye, u * u * (3 - 2 * u));
+          if (u >= 1) person.blend = null;
+        }
+        lift(eye, 0.9);
+        if (live && person.monitor.due(dt)) {
+          person.score = sightScore(eye, live.targets, person.ignore);
+          if (person.monitor.report(person.score)) {
+            // Blocked for two checks in a row: search again round the planned bearing.
+            const found = searchView({
+              base: person.base,
+              lineAngle: person.lineAngle,
+              side: person.side,
+              accept: person.accept,
+              score: (view) =>
+                sightScore(
+                  new THREE.Vector3().copy(placeView(live.pivot, view)),
+                  live.targets,
+                  person.ignore,
+                ),
+            });
+            if (person.monitor.better(person.score, found.score)) {
+              person.blend = { from: eye.clone(), t: 0, duration: 0.9 };
+              person.view = { ...found.view, angle: found.view.angle - drift };
+              person.score = found.score;
+              person.substitutions++;
+              onNote(
+                `${person.framing} of ${person.who}: view blocked while holding; moved ${describeMove(person.base, found.view)}${found.flipped ? ' across the line' : ''}`,
+              );
+            }
+            // Either way, rest before the next search so the choice cannot flicker.
+            person.monitor.switched();
+          }
+        }
+        desiredLens = person.lens;
+        const vfov =
+          (lensToFov(person.lens, camera.aspect, { framing: portraitFraming, scale: 'close' }) *
+            Math.PI) /
+          180;
+        const face = live?.speaker.eyes ?? pivot;
+        const toFace = Math.hypot(face.x - eye.x, face.z - eye.z) || 1;
+        // The camera's screen-right direction on the ground.
+        const rightX = -(face.z - eye.z) / toFace,
+          rightZ = (face.x - eye.x) / toFace;
+        const screenSide = (point) => {
+          const along =
+            ((point.x - eye.x) * rightX + (point.z - eye.z) * rightZ) /
+            (Math.hypot(point.x - eye.x, point.z - eye.z) || 1);
+          return Math.abs(along) < 0.05 ? 0 : Math.sign(along);
+        };
+        const tall = camera.aspect < 1;
+        let target = face;
+        let offsets;
+        if (person.framing === 'two') {
+          target = pivot;
+          offsets = { nx: 0, ny: tall ? 0.3 : 0.26 };
+        } else if (person.framing === 'ots' && live?.partner) {
+          // The listener's shoulder fills one side; the speaker sits on the other third.
+          offsets = { nx: -screenSide(live.partner.eyes) * (tall ? 0.12 : 0.28), ny: 0.3 };
+        } else {
+          const facing = live?.speaker.facing ?? null;
+          let look = 0;
+          if (facing !== null) {
+            const along = Math.cos(facing) * rightX + Math.sin(facing) * rightZ;
+            look = Math.abs(along) < 0.25 ? 0 : Math.sign(along);
+          } else if (live?.partner) look = screenSide(live.partner.eyes);
+          offsets = thirds(camera.aspect, look);
+        }
+        const composed = composeAim(eye, target, { ...offsets, vfov, aspect: camera.aspect });
+        aim.set(composed.x, composed.y, composed.z);
+        aperture = APERTURE[spec.aperture ?? 'shallow'];
+        handheld = 0.0025;
+        break;
+      }
       case 'orbit': {
         const subject = subjectPoint(spec.subject ?? 'middle');
         const personal = typeof spec.subject === 'object';
         const look = personal ? subject.clone().addScaledVector(up, 1.25) : subject;
         const around = frameAt(midD());
-        const radius = shot.reach ?? spec.distance ?? (shot.type === 'portrait' ? 4.6 : 18);
-        // Portraits drift slowly around their chosen clear bearing.
-        const angle =
-          shot.type === 'orbit' ? shot.phase + t * 0.12 * shot.sign : shot.angle + t * 0.015;
+        const radius = spec.distance ?? 18;
+        const angle = shot.phase + t * 0.12 * shot.sign;
         eye
           .copy(look)
           .addScaledVector(around.side, Math.cos(angle) * radius)
           .addScaledVector(around.f, Math.sin(angle) * radius);
-        eye.y = look.y + (shot.rise ?? spec.height ?? (shot.type === 'portrait' ? 0.25 : 6));
+        eye.y = look.y + (spec.height ?? 6);
         lift(eye, 1.2);
         aim.copy(look);
-        desiredLens = spec.lens ?? (shot.type === 'portrait' ? 50 : 35);
-        aperture = APERTURE[spec.aperture ?? (shot.type === 'portrait' ? 'shallow' : 'normal')];
-        handheld = shot.type === 'portrait' ? 0.003 : 0.002;
+        desiredLens = spec.lens ?? 35;
+        aperture = APERTURE[spec.aperture ?? 'normal'];
+        handheld = 0.002;
         break;
       }
     }
@@ -769,6 +1198,20 @@ export function createDirector({
               duration: shot.duration,
               lensMm: Number(lens.toFixed(1)),
               subject: shot.spec.subject ?? null,
+              partner: shot.spec.partner ?? null,
+              framing: shot.person
+                ? {
+                    kind: shot.person.framing,
+                    clear: Number(shot.person.score.toFixed(2)),
+                    side: shot.person.side,
+                    substitutions: shot.person.substitutions,
+                    view: {
+                      angle: Number(shot.person.view.angle.toFixed(3)),
+                      reach: Number(shot.person.view.reach.toFixed(2)),
+                      rise: Number(shot.person.view.rise.toFixed(2)),
+                    },
+                  }
+                : null,
             }
           : null,
         history: history.map((item) => ({ ...item })),

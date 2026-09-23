@@ -22,7 +22,8 @@ import { NARRATION_LANGUAGES, VOICE_CAST, VOICE_DELIVERY } from '@maple-line/voi
  * Beat:
  *   { shot: Shot, caption?, subtitle?, line?, lineTranslations?, dialogue?: [Line], hold?,
  *     waitFor?, cues?: [Cue] }
- *   Shot subjects may also be { cast: castId } or { crossing: crossingId }.
+ *   Shot subjects may also be { cast: castId } or { crossing: crossingId }. A portrait may
+ *   name a listener as `partner: { cast }` and a `framing` of single, ots or two.
  * Line:  { cast?: castId, speaker?: text, text, phone?: boolean, emotion?, translations? }
  *
  * Voice (all optional, so older episodes stay valid): a cast member's `voice` names a
@@ -213,17 +214,29 @@ export function normalizeEpisode(input, { stops = [], crossings = [] } = {}) {
               crossing: oneOf(subject.crossing, crossings, `${at}.shot.subject.crossing`),
             };
         }
+        // A listener for a portrait: { cast } like the subject (sets the line of action).
+        let partner = rawShot.partner;
+        const episodePartner = partner && typeof partner === 'object' && 'cast' in partner;
+        if (episodePartner) {
+          only(partner, ['cast'], `${at}.shot.partner`);
+          castRef(partner.cast, `${at}.shot.partner.cast`);
+          if (!actors[partner.cast])
+            fail(`${at}.shot.partner.cast`, 'needs an actor for this cast member in the scene.');
+          partner = { cast: partner.cast };
+        }
         let shot;
         try {
           shot = normalizeShot({
             ...rawShot,
             ...(episodeSubject ? { subject: { point: [0, 0, 0] } } : {}),
+            ...(episodePartner ? { partner: { point: [0, 0, 0] } } : {}),
           });
         } catch (error) {
           fail(`${at}.shot:`, error.message);
         }
         if (shot.set) fail(`${at}.shot.set`, 'belongs on the scene, not the shot.');
         if (episodeSubject) shot.subject = subject;
+        if (episodePartner) shot.partner = partner;
         const dialogue = (
           beat.dialogue === undefined
             ? []

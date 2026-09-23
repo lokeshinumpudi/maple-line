@@ -45,7 +45,7 @@ In render mode the page hides the HUD and uses caption sizes meant for a phone w
 
 - drops the 2.39:1 letterbox, which would leave a small band of picture inside a 9:16 frame;
 - raises subtitles above the bottom sixth of the frame, where messaging apps draw their controls;
-- uses the director's `subject` portrait framing, which widens close shots much less than the phone game does, so a person stays large in a tall frame.
+- uses the director's `subject` portrait framing, which widens close shots much less than the phone game does, so a person stays large in a tall frame. Portraits use the same face framing and occlusion search as 16:9, standing a little closer.
 
 Instead of the in-game "end" card, a rendered video holds the last shot for 1.5 s, fades to black and shows a 5-second end card with the series title, episode, the next-episode line and the Maple Line credit.
 
@@ -126,5 +126,5 @@ Clips are delayed to their start with ffmpeg `adelay`, mixed with `amix` without
 - The capture needs a working WebGL context. On macOS headless Chromium uses the GPU through ANGLE Metal; `--gl swiftshader` works without a GPU but is many times slower.
 - The game's own sound (train, ambience, crossing bells) is not recorded. Only the clips from `--audio` are in the video.
 - Frames are captured as JPEG at quality 92 before H.264 encoding. That loss is well below what messaging apps apply when they recompress a video.
-- A shot is still planned by the director camera and can be partly blocked by a shelter roof or a wall; the render shows the same frame the game would.
+- Shots are planned by the director camera, as in the game. Portraits avoid walls, posts, the train and people in front of the face (see [framing people](DIRECTOR.md#framing-people)); other shot types check scenery only. `window.__mapleRender.framing()` returns the current shot's framing, sightline score and the cast's head positions, for checking a render.
 - Render mode and `window.__mapleRender` are available in any build opened with `?render=1`. They are for local capture only and change nothing in normal play.
