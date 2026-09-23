@@ -4,6 +4,7 @@ import { Vector3 } from 'three';
 import {
   createStableSunShadow,
   SUN_SHADOW_FRUSTUM,
+  SUN_SHADOW_FRUSTUM_DESKTOP,
   SUN_SHADOW_MAP,
   SUN_SHADOW_OFFSET,
 } from '../src/rendering/stable-sun-shadow.js';
@@ -116,6 +117,14 @@ test('frustum and map size stay 220 m / 2048', () => {
   assert.equal(SUN_SHADOW_MAP, 2048);
   assert.equal(shadow.frustumSize, 220);
   assert.equal(shadow.texelSize, 220 / 2048);
+});
+
+test('desktop spends the same map on a tighter square with finer texels', () => {
+  const shadow = createStableSunShadow({ frustumSize: SUN_SHADOW_FRUSTUM_DESKTOP });
+  assert.ok(SUN_SHADOW_FRUSTUM_DESKTOP < SUN_SHADOW_FRUSTUM);
+  assert.equal(shadow.texelSize, SUN_SHADOW_FRUSTUM_DESKTOP / SUN_SHADOW_MAP);
+  // A 5 cm pantograph bar still spans most of a texel.
+  assert.ok(shadow.texelSize < 0.08);
 });
 
 test('sunrise and sunset rebuild the snap basis to match the actual light direction', () => {

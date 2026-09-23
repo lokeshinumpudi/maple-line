@@ -2,7 +2,18 @@ import { SUN_PHASES } from '../rendering/sun-phases.js';
 import { ATMOSPHERE_PROFILES, DUSK_COLORS } from '../rendering/atmosphere-palette.js';
 
 /** Weather and sky for Maple Line. No assets or extra draw calls per particle. */
-export function createAtmosphere({ THREE, scene, camera, renderer, sun, hemi, waterMat }) {
+export function createAtmosphere({
+  THREE,
+  scene,
+  camera,
+  renderer,
+  sun,
+  hemi,
+  waterMat,
+  // Scales on the palette's sun, hemisphere fill and reflection environment (main.js).
+  balance = {},
+}) {
+  const light = { sun: 1, ambient: 1, environment: 1, ...balance };
   let mode = 'clear';
   let isDusk = false;
   let sunPhase = 'daylight';
@@ -170,16 +181,20 @@ export function createAtmosphere({ THREE, scene, camera, renderer, sun, hemi, wa
     scene.background.copy(scene.fog.color);
     scene.environmentIntensity = THREE.MathUtils.lerp(
       scene.environmentIntensity,
-      (mode === 'clear' ? 0.35 : 0.18) * (isDusk ? 0.45 : 1),
+      (mode === 'clear' ? 0.35 : 0.18) * (isDusk ? 0.45 : 1) * light.environment,
       blend,
     );
     sun.color.lerp(sunTarget, blend);
-    sun.intensity = THREE.MathUtils.lerp(sun.intensity, config.sunPower * phase.power, blend);
+    sun.intensity = THREE.MathUtils.lerp(
+      sun.intensity,
+      config.sunPower * phase.power * light.sun,
+      blend,
+    );
     hemi.color.lerp(zenithTarget, blend);
     hemi.groundColor.lerp(groundTarget.set(config.ground), blend);
     hemi.intensity = THREE.MathUtils.lerp(
       hemi.intensity,
-      config.ambient * (isDusk ? 0.76 : 1),
+      config.ambient * (isDusk ? 0.76 : 1) * light.ambient,
       blend,
     );
     renderer.toneMappingExposure = THREE.MathUtils.lerp(

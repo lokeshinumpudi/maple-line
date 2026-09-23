@@ -1,0 +1,148 @@
+{
+  "asset": "momiji-emu",
+  "blender": "5.2.2 LTS",
+  "bounds": {
+    "car-cab": [
+      [
+        -1.69,
+        0.34,
+        -6.79
+      ],
+      [
+        1.69,
+        4.06,
+        6.72
+      ]
+    ],
+    "car-middle": [
+      [
+        -1.69,
+        0.4,
+        -6.79
+      ],
+      [
+        1.69,
+        4.05,
+        6.79
+      ]
+    ],
+    "door-leaf": [
+      [
+        -0.021,
+        -1.04,
+        -0.33
+      ],
+      [
+        0.025,
+        1.04,
+        0.33
+      ]
+    ],
+    "pantograph": [
+      [
+        -1.034,
+        3.97,
+        -0.82
+      ],
+      [
+        1.034,
+        7.35,
+        1.11
+      ]
+    ],
+    "wheelset": [
+      [
+        -1.17,
+        -0.49,
+        -0.483
+      ],
+      [
+        1.17,
+        0.49,
+        0.483
+      ]
+    ]
+  },
+  "contactHeight": 7.35,
+  "facing": "cab at +Z in three.js (Blender -Y)",
+  "glbBytes": 529548,
+  "layout": {
+    "axles": [
+      -5.04,
+      -3.32,
+      3.32,
+      5.04
+    ],
+    "doorCentres": [
+      -4.59,
+      4.59
+    ],
+    "halfLength": 6.2,
+    "leafOffset": 0.33,
+    "leafSlide": 0.64,
+    "leafX": 1.46,
+    "leafY": 2.15,
+    "skinX": 1.5,
+    "wheelCentreY": 0.775,
+    "wheelRadius": 0.46,
+    "windscreenZ": 6.188
+  },
+  "materialTriangles": {
+    "car-cab": {
+      "train-bright": 1240,
+      "train-glass": 88,
+      "train-lining": 4838,
+      "train-metal": 1952,
+      "train-paint": 4066,
+      "train-roof": 1696,
+      "train-rubber": 2960,
+      "train-sign": 12
+    },
+    "car-middle": {
+      "train-bright": 1136,
+      "train-glass": 52,
+      "train-lining": 4902,
+      "train-metal": 1916,
+      "train-paint": 3052,
+      "train-roof": 1666,
+      "train-rubber": 3600
+    },
+    "door-leaf": {
+      "train-glass": 2,
+      "train-lining": 72,
+      "train-paint": 128,
+      "train-rubber": 184
+    },
+    "pantograph": {
+      "train-bright": 136,
+      "train-metal": 352,
+      "train-rubber": 24
+    },
+    "wheelset": {
+      "train-bright": 96,
+      "train-metal": 1156
+    }
+  },
+  "materials": [
+    "train-paint",
+    "train-roof",
+    "train-metal",
+    "train-bright",
+    "train-rubber",
+    "train-glass",
+    "train-lining",
+    "train-sign"
+  ],
+  "parts": {
+    "car-cab": 16852,
+    "car-middle": 16324,
+    "door-leaf": 386,
+    "pantograph": 512,
+    "wheelset": 1252
+  },
+  "perCarTriangles": {
+    "cab": 28548,
+    "middle": 27508
+  },
+  "trainTriangles": 139620
+}

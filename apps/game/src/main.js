@@ -3,7 +3,12 @@ import { createTrackSnow } from './world/track-snow.js';
 import { TERRAIN_LATERAL_SAMPLES, naturalValleyTerrain } from './world/terrain-surface.js';
 import { createEmbedVisuals } from './embed/visuals.js';
 import { installEmbedBridge } from './embed/bridge.js';
-import { createStableSunShadow } from './rendering/stable-sun-shadow.js';
+import {
+  createStableSunShadow,
+  SUN_SHADOW_FRUSTUM,
+  SUN_SHADOW_FRUSTUM_DESKTOP,
+  SUN_SHADOW_MAP,
+} from './rendering/stable-sun-shadow.js';
 import { sceneSoundContext } from './audio/scene-context.js';
 import { createRegionalRailTraffic } from './world/regional-rail-traffic.js';
 import { TOKYO_PASSAGE } from './world/tokyo-passage.js';
@@ -167,24 +172,39 @@ let authoredWorld,
   missionChip,
   characterGrab;
 const camera = new THREE.PerspectiveCamera(48, innerWidth / innerHeight, 0.5, 1800);
-const hemi = new THREE.HemisphereLight('#dce8db', '#646544', 2.25);
+// Less flat fill, a stronger sun and more sky reflection, so the sun and the environment map
+// shape forms instead of the hemisphere light washing them out. The atmosphere applies these
+// scales to every weather and time of day.
+const LIGHT_BALANCE = Object.freeze({ ambient: 0.42, sun: 1.2, environment: 1.6 });
+const hemi = new THREE.HemisphereLight('#dce8db', '#646544', 1.85 * LIGHT_BALANCE.ambient);
 scene.add(hemi);
-const sun = new THREE.DirectionalLight('#ffddb0', 3.1);
+const sun = new THREE.DirectionalLight('#ffddb0', 2.5 * LIGHT_BALANCE.sun);
 sun.position.set(-120, 170, -80);
 sun.castShadow = true;
-sun.shadow.mapSize.set(mobilePlay ? 1024 : 2048, mobilePlay ? 1024 : 2048);
+// Desktop spends the same 2048 map on a smaller square around the view (7.3 cm texels
+// instead of 10.7 cm); phones keep the wide, coarse map.
+const shadowMapSize = mobilePlay ? 1024 : SUN_SHADOW_MAP;
+const shadowFrustum = mobilePlay ? SUN_SHADOW_FRUSTUM : SUN_SHADOW_FRUSTUM_DESKTOP;
+sun.shadow.mapSize.set(shadowMapSize, shadowMapSize);
 Object.assign(sun.shadow.camera, {
-  left: -110,
-  right: 110,
-  top: 110,
-  bottom: -110,
+  left: -shadowFrustum / 2,
+  right: shadowFrustum / 2,
+  top: shadowFrustum / 2,
+  bottom: -shadowFrustum / 2,
   near: 1,
   far: 500,
 });
 sun.shadow.bias = -0.001;
-sun.shadow.normalBias = 0.4;
+// Normal bias follows the texel size so small parts keep contact shadows.
+sun.shadow.normalBias =
+  0.4 * (shadowFrustum / shadowMapSize / (SUN_SHADOW_FRUSTUM / SUN_SHADOW_MAP));
 scene.add(sun, sun.target);
-const stableSunShadow = createStableSunShadow();
+const stableSunShadow = createStableSunShadow({
+  frustumSize: shadowFrustum,
+  mapSize: shadowMapSize,
+});
+const shadowFocus = new THREE.Vector3();
+const shadowLook = new THREE.Vector3();
 // Linear HDR scene target with bloom, sun shafts, focus and grade; 'off' is the plain render.
 const filmPipeline = createFilmPipeline({ renderer, scene, camera, quality: 'off' });
 const filmQuality = (preference) =>
@@ -470,7 +490,16 @@ const flora = addFloraDetail({
     { minZ: -510, maxZ: -410, minU: 34, maxU: 75 },
   ],
 });
-const atmosphere = createAtmosphere({ THREE, scene, camera, renderer, sun, hemi, waterMat });
+const atmosphere = createAtmosphere({
+  THREE,
+  scene,
+  camera,
+  renderer,
+  sun,
+  hemi,
+  waterMat,
+  balance: LIGHT_BALANCE,
+});
 const wildlife = addWildlife({
   THREE,
   scene,
@@ -867,6 +896,10 @@ const heroCasts = MOMIJI_CAST.map((member) =>
   createHeroCast({ THREE, scene, loader: modelLoader, worldDetails: heroWorld, minds, ...member }),
 );
 const stationModules = createStationModules({ THREE, loader: modelLoader, parent: station });
+// The Blender train replaces the procedural exterior once its GLB loads. `?train=procedural`
+// keeps the code-built train, for comparisons and as a manual fallback.
+if (new URLSearchParams(location.search).get('train') !== 'procedural')
+  trainModel.attachModel(modelLoader);
 if (import.meta.hot)
   import.meta.hot.dispose(() => {
     for (const hero of heroCasts) hero.dispose();
@@ -1419,7 +1452,12 @@ function updateCamera(dt, snap = false) {
   stableSunShadow.setOffset(
     SUN_PHASES[dusk ? 'dusk' : gameStore.getState().preferences.sunPhase].offset,
   );
-  stableSunShadow.apply(sun, position, renderer.shadowMap);
+  // Centre the shadow square a little ahead of the train along the camera's view, where
+  // most of the visible ground is; the snap keeps it stable while the camera turns.
+  camera.getWorldDirection(shadowLook).setY(0);
+  if (shadowLook.lengthSq() > 1e-6) shadowLook.normalize();
+  shadowFocus.copy(position).addScaledVector(shadowLook, shadowFrustum * 0.18);
+  stableSunShadow.apply(sun, shadowFocus, renderer.shadowMap);
   document.body.classList.toggle('film-mode', Boolean(filmDirector.getState().active));
   directorLook = filmDirector.update({
     dt,
