@@ -63,7 +63,7 @@ The final cast starts from pixiv's CC0 VRoid sample avatars. It is edited in Ble
 5. **Add accessories** as separate meshes skinned to one bone: glasses and a newspaper for Ishida, a ribbon for Riko, a tie and bag for Sato. A newspaper or phone that shows only in some clips is its own node, named as `hero-cast` expects (`newspaper`).
 6. **Age the face.** Adjust the eye shape keys and brows for age. Elders get a smaller iris and softer upper lid, and a posture stoop in the scene extras (`posture.stoop`, degrees).
 7. **Reduce to budget.** Remove body faces hidden under clothes. Decimate hair and clothes. Bake the atlas at 1024 px and compress it (KTX2). Merge materials.
-8. **Check in the lab and the game.** Run the character lab (`/character-lab.html` on the dev server; add `?compare=1` to see the Blender GLBs beside them). Then take director portraits at Momiji at daylight and sunset.
+8. **Check in the lab and the game.** Run the character lab (`/character-lab.html` on the dev server; add `?compare=1` to see the Blender GLBs beside them), and the [character studio](../CHARACTER-STUDIO.md) (`/character-studio.html`) to match the body to the concept views and check motion layers, grips and the face. Then take director portraits at Momiji at daylight and sunset.
 
 Clips do not come with the avatars. `asset-src/characters/vrm-cast/retarget.mjs` turns the Quaternius UAL packs into one `.vrma` file with the `hero-cast` clip names (`node asset-src/characters/vrm-cast/retarget.mjs`, packs from `--ual <folder>` or `$MAPLE_UAL_DIR`). The clip table and the measurements are in [character motion](../CHARACTER-MOTION.md). A new VRoid-based character needs no new clips: the file is in normalized VRM bones.
 

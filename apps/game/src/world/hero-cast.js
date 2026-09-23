@@ -1,6 +1,7 @@
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 import { createVrmActor } from '../characters/vrm-actor.js';
 import { humanoidRigFor } from '../characters/humanoid-bones.js';
+import { gripOverrides } from '../characters/cast-tuning.js';
 import {
   attachProps,
   createHandSockets,
@@ -208,6 +209,7 @@ export function createHeroCast({
   let rig = null;
   let humanoid = null;
   let props = [];
+  let sockets = {};
   let wasVisible = false;
   let blinkIn = 2 + random() * 3;
   let blinkT = -1;
@@ -298,8 +300,15 @@ export function createHeroCast({
     root.updateMatrixWorld(true);
     const bounds = new THREE.Box3().setFromObject(root);
     const height = Math.max(1, bounds.max.y - bounds.min.y);
-    const sockets = createHandSockets(THREE, root, humanoid.raw);
-    props = attachProps(THREE, root, sockets);
+    sockets = createHandSockets(THREE, root, humanoid.raw);
+    // Grips tuned in the character studio (characters/cast-tuning.json), per model file.
+    props = attachProps(
+      THREE,
+      root,
+      sockets,
+      undefined,
+      gripOverrides(kind === 'vrm' ? vrm : path),
+    );
     rig = humanoid.missing.length
       ? null
       : createCharacterRig(THREE, root, {
@@ -411,7 +420,8 @@ export function createHeroCast({
         z: figure.position.z,
         heading: figure.heading,
         moving: Boolean(figure.walking),
-        hold: seated || boarding,
+        // `debug.steering === false` (studio) follows the simulation exactly.
+        hold: seated || boarding || debug.steering === false,
       };
       // Reappearing (alighting at a door, a Places jump): start where the simulation is.
       const before = { x: steering.state.x, z: steering.state.z };
@@ -420,6 +430,8 @@ export function createHeroCast({
       // Standing up: the body stays on the spot until sit-exit ends, then walks on.
       const standingUp = seat === 'exit' && !seated;
       const body = step && !standingUp ? steering.update(step, target) : steering.state;
+      // Steering off (studio): the body is where the figure is, at the figure's own speed.
+      if (debug.steering === false) body.speed = figure.speed ?? 0;
       const jumped =
         !wasVisible ||
         Math.hypot(body.x - before.x, body.z - before.z) > steering.options.snapDistance;
@@ -453,6 +465,8 @@ export function createHeroCast({
       for (const prop of props) {
         if (prop.name === 'newspaper') prop.node.visible = seated;
         else if (pocketed.includes(prop.name)) prop.node.visible = blender.name === 'check-phone';
+        if (typeof debug.props?.[prop.name] === 'boolean')
+          prop.node.visible = debug.props[prop.name];
       }
       if (actor) {
         // A VRM's own skinned paper is shown only while seated, like the GLB's prop.
@@ -504,6 +518,16 @@ export function createHeroCast({
       seatClipTime += step;
       rig?.resetPose();
       blender.play(choice.clip, choice.timeScale, choice.once);
+      if (Number.isFinite(debug.time)) {
+        // Studio timeline: the current clip shows exactly this time (with timeScale 0).
+        const action = actions.get(blender.name);
+        if (action) {
+          action.enabled = true;
+          action.paused = false;
+          action.time = debug.time;
+          action.timeScale = 0;
+        }
+      }
       blender.update(step);
 
       const walking = body.speed > 0.25;
@@ -577,9 +601,33 @@ export function createHeroCast({
     /**
      * Development and measurement switches. `layers` turns rig layers off by name
      * (character-rig.js RIG_LAYERS), `clip` forces a clip, `intent` replaces the mind's.
+     * The studio also uses `time` (hold the clip at a time; pass `timeScale: 0`), `steering:
+     * false` (follow the figure exactly) and `props` ({ phone: true } shows a prop).
      */
     setDebug(next = {}) {
       debug = { ...next };
+    },
+    /**
+     * Development tools only (the character studio): the live mixer, actions, clip blender,
+     * rig, bones, sockets and props. Read them, or change props and actions the way the
+     * studio documents; the game never calls this.
+     */
+    internals() {
+      return {
+        actor,
+        root,
+        mixer,
+        actions,
+        blender,
+        rig,
+        humanoid,
+        sockets,
+        props,
+        face,
+        gait,
+        steering,
+        kind,
+      };
     },
     /** The live model root, for inspection tools (null until loaded). */
     get root() {

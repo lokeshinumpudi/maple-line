@@ -1,0 +1,551 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Character studio</title>
+    <!-- Development page only (docs/CHARACTER-STUDIO.md). No build lists it as an input. -->
+    <style>
+      :root {
+        --bg: #111417;
+        --panel: #171b1f;
+        --panel-2: #1d2226;
+        --line: #2a3136;
+        --text: #d6dde0;
+        --dim: #8b979d;
+        --accent: #7fd1a8;
+        --accent-dim: #2f5a47;
+        --warn: #e8b35a;
+        --bad: #e8705a;
+        --prev: #6aa7ff;
+        --next: #ffb35c;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        background: var(--bg);
+        color: var(--text);
+        overflow: hidden;
+        font:
+          12px/1.35 ui-sans-serif,
+          system-ui,
+          sans-serif;
+      }
+      button,
+      select,
+      input {
+        font: inherit;
+        color: var(--text);
+      }
+      button {
+        background: var(--panel-2);
+        border: 1px solid var(--line);
+        border-radius: 4px;
+        padding: 3px 8px;
+        cursor: pointer;
+      }
+      button:hover {
+        border-color: #3d474e;
+      }
+      button.on,
+      button.primary {
+        background: var(--accent-dim);
+        border-color: var(--accent);
+      }
+      button:disabled {
+        opacity: 0.4;
+        cursor: default;
+      }
+      select,
+      input[type='text'],
+      input[type='number'],
+      input[type='search'] {
+        background: #0e1113;
+        border: 1px solid var(--line);
+        border-radius: 4px;
+        padding: 3px 6px;
+        min-width: 0;
+      }
+      input[type='range'] {
+        accent-color: var(--accent);
+        min-width: 0;
+      }
+      input[type='checkbox'] {
+        accent-color: var(--accent);
+        margin: 0 4px 0 0;
+      }
+      label {
+        display: inline-flex;
+        align-items: center;
+        gap: 2px;
+      }
+      #app {
+        display: grid;
+        grid-template-columns: 250px 1fr 330px;
+        grid-template-rows: 40px 1fr 118px;
+        grid-template-areas:
+          'head head head'
+          'left main right'
+          'left time right';
+        height: 100%;
+      }
+      header {
+        grid-area: head;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 0 10px;
+        border-bottom: 1px solid var(--line);
+        background: var(--panel);
+      }
+      header h1 {
+        font-size: 13px;
+        letter-spacing: 0.12em;
+        margin: 0 12px 0 0;
+        font-weight: 700;
+      }
+      header .grow {
+        flex: 1;
+      }
+      #status {
+        color: var(--dim);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      aside {
+        background: var(--panel);
+        overflow-y: auto;
+        border-right: 1px solid var(--line);
+      }
+      aside.right {
+        grid-area: right;
+        border-right: 0;
+        border-left: 1px solid var(--line);
+      }
+      aside.left {
+        grid-area: left;
+        display: flex;
+        flex-direction: column;
+      }
+      details {
+        border-bottom: 1px solid var(--line);
+      }
+      summary {
+        cursor: pointer;
+        padding: 7px 10px;
+        font-size: 11px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--dim);
+        user-select: none;
+      }
+      summary .count {
+        float: right;
+        color: var(--dim);
+      }
+      .body {
+        padding: 2px 10px 10px;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+      .row {
+        display: flex;
+        gap: 6px;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+      .row > .grow {
+        flex: 1;
+      }
+      .kv {
+        display: grid;
+        grid-template-columns: 74px 1fr 46px;
+        gap: 4px 6px;
+        align-items: center;
+      }
+      .kv output {
+        text-align: right;
+        color: var(--dim);
+        font-variant-numeric: tabular-nums;
+      }
+      .list {
+        display: flex;
+        flex-direction: column;
+        gap: 1px;
+        overflow-y: auto;
+      }
+      .item {
+        padding: 5px 8px;
+        border-radius: 4px;
+        cursor: pointer;
+        border: 1px solid transparent;
+      }
+      .item:hover {
+        background: var(--panel-2);
+      }
+      .item.sel {
+        background: var(--accent-dim);
+        border-color: var(--accent);
+      }
+      .item.off {
+        opacity: 0.45;
+      }
+      .item small {
+        display: block;
+        color: var(--dim);
+      }
+      .group {
+        color: var(--dim);
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        padding: 6px 2px 2px;
+      }
+      .left .list.chars {
+        max-height: 34vh;
+      }
+      .left .list.clips {
+        flex: 1;
+      }
+      .mono {
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 11px;
+      }
+      .dim {
+        color: var(--dim);
+      }
+      main {
+        grid-area: main;
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+      }
+      .toolbar {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        padding: 5px 8px;
+        border-bottom: 1px solid var(--line);
+        background: var(--panel);
+        flex-wrap: wrap;
+      }
+      #views {
+        position: relative;
+        flex: 1;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        grid-template-rows: 1fr 1fr;
+        gap: 2px;
+        background: var(--line);
+      }
+      #views.single {
+        grid-template-columns: 1fr;
+        grid-template-rows: 1fr;
+      }
+      #views.single .view:not(.max) {
+        display: none;
+      }
+      #gl {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        display: block;
+      }
+      .view {
+        position: relative;
+        outline: none;
+        touch-action: none;
+      }
+      .view .label {
+        position: absolute;
+        left: 8px;
+        top: 6px;
+        pointer-events: none;
+        color: var(--text);
+        text-shadow: 0 1px 2px #000;
+      }
+      .view .label small {
+        color: var(--dim);
+        margin-left: 6px;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+      }
+      .view .corner {
+        position: absolute;
+        right: 6px;
+        top: 5px;
+        display: flex;
+        gap: 4px;
+      }
+      .view .readout {
+        position: absolute;
+        left: 8px;
+        bottom: 6px;
+        color: var(--dim);
+        pointer-events: none;
+        text-shadow: 0 1px 2px #000;
+      }
+      .view.drop {
+        box-shadow: inset 0 0 0 2px var(--accent);
+      }
+      #timeline {
+        grid-area: time;
+        border-top: 1px solid var(--line);
+        background: var(--panel);
+        padding: 6px 10px;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        min-width: 0;
+      }
+      #track {
+        width: 100%;
+        height: 54px;
+        display: block;
+        cursor: ew-resize;
+        border-radius: 4px;
+        background: #0e1113;
+      }
+      .tree {
+        max-height: 230px;
+        overflow-y: auto;
+        font-size: 11px;
+      }
+      .tree .node {
+        padding: 1px 4px;
+        cursor: pointer;
+        white-space: nowrap;
+        border-radius: 3px;
+      }
+      .tree .node.sel {
+        background: var(--accent-dim);
+      }
+      .tree .node small {
+        color: var(--dim);
+        margin-left: 6px;
+      }
+      canvas.graph {
+        width: 100%;
+        height: 90px;
+        background: #0e1113;
+        border-radius: 4px;
+      }
+      .legend span {
+        margin-right: 10px;
+      }
+      .swatch {
+        display: inline-block;
+        width: 8px;
+        height: 8px;
+        border-radius: 2px;
+        margin-right: 4px;
+      }
+      .bars {
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 4px;
+        text-align: center;
+      }
+      .bars div {
+        background: #0e1113;
+        border-radius: 3px;
+        height: 30px;
+        position: relative;
+        overflow: hidden;
+      }
+      .bars div i {
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: var(--accent);
+      }
+      .bars div b {
+        position: relative;
+        font-weight: 500;
+        line-height: 30px;
+      }
+      dialog {
+        background: var(--panel);
+        color: var(--text);
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        width: min(900px, 90vw);
+        max-height: 85vh;
+        padding: 12px;
+      }
+      dialog::backdrop {
+        background: #0009;
+      }
+      pre.diff {
+        max-height: 55vh;
+        overflow: auto;
+        background: #0e1113;
+        padding: 8px;
+        border-radius: 4px;
+        margin: 6px 0 10px;
+      }
+      pre.diff .add {
+        color: var(--accent);
+      }
+      pre.diff .del {
+        color: var(--bad);
+      }
+      .note {
+        color: var(--dim);
+        font-size: 11px;
+      }
+      .warn {
+        color: var(--warn);
+      }
+      #toast {
+        position: fixed;
+        bottom: 130px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: var(--panel-2);
+        border: 1px solid var(--line);
+        padding: 6px 12px;
+        border-radius: 4px;
+        display: none;
+        z-index: 10;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app">
+      <header>
+        <h1>CHARACTER STUDIO</h1>
+        <span id="status" class="grow">Loading…</span>
+        <span class="dim" id="engine">WebGL2</span>
+        <select id="capture-view" title="What a capture includes">
+          <option value="all">All views</option>
+          <option value="persp">Perspective</option>
+          <option value="front">Front</option>
+          <option value="side">Side</option>
+          <option value="top">Top</option>
+        </select>
+        <button id="capture-still" title="PNG to artifacts/screenshots/studio/">Still</button>
+        <button id="capture-video" title="Frame-stepped MP4 of the trimmed clip">MP4</button>
+        <button id="download">Download JSON</button>
+        <button id="save" class="primary">Review and save</button>
+      </header>
+
+      <aside class="left">
+        <details open>
+          <summary>Character <span class="count" id="char-count"></span></summary>
+          <div class="body">
+            <input id="char-search" type="search" placeholder="Find a character" />
+            <div class="list chars" id="char-list"></div>
+            <div id="char-info" class="note mono"></div>
+          </div>
+        </details>
+        <details open style="flex: 1; display: flex; flex-direction: column; min-height: 0">
+          <summary>Clip library <span class="count" id="clip-count"></span></summary>
+          <div class="body" style="flex: 1; min-height: 0">
+            <input id="clip-search" type="search" placeholder="Find a clip" />
+            <div class="list clips" id="clip-list"></div>
+          </div>
+        </details>
+      </aside>
+
+      <main>
+        <div class="toolbar">
+          <label><input type="checkbox" id="show-model" checked />Model</label>
+          <label><input type="checkbox" id="show-skeleton" />Skeleton</label>
+          <label><input type="checkbox" id="show-ghosts" />Ghosts</label>
+          <label><input type="checkbox" id="show-feet" checked />Feet</label>
+          <label><input type="checkbox" id="show-overlay" checked />Concept</label>
+          <label><input type="checkbox" id="show-grid" checked />Grid</label>
+          <label title="Cameras follow the body as it walks"
+            ><input type="checkbox" id="follow" checked />Follow</label
+          >
+          <span class="grow"></span>
+          <span class="dim">Frame</span>
+          <button id="frame-body">Body</button>
+          <button id="frame-face">Face</button>
+          <button id="frame-hands">Hands</button>
+          <span class="dim">Gizmo</span>
+          <button id="gizmo-translate" class="on">Move</button>
+          <button id="gizmo-rotate">Rotate</button>
+          <button id="gizmo-space">World</button>
+        </div>
+        <div id="views">
+          <canvas id="gl"></canvas>
+          <div class="view" data-view="persp" tabindex="0">
+            <div class="label">Perspective <small>3/4</small></div>
+            <div class="corner"><button data-max="persp">⤢</button></div>
+            <div class="readout" id="readout-persp"></div>
+          </div>
+          <div class="view" data-view="top" tabindex="0">
+            <div class="label">Top <small>ortho</small></div>
+            <div class="corner"><button data-max="top">⤢</button></div>
+            <div class="readout" id="readout-top"></div>
+          </div>
+          <div class="view" data-view="front" tabindex="0">
+            <div class="label">Front <small>ortho</small></div>
+            <div class="corner"><button data-max="front">⤢</button></div>
+            <div class="readout" id="readout-front"></div>
+          </div>
+          <div class="view" data-view="side" tabindex="0">
+            <div class="label">Left <small>ortho</small></div>
+            <div class="corner"><button data-max="side">⤢</button></div>
+            <div class="readout" id="readout-side"></div>
+          </div>
+        </div>
+      </main>
+
+      <section id="timeline">
+        <div class="row">
+          <button id="t-first" title="Trim in (Home)">⏮</button>
+          <button id="t-prev" title="Previous frame (,)">◀</button>
+          <button id="t-play" class="primary" title="Play or pause (space)">❚❚</button>
+          <button id="t-next" title="Next frame (.)">▶</button>
+          <button id="t-last" title="Trim out (End)">⏭</button>
+          <input id="t-frame" type="number" min="0" step="1" style="width: 64px" />
+          <span class="dim mono" id="t-total"></span>
+          <select id="t-speed" title="Playback speed">
+            <option value="0.1">0.1×</option>
+            <option value="0.25">0.25×</option>
+            <option value="0.5">0.5×</option>
+            <option value="1" selected>1×</option>
+            <option value="1.5">1.5×</option>
+            <option value="2">2×</option>
+          </select>
+          <label><input type="checkbox" id="t-loop" checked />Loop</label>
+          <span class="dim">30 fps</span>
+          <span class="grow"></span>
+          <button id="t-set-in" title="Trim in at the playhead (I)">Set in</button>
+          <button id="t-set-out" title="Trim out at the playhead (O)">Set out</button>
+          <button id="t-reset-trim">Reset trim</button>
+          <span class="dim mono" id="t-trim"></span>
+        </div>
+        <canvas id="track"></canvas>
+      </section>
+
+      <aside class="right" id="right"></aside>
+    </div>
+
+    <dialog id="review">
+      <div class="row">
+        <b>Review changes</b><span class="grow"></span
+        ><span class="note">Written as formatted JSON in source; check it in with git.</span>
+      </div>
+      <div id="review-body"></div>
+      <div class="row">
+        <span class="grow"></span><button id="review-cancel">Cancel</button
+        ><button id="review-write" class="primary">Write files</button>
+      </div>
+    </dialog>
+    <div id="toast"></div>
+    <script type="module" src="/src/characters/studio/studio.js"></script>
+  </body>
+</html>

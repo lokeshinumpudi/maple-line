@@ -1,4 +1,5 @@
 import { defineConfig } from 'vite';
+import { characterStudioServer } from './src/characters/studio/dev-server.js';
 
 // A second local checkout can run its own director (for example on 4575) without
 // editing this file: MAPLE_DIRECTOR_PROXY=http://127.0.0.1:4575 pnpm exec vite --port 4573
@@ -16,6 +17,8 @@ export default defineConfig(({ mode }) => ({
       : mode === 'public'
         ? '/maple-line/'
         : '/',
+  // The character studio (character-studio.html) is a dev-server page: its endpoints use
+  // `apply: 'serve'` and no build lists it as an input, so no build contains it.
   plugins: ['ship', 'public', 'ship-embed', 'public-embed'].includes(mode)
     ? [
         {
@@ -67,7 +70,7 @@ export default defineConfig(({ mode }) => ({
           },
         },
       ]
-    : [],
+    : [characterStudioServer()],
   server: {
     host: '127.0.0.1',
     port: 4173,

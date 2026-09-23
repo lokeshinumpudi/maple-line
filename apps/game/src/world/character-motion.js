@@ -220,8 +220,9 @@ export const PROP_GRIPS = Object.freeze({
 /**
  * Attach every prop node (userData.prop, or a name in PROP_GRIPS) to its hand socket.
  * Props exported by build.py are already in socket space, so the default offset is zero.
+ * `overrides` (by prop name, from characters/cast-tuning.json) win over the prop's extras.
  */
-export function attachProps(THREE, root, sockets, grips = PROP_GRIPS) {
+export function attachProps(THREE, root, sockets, grips = PROP_GRIPS, overrides = {}) {
   const props = [];
   const nodes = [];
   root.traverse((node) => {
@@ -230,7 +231,7 @@ export function attachProps(THREE, root, sockets, grips = PROP_GRIPS) {
   });
   for (const node of nodes) {
     const name = node.userData.prop ?? node.name;
-    const spec = { ...grips[name], ...node.userData };
+    const spec = { ...grips[name], ...node.userData, ...overrides[name] };
     const side = spec.hand === 'left' ? 'L' : 'R';
     const socket = sockets[side];
     if (!socket) continue;

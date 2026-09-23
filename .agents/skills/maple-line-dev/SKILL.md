@@ -43,6 +43,8 @@ Keep per-frame Three.js transforms outside React and the serializable store. Pub
 
 Run `pnpm format` and `pnpm check` after changes. Tests live in `apps/game/tests`; focus new tests on physical invariants, tool validation, and state transitions. Use `pnpm --filter @maple-line/game test` for that package. Use `pnpm build:readable` when inspecting unminified generated output; edit source, not output.
 
+For characters, use the character studio (`/character-studio.html` on the dev server, [docs](../../../docs/CHARACTER-STUDIO.md)): it runs the game's hero-cast code with layer switches, jitter and foot-slide measurement, grips saved to `characters/cast-tuning.json`, and page WebMCP tools (`window.mapleStudioWebMCP`).
+
 Episode videos come from `pnpm render:episode` (see `docs/VIDEO.md`). In render mode (`?render=1`) the game advances only when the capture script calls `window.__mapleRender.step()`, so anything that plays on screen over time must use the frame `dt` or an injected clock (as `ui/film-captions.js` does), never `performance.now()`, `setTimeout` or a CSS transition; otherwise it runs at wall-clock speed and jumps in rendered videos.
 
 For rendered changes, verify the relevant camera, location, and weather in the browser and check runtime errors. Record screenshots under `artifacts/screenshots` and WebMCP evidence under `artifacts/localhost/game-control`. Update the README when controls or implemented features change. State unverified browser behavior explicitly.

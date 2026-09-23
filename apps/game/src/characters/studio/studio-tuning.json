@@ -1,0 +1,7 @@
+{
+  "version": 1,
+  "about": "Character studio settings kept in source (docs/CHARACTER-STUDIO.md): concept overlay alignment per model, clip trims and additive clip corrections. The game does not read this file.",
+  "overlays": {},
+  "trims": {},
+  "corrections": {}
+}
