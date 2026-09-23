@@ -27,6 +27,8 @@ The game no longer calls the `world-builder` agent, starts a Function runtime, o
 
 On 22 September 2026, the evaluation build passed `pnpm check`, director type checking and `pnpm build:ship`. A browser test using the published Signal SDK and a mocked evaluation response reached an active world with exactly one evaluation request and no page errors. The game and existing runbook were published on Signal on 22 September 2026. A live browser request returned HTTP 200 from `ai/evaluate` with model `typesafe-ai/jev` and activated the snowy world in 6.73 seconds, with no page errors. This measures one request, not a latency guarantee.
 
+The build's `ship.json` also declares a `shared-episodes` collection (`read: any`, `write: author`) for short `?watch=` links to shared custom episodes. It takes effect on the next user-run publish; until then Share falls back to links that carry the episode in `#ep=`. See [sharing an episode](drama/README.md#sharing-an-episode).
+
 Build success does not verify hosting, model access, or the browser's WebGL support. Test a generated world and the published game on each target after deploying.
 
 ## Runbook

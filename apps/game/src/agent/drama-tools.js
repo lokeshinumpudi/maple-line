@@ -58,7 +58,11 @@ export function createEpisodeLibrary(storage) {
   };
 }
 
-export function registerDramaTools({ tool, runner, series, library, catalog, activate }) {
+/**
+ * `play(source)` starts an episode through the game (camera, UI, runner);
+ * `linkFor(episode)` returns `{ url, via }` for a validated episode.
+ */
+export function registerDramaTools({ tool, runner, series, library, catalog, play, linkFor }) {
   const context = () => ({
     stops: catalog().stops.map((stop) => stop.id),
     crossings: catalog().crossings.map((c) => c.id),
@@ -189,8 +193,22 @@ export function registerDramaTools({ tool, runner, series, library, catalog, act
       if (id && episode) throw new TypeError('Pass an id or an episode, not both.');
       const source = episode ?? find(id);
       if (!source) throw new Error(`No episode ${id}.`);
-      activate();
-      return runner.play(source);
+      return play(source);
+    },
+  );
+  tool(
+    'get_episode_share_link',
+    'A link that opens an episode for someone else. Built-in episodes get a short ?episode= link; custom episodes are validated and carried in the link (#ep=) or, on the Signal edition, kept in the site store (?watch=). Pass the id of a built-in or saved episode, or a full episode.',
+    {
+      ...object({ id: idSchema, episode: episodeSchema }),
+      minProperties: 1,
+    },
+    false,
+    async ({ id, episode }) => {
+      if (id && episode) throw new TypeError('Pass an id or an episode, not both.');
+      const source = episode ?? find(id);
+      if (!source) throw new Error(`No episode ${id}.`);
+      return linkFor(normalize(source));
     },
   );
   tool(

@@ -20,7 +20,12 @@ export default defineConfig(({ mode }) => ({
                 source: JSON.stringify({
                   access: { visibility: 'public' },
                   badge: false,
-                  db: { generations: { read: 'any', write: 'none' } },
+                  db: {
+                    generations: { read: 'any', write: 'none' },
+                    // Shared custom episodes (?watch=): anyone signed in reads; only
+                    // the sharer can overwrite their own document.
+                    'shared-episodes': { read: 'any', write: 'author' },
+                  },
                   ai: { dailySiteCapUsd: 2 },
                 }),
               });

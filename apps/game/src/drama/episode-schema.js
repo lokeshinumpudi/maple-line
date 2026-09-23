@@ -28,7 +28,8 @@ export const EPISODE_LIMITS = Object.freeze({
   text: 160,
 });
 const ID = /^[a-z0-9-]{1,40}$/;
-const PLACES = [
+/** Scene `set.location` places besides stop ids; shared with place deep links. */
+export const SCENE_PLACES = Object.freeze([
   'gorge',
   'terraces',
   'village',
@@ -39,9 +40,14 @@ const PLACES = [
   'bridge',
   'tunnel',
   'summit',
-];
-const TIMES = ['daylight', 'sunrise', 'sunset', 'dusk'];
-const WEATHER = ['clear', 'rain', 'snow'];
+]);
+export const SCENE_TIMES = Object.freeze(['daylight', 'sunrise', 'sunset', 'dusk']);
+export const SCENE_WEATHER = Object.freeze(['clear', 'rain', 'snow']);
+/** `set.offset` range in metres. */
+export const SCENE_OFFSET = Object.freeze({ min: -2000, max: 2000 });
+const PLACES = SCENE_PLACES;
+const TIMES = SCENE_TIMES;
+const WEATHER = SCENE_WEATHER;
 
 function fail(path, message) {
   throw new TypeError(`${path} ${message}`);
@@ -71,9 +77,10 @@ function oneOf(value, allowed, path, { optional = false } = {}) {
   if (!allowed.includes(value)) fail(path, `must be one of: ${allowed.join(', ')}.`);
   return value;
 }
-function list(value, path, max) {
-  if (!Array.isArray(value) || !value.length || value.length > max)
-    fail(path, `must be a list of 1–${max} items.`);
+function list(value, path, max, { allowEmpty = false } = {}) {
+  const min = allowEmpty ? 0 : 1;
+  if (!Array.isArray(value) || value.length < min || value.length > max)
+    fail(path, `must be a list of ${min}–${max} items.`);
   return value;
 }
 const clean = (object) =>
@@ -120,7 +127,9 @@ export function normalizeEpisode(input, { stops = [], crossings = [] } = {}) {
       only(raw, ['location', 'offset', 'timeOfDay', 'weather', 'speedKmh'], `${path}.set`);
       set = clean({
         location: oneOf(raw.location, places, `${path}.set.location`, { optional: true }),
-        offset: number(raw.offset, `${path}.set.offset`, -2000, 2000, { optional: true }),
+        offset: number(raw.offset, `${path}.set.offset`, SCENE_OFFSET.min, SCENE_OFFSET.max, {
+          optional: true,
+        }),
         timeOfDay: oneOf(raw.timeOfDay, TIMES, `${path}.set.timeOfDay`, { optional: true }),
         weather: oneOf(raw.weather, WEATHER, `${path}.set.weather`, { optional: true }),
         speedKmh: number(raw.speedKmh, `${path}.set.speedKmh`, 0, 120, { optional: true }),
@@ -175,7 +184,10 @@ export function normalizeEpisode(input, { stops = [], crossings = [] } = {}) {
         const dialogue = (
           beat.dialogue === undefined
             ? []
-            : list(beat.dialogue, `${at}.dialogue`, EPISODE_LIMITS.linesPerBeat)
+            : // Empty lists are accepted so a normalized episode validates again.
+              list(beat.dialogue, `${at}.dialogue`, EPISODE_LIMITS.linesPerBeat, {
+                allowEmpty: true,
+              })
         ).map((rawLine, l) => {
           const lineAt = `${at}.dialogue[${l}]`;
           const line = record(rawLine, lineAt);
@@ -192,7 +204,9 @@ export function normalizeEpisode(input, { stops = [], crossings = [] } = {}) {
           });
         });
         const cues = (
-          beat.cues === undefined ? [] : list(beat.cues, `${at}.cues`, EPISODE_LIMITS.cuesPerBeat)
+          beat.cues === undefined
+            ? []
+            : list(beat.cues, `${at}.cues`, EPISODE_LIMITS.cuesPerBeat, { allowEmpty: true })
         ).map((rawCue, c) => {
           const cueAt = `${at}.cues[${c}]`;
           const cue = record(rawCue, cueAt);
