@@ -87,7 +87,23 @@
 .film-captions .film-line.is-shown {
   transform: translate(-50%, 0);
 }
+.film-speaker {
+  display: block;
+  margin-bottom: 4px;
+  font-family: 'Outfit', sans-serif;
+  font-size: 0.68em;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--accent, #f0d49b);
+}
+.film-speaker:empty {
+  display: none;
+}
+.film-line.is-phone span:last-child {
+  font-style: italic;
+}
 .film-title {
+  white-space: pre-line;
   inset: 0;
   display: grid;
   place-content: center;

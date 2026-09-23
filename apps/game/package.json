@@ -11,7 +11,8 @@
     "test": "node --test tests/*.test.js",
     "format": "prettier --ignore-path ../../.prettierignore --write .",
     "format:check": "prettier --ignore-path ../../.prettierignore --check .",
-    "lint": "oxlint --deny-warnings src tests vite.config.js"
+    "lint": "oxlint --deny-warnings src tests vite.config.js",
+    "drama:script": "node scripts/write-drama-script.mjs && prettier --write ../../docs/drama/THE-1742.md"
   },
   "dependencies": {
     "@maple-line/world-spec": "workspace:*",

@@ -23,21 +23,21 @@ Choose **Camera → Director · film**, press **C** until it comes round, or let
 
 `camera/director.js` runs after the gameplay rig and replaces the camera pose only while it is active. Each shot sets its own position, lens (full-frame focal length), focus distance and aperture, and follows the subject with a slight lag and small handheld drift.
 
-| Shot           | Description                                                                        |
-| -------------- | ---------------------------------------------------------------------------------- |
-| `trackside`    | Planted beside the line ahead of the train; holds until the last car has passed    |
-| `telephoto`    | 70–420 mm from a few hundred metres away, compressing the train against the valley |
-| `drone`        | Starts low behind the train and rises into a wide pull-back                        |
-| `helicopter`   | Slow orbit around the middle car                                                   |
-| `chase`        | Ahead of the train, looking back at the cab                                        |
-| `wheels`       | Low beside the bogies with shallow focus                                           |
-| `cab`          | Driver's seat                                                                      |
-| `window`       | Passenger seat looking out of the side window                                      |
-| `platform`     | At the nearest stop, looking along the platform                                    |
-| `bridge-low`   | From the valley floor below the Takabashi bridge                                   |
-| `establishing` | High wide of the place, used for place cards                                       |
-| `portrait`     | Medium shot of a person or point; tries eight bearings for a clear line of sight   |
-| `orbit`        | Circles any subject                                                                |
+| Shot           | Description                                                                      |
+| -------------- | -------------------------------------------------------------------------------- |
+| `trackside`    | Planted beside the line ahead of the train; holds until the last car has passed  |
+| `telephoto`    | 70–300 mm from 170–290 m away (further turns white in the valley haze)           |
+| `drone`        | Starts low behind the train and rises into a wide pull-back                      |
+| `helicopter`   | Slow orbit around the middle car                                                 |
+| `chase`        | Ahead of the train, looking back at the cab                                      |
+| `wheels`       | Low beside the bogies with shallow focus                                         |
+| `cab`          | Driver's seat                                                                    |
+| `window`       | Passenger seat looking out of the side window                                    |
+| `platform`     | At the nearest stop, looking along the platform                                  |
+| `bridge-low`   | From the valley floor below the Takabashi bridge                                 |
+| `establishing` | High wide of the place, used for place cards                                     |
+| `portrait`     | Medium shot of a person or point; tries eight bearings for a clear line of sight |
+| `orbit`        | Circles any subject                                                              |
 
 The automatic editor avoids repeating a shot type or staying at one scale (wide, medium, close). Near a stop it prefers platform and window shots; near the bridge it prefers bridge-low and telephoto; before the tunnel it plants a trackside shot at the portal; in the tunnel it stays inside. Entering a new stop area shows an establishing shot with a place card and a one-line narration from `presentation/place-lines.js`. A shot is rejected when terrain, tree crowns or Momiji station buildings block the view; the editor tries another. Obstruction from regional station buildings is not checked.
 
@@ -87,6 +87,10 @@ Caption text is set with `textContent` and limited to 160 characters. Captions a
 ```
 
 Before the portrait, `direct_npc` with `{ "entityId": "commuter-3", "mood": "anxious", "intent": "check-phone", "holdSeconds": 60 }` gives the character the matching behaviour. Use `get_director_state` to find visible people.
+
+## Episodes
+
+For whole scenes with a cast, dialogue and train staging, write an episode instead of a shot list. See [writing episodes](drama/README.md).
 
 ## Limits
 

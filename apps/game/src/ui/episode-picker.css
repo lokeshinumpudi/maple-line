@@ -1,0 +1,62 @@
+.places-episodes {
+  margin: 24px 0 0;
+  border-top: 1px solid var(--line);
+  padding-top: 18px;
+}
+.places-episodes-heading h3 {
+  margin: 4px 0 6px;
+  font-size: 16px;
+  font-weight: 500;
+}
+.places-episodes-heading p {
+  margin: 0 0 12px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+.places-episodes-list {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+.episode-card {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  column-gap: 10px;
+  row-gap: 4px;
+  align-items: baseline;
+  text-align: left;
+  padding: 12px 13px;
+  border-radius: 13px;
+  background: #ffffff05;
+  border: 1px solid #e7dec329;
+  transition:
+    border-color 150ms,
+    background 150ms;
+}
+.episode-card:hover,
+.episode-card:focus-visible {
+  background: #e6ce9820;
+  border-color: var(--accent);
+}
+.episode-number {
+  grid-row: span 2;
+  font-family: 'Outfit', sans-serif;
+  font-size: 22px;
+  font-weight: 300;
+  color: var(--accent);
+}
+.episode-card strong {
+  font-size: 13px;
+  font-weight: 500;
+}
+.episode-card small {
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.4;
+}
+@media (max-width: 720px) {
+  .places-episodes-list {
+    grid-template-columns: 1fr;
+  }
+}

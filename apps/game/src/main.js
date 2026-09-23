@@ -53,6 +53,10 @@ import { mountFilmCaptions } from './ui/film-captions.js';
 import { createLevelCrossings } from './world/level-crossings.js';
 import { createCrossingBell } from './audio/crossing-bell.js';
 import { createNpcMinds } from './simulation/npc-minds.js';
+import { createEpisodeRunner } from './drama/episode-runner.js';
+import { THE_1742 } from './drama/series/the-1742.js';
+import { registerDramaTools, createEpisodeLibrary } from './agent/drama-tools.js';
+import { installEpisodePicker } from './ui/episode-picker.js';
 import { createMindsClient, mindRegion } from './agent/minds-client.js';
 import { registerMindTools } from './agent/mind-tools.js';
 import { PLACE_LINES } from './presentation/place-lines.js';
@@ -1175,7 +1179,8 @@ const filmDirector = createDirector({
       const person = worldDetails
         .getPopulationState()
         .people.find((item) => item.id === subject.person && item.visible);
-      return person ? [person.position.x, person.position.y, person.position.z] : null;
+      if (person) return [person.position.x, person.position.y, person.position.z];
+      return mindStandingPoint(subject.person);
     }
     if (subject.stop) {
       const stop = routeStops.find((item) => item.id === subject.stop);
@@ -1214,9 +1219,43 @@ const filmDirector = createDirector({
   obstructed(from, to) {
     directorRay.set(from, directorDirection.subVectors(to, from).normalize());
     directorRay.far = Math.max(0.2, from.distanceTo(to) - 0.8);
-    return directorRay.intersectObjects(station.children, true).length > 0;
+    return directorRay.intersectObjects(shotObstacles(to), false).length > 0;
   },
 });
+/** Where a character tracked by the minds stands: platform or ground height plus the body lift. */
+function mindStandingPoint(id) {
+  const place = minds.positionOf(id);
+  if (!place?.visible) return null;
+  const base = place.platform ? railPoint(place.z).y : terrain(place.x - center(place.z), place.z);
+  return [place.x, base + 0.62, place.z];
+}
+// Buildings, shelters and benches near a shot's subject. Terrain and instanced trees are
+// handled by the height checks; the list is rebuilt only when the subject moves along the line.
+let obstacleCache = { z: NaN, meshes: [] };
+function shotObstacles(point) {
+  if (Math.abs(point.z - obstacleCache.z) < 20) return obstacleCache.meshes;
+  const meshes = [];
+  const sphere = new THREE.Sphere();
+  const collect = (object) =>
+    object.traverseVisible((node) => {
+      // Small instanced batches (benches, shelters, people) block a view; forests do not.
+      if (!node.isMesh || node.name === 'Mountain and valley terrain') return;
+      if (node.isInstancedMesh && node.count > 300) return;
+      if (node.isInstancedMesh) {
+        if (!node.boundingSphere) node.computeBoundingSphere();
+        sphere.copy(node.boundingSphere).applyMatrix4(node.matrixWorld);
+      } else {
+        if (!node.geometry.boundingSphere) node.geometry.computeBoundingSphere();
+        sphere.copy(node.geometry.boundingSphere).applyMatrix4(node.matrixWorld);
+      }
+      if (sphere.center.distanceTo(point) < sphere.radius + 40) meshes.push(node);
+    });
+  collect(station);
+  const regional = scene.getObjectByName('Regional railway / streamed countryside');
+  if (regional && point.z > 700) collect(regional);
+  obstacleCache = { z: point.z, meshes };
+  return meshes;
+}
 const directorRay = new THREE.Raycaster();
 const directorDirection = new THREE.Vector3();
 const directorLocations = {
@@ -1231,6 +1270,83 @@ const directorLocations = {
   tunnel: (landmarks.tunnelStartZ + landmarks.tunnelEndZ) / 2,
   summit: landmarks.summitZ,
 };
+// Short dramas: episodes are data played through the director, captions, minds and drive.
+let episodeStopDistance = null;
+const ensureAutoDrive = () => {
+  if (!state.autopilot && !state.doorsOpen && !state.doorsClosing && !state.emergency)
+    $('autopilot').click();
+};
+const episodeRunner = createEpisodeRunner(
+  {
+    setScene(set) {
+      if (set.location !== undefined) {
+        const base =
+          routeStops.find((stop) => stop.id === set.location)?.z ?? directorLocations[set.location];
+        if (Number.isFinite(base)) jumpTo(base + (set.offset ?? 0));
+      }
+      if (set.weather && set.weather !== weather) {
+        $('weather').value = set.weather;
+        $('weather').dispatchEvent(new Event('change'));
+      }
+      if (set.timeOfDay)
+        gameStore.setPreferences({
+          dusk: set.timeOfDay === 'dusk',
+          sunPhase: set.timeOfDay === 'dusk' ? 'daylight' : set.timeOfDay,
+        });
+      if (set.speedKmh !== undefined)
+        changeDrive((next) => {
+          next.speed = set.speedKmh / 3.6;
+        });
+      ensureAutoDrive();
+    },
+    setStop(id) {
+      episodeStopDistance = routeStops.find((stop) => stop.id === id)?.distance ?? null;
+      if (id === null && episodeRunner.playing) ensureAutoDrive();
+    },
+    cut: (shot) => filmDirector.cut(shot),
+    say: (line) => filmCaptions.show({ kind: 'dialogue', ...line }),
+    card: (caption) => filmCaptions.show(caption),
+    direct: (entity, note) => minds.setDirective(entity, note),
+    event: (type) => minds.observe({ type }),
+    weather(value) {
+      $('weather').value = value;
+      $('weather').dispatchEvent(new Event('change'));
+    },
+    doors(action) {
+      if ((action === 'open') === state.doorsOpen) return true;
+      toggleDoors();
+      return (action === 'open') === state.doorsOpen;
+    },
+    // At rest, below the 0.2 m/s door interlock, so a door cue after arrival is accepted.
+    isStopped: () => Math.abs(state.speed) < 0.05,
+    doorsClosed: () => !state.doorsOpen && !state.doorsClosing,
+    resolve(subject) {
+      if (subject.crossing) {
+        const crossing = levelCrossings
+          .getState()
+          .crossings.find((item) => item.id === subject.crossing);
+        return crossing ? { point: crossing.position } : null;
+      }
+      const person = worldDetails
+        .getPopulationState()
+        .people.find((item) => item.id === subject.entity);
+      if (person) return person.visible ? { person: person.id } : null;
+      // Regional residents are tracked live through the minds, so walking actors stay in frame.
+      return mindStandingPoint(subject.entity) ? { person: subject.entity } : null;
+    },
+  },
+  {
+    stops: routeStops.map((stop) => stop.id),
+    crossings: levelCrossings.getState().crossings.map((item) => item.id),
+  },
+);
+const episodeLibrary = createEpisodeLibrary(embedded ? null : globalThis.localStorage);
+function watchEpisode(source) {
+  if (!state.started) start();
+  if (state.paused) pause();
+  if (view !== 'director') selectCamera('director');
+  return episodeRunner.play(source);
+}
 function updateCamera(dt, snap = false) {
   storyCinematics?.restoreBaseCamera();
   cameraRig.update({
@@ -1282,7 +1398,11 @@ function directorContext() {
     trackLength,
     state.direction > 0 ? landmarks.tunnelStartZ : landmarks.tunnelEndZ,
   );
-  const placeStop = stop && ahead(stop.distance) < 520 && ahead(stop.distance) > -120 ? stop : null;
+  // Episodes write their own place cards; the automatic ones would talk over them.
+  const placeStop =
+    !episodeRunner.playing && stop && ahead(stop.distance) < 520 && ahead(stop.distance) > -120
+      ? stop
+      : null;
   const clock = dusk ? '18:24' : '16:42';
   return {
     stop: stopNear ? { id: stopNear.id, distance: stopNear.distance } : null,
@@ -1700,6 +1820,7 @@ function frame(now) {
             next.distance,
             next.direction,
             storyHost?.scheduledStopDistance(),
+            episodeStopDistance,
             routeStop,
           ),
         }).reversed;
@@ -1751,6 +1872,7 @@ function frame(now) {
   });
   if (!state.paused) waterMat.uniforms.time.value += dt * (weather === 'rain' ? 1.8 : 1);
   waterMat.uniforms.distortionScale.value = weather === 'rain' ? 3.1 : 1.6;
+  episodeRunner.update(dt);
   updateCamera(dt);
   storyLevels?.update({
     position: train[0].position,
@@ -2464,6 +2586,37 @@ if (import.meta.env.DEV) {
   const webmcp = registerGameWebMCP({
     inspector,
     extensions: [
+      ({ tool }) =>
+        registerDramaTools({
+          tool,
+          runner: episodeRunner,
+          series: [THE_1742],
+          library: episodeLibrary,
+          activate: () => {
+            if (!state.started) start();
+            if (state.paused) pause();
+            if (view !== 'director') selectCamera('director');
+          },
+          catalog: () => ({
+            stops: routeStops.map((stop) => ({
+              id: stop.id,
+              name: stop.name,
+              theme: stop.theme,
+              z: stop.z,
+            })),
+            places: Object.keys(directorLocations),
+            crossings: levelCrossings
+              .getState()
+              .crossings.map((item) => ({ id: item.id, name: item.name, z: item.z })),
+            characters: minds.getState().entities.map((entity) => ({
+              id: entity.id,
+              role: entity.role,
+              visible: entity.visible,
+              platform: entity.platform,
+              mood: entity.mood,
+            })),
+          }),
+        }),
       ({ tool }) => registerMindTools({ tool, minds, client: mindsClient }),
       ({ tool }) =>
         registerDirectorTools({
@@ -2671,6 +2824,17 @@ const wakeFilmHUD = () => {
 window.addEventListener('pointermove', wakeFilmHUD, { passive: true });
 window.addEventListener('pointerdown', wakeFilmHUD, { passive: true });
 window.addEventListener('keydown', wakeFilmHUD);
+installEpisodePicker({
+  dialog: document.getElementById('places-picker'),
+  series: THE_1742,
+  onPlay: (episode) => {
+    try {
+      watchEpisode(episode);
+    } catch (error) {
+      controlMessage(error.message);
+    }
+  },
+});
 $('film-look').value = gameStore.getState().preferences.filmLook;
 $('film-look').onchange = () => gameStore.setPreferences({ filmLook: $('film-look').value });
 if (embedded) {

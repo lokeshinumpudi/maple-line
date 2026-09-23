@@ -24,6 +24,15 @@ export function mountFilmCaptions(root = document.body) {
   place.append(title, rule, subtitle);
   const line = document.createElement('p');
   line.className = 'film-line';
+  const lineSpeaker = document.createElement('span');
+  lineSpeaker.className = 'film-speaker';
+  const lineText = document.createElement('span');
+  line.append(lineSpeaker, lineText);
+  const setLine = (value, { speaker = '', phone = false } = {}) => {
+    lineSpeaker.textContent = speaker;
+    lineText.textContent = value;
+    line.classList.toggle('is-phone', phone);
+  };
   const card = document.createElement('div');
   card.className = 'film-title';
   const barTop = document.createElement('div');
@@ -47,6 +56,16 @@ export function mountFilmCaptions(root = document.body) {
     /** caption: { kind: 'place'|'shot'|'title'|'end', title, native, subtitle, line, seconds } */
     show(caption) {
       const seconds = caption.seconds ?? 6;
+      if (caption.kind === 'dialogue') {
+        const wait = titleUntil - performance.now();
+        if (wait > 0) {
+          setTimeout(() => api.show(caption), wait + 250);
+          return;
+        }
+        setLine(caption.text, { speaker: caption.speaker ?? '', phone: Boolean(caption.phone) });
+        show(line, seconds);
+        return;
+      }
       if (caption.kind === 'title' || caption.kind === 'end') {
         if (!caption.title) return;
         card.textContent = caption.kind === 'end' ? `${caption.title} · end` : caption.title;
@@ -68,10 +87,10 @@ export function mountFilmCaptions(root = document.body) {
         show(place, seconds);
       }
       if (caption.line) {
-        line.textContent = caption.line;
+        setLine(caption.line);
         show(line, seconds + 1.5);
       } else if (!caption.title && caption.subtitle) {
-        line.textContent = caption.subtitle;
+        setLine(caption.subtitle);
         show(line, seconds);
       }
     },

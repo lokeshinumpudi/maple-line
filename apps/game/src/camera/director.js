@@ -198,6 +198,17 @@ export function createDirector({
       b = Math.max(leadD(), rearD());
     return THREE.MathUtils.clamp(d, a, b);
   }
+  /** Railway centre at a world z; the route's z increases along its length. */
+  function railNearZ(z) {
+    let low = 0,
+      high = 1;
+    for (let i = 0; i < 22; i++) {
+      const middle = (low + high) / 2;
+      if (track.getPointAt(middle).z < z) low = middle;
+      else high = middle;
+    }
+    return track.getPointAt((low + high) / 2);
+  }
   function trainPoint(distance, lift = 1.9) {
     return frameAt(distance).p.clone().addScaledVector(up, lift);
   }
@@ -266,9 +277,10 @@ export function createDirector({
       return false;
     }
     if (next.type === 'telephoto') {
-      const ahead = leadD() + ctx.direction * (moving ? 260 + rand() * 220 : 0);
+      // Beyond about 250 m the valley haze turns a long lens white.
+      const ahead = leadD() + ctx.direction * (moving ? 160 + rand() * 110 : 0);
       for (const sign of [next.sign, -next.sign])
-        for (const lateral of [spec.distance ?? 90, 140, 60]) {
+        for (const lateral of [spec.distance ?? 80, 110, 55]) {
           const { p, side } = frameAt(ahead);
           const candidate = p.clone().addScaledVector(side, sign * lateral);
           candidate.y = ground(candidate) + (spec.height ?? 6 + rand() * 10);
@@ -318,25 +330,40 @@ export function createDirector({
       return true;
     }
     if (next.type === 'portrait') {
-      // Try eight bearings around the person; keep the first clear line of sight both ways.
+      // People on platforms and lanes face the railway, so start from the track side
+      // for a three-quarter view, then work round; keep the first clear sightline.
       const subject = subjectPoint(spec.subject);
       const chest = subject.clone().addScaledVector(up, 1.25);
       const radius = spec.distance ?? 4.6;
       const { f, side } = frameAt(midD());
-      for (let i = 0; i < 8; i++) {
-        const angle = next.sign * 0.6 + i * (Math.PI / 4);
-        const candidate = chest
-          .clone()
-          .addScaledVector(side, Math.cos(angle) * radius)
-          .addScaledVector(f, Math.sin(angle) * radius);
-        candidate.y = chest.y + (spec.height ?? 0.25);
-        lift(candidate, 1.2);
-        if (blocked(candidate, chest) < 0.2 && !obstructed(chest, candidate)) {
-          next.angle = angle;
-          return true;
+      const rail = railNearZ(subject.z).sub(subject);
+      const facing = rail.lengthSq() > 1 ? Math.atan2(rail.dot(f), rail.dot(side)) : 0;
+      const turn = spec.side === 'left' ? -1 : spec.side === 'right' ? 1 : next.sign;
+      // A second pass stands further back and higher, over benches and low walls.
+      for (const [reach, rise] of [
+        [radius, spec.height ?? 0.25],
+        [radius * 1.6, (spec.height ?? 0.25) + 1.6],
+      ])
+        for (const offset of [0.45, -0.45, 0.9, -0.9, 0, 1.4, -1.4, Math.PI]) {
+          const angle = facing + offset * turn;
+          const candidate = chest
+            .clone()
+            .addScaledVector(side, Math.cos(angle) * reach)
+            .addScaledVector(f, Math.sin(angle) * reach);
+          candidate.y = chest.y + rise;
+          lift(candidate, 1.2);
+          if (
+            blocked(candidate, chest) < 0.2 &&
+            !obstructed(chest, candidate) &&
+            !obstructed(candidate, chest)
+          ) {
+            next.angle = angle;
+            next.reach = reach;
+            next.rise = rise;
+            return true;
+          }
         }
-      }
-      next.angle = next.sign * 0.6;
+      next.angle = facing + 0.45 * turn;
       return true;
     }
     if (next.type === 'window') next.yaw = next.sign * (1.15 + rand() * 0.25);
@@ -472,7 +499,7 @@ export function createDirector({
       case 'telephoto': {
         eye.copy(shot.anchor);
         aim.copy(trainPoint(nearestTrainDistance(midD()), 1.8));
-        desiredLens = spec.lens ?? THREE.MathUtils.clamp(eye.distanceTo(aim) * 0.42, 70, 420);
+        desiredLens = spec.lens ?? THREE.MathUtils.clamp(eye.distanceTo(aim) * 0.5, 70, 300);
         aperture = APERTURE[spec.aperture ?? 'shallow'] * 0.7;
         handheld = 0.0008;
         break;
@@ -589,7 +616,7 @@ export function createDirector({
         const personal = typeof spec.subject === 'object';
         const look = personal ? subject.clone().addScaledVector(up, 1.25) : subject;
         const around = frameAt(midD());
-        const radius = spec.distance ?? (shot.type === 'portrait' ? 4.6 : 18);
+        const radius = shot.reach ?? spec.distance ?? (shot.type === 'portrait' ? 4.6 : 18);
         // Portraits drift slowly around their chosen clear bearing.
         const angle =
           shot.type === 'orbit' ? shot.phase + t * 0.12 * shot.sign : shot.angle + t * 0.015;
@@ -597,7 +624,7 @@ export function createDirector({
           .copy(look)
           .addScaledVector(around.side, Math.cos(angle) * radius)
           .addScaledVector(around.f, Math.sin(angle) * radius);
-        eye.y = look.y + (spec.height ?? (shot.type === 'portrait' ? 0.25 : 6));
+        eye.y = look.y + (shot.rise ?? spec.height ?? (shot.type === 'portrait' ? 0.25 : 6));
         lift(eye, 1.2);
         aim.copy(look);
         desiredLens = spec.lens ?? (shot.type === 'portrait' ? 50 : 35);

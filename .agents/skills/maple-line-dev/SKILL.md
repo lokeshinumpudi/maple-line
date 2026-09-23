@@ -47,7 +47,7 @@ For rendered changes, verify the relevant camera, location, and weather in the b
 
 ## Authored levels and performance
 
-For procedural scenery, use [Maple procedural worlds](../maple-procedural-worlds/SKILL.md). For materials, foliage edges, lighting, water, shaders, or frame pacing, use [Maple browser graphics](../maple-browser-graphics/SKILL.md). Their [research library](../../../docs/GRAPHICS-RESEARCH.md) separates inspected features from proposed experiments and records the original sources and version limits.
+For procedural scenery, use [Maple procedural worlds](../maple-procedural-worlds/SKILL.md). For hand-made meshes, characters, rigs and glTF export, use [Maple Blender assets](../maple-blender-assets/SKILL.md) with the official Blender Lab MCP server. For materials, foliage edges, lighting, water, shaders, or frame pacing, use [Maple browser graphics](../maple-browser-graphics/SKILL.md). Their [research library](../../../docs/GRAPHICS-RESEARCH.md) separates inspected features from proposed experiments and records the original sources and version limits.
 
 Read `docs/LEVEL-BUILDING.md` when composing scenery or tuning rendering. Use `sample_route` and `get_build_catalog` before `edit_level`; use stable IDs, seeded scatter, grouped undo/redo and named browser-local save slots. Paginate `export_level` to save a complete layout through your filesystem tools. The authored layer changes visual scenery only. Keep this module separate from the Jev prompt lifecycle in `world-builder.js`.
 

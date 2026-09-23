@@ -888,6 +888,11 @@ export function createNpcMinds({ seed = 1 } = {}) {
       const e = entities.get(id);
       return e ? summary(e) : null;
     },
+    /** Last sensed ground position, for cameras and episode casting. */
+    positionOf(id) {
+      const e = entities.get(id);
+      return e ? { x: e.x, z: e.z, platform: e.platform, visible: e.visible } : null;
+    },
     getState() {
       return {
         time: Math.round(time * 10) / 10,
