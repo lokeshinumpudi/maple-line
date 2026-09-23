@@ -91,16 +91,19 @@ export function setBoneWorldQuaternion(bone, world, weight, s) {
 
 /**
  * Two-bone IK on real bones: rotate `upper` and `lower` so `end` reaches `target` (world),
- * blended by `weight`. Twist from the animation is kept; only swing is added.
+ * blended by `weight`. Twist from the animation is kept; only swing is added. A partial
+ * weight blends the two bones' rotations from the animated pose to the solved one, so the
+ * effect fades to nothing as the weight does (blending the target instead would still
+ * re-bend the elbow into the pole's plane at a tiny weight, and pop when the IK stops).
  */
 export function applyTwoBoneIK(THREE, upper, lower, end, target, pole, weight = 1, s = null) {
   if (!(weight > 0)) return null;
   s ??= makeScratch(THREE);
+  const before = weight < 1 ? [upper.quaternion.clone(), lower.quaternion.clone()] : null;
   const a = upper.getWorldPosition(new THREE.Vector3());
   const b = lower.getWorldPosition(new THREE.Vector3());
   const c = end.getWorldPosition(new THREE.Vector3());
-  const goal = weight >= 1 ? target : c.clone().lerp(target, weight);
-  const solved = solveTwoBone(THREE, a, b, c, goal, pole);
+  const solved = solveTwoBone(THREE, a, b, c, target, pole);
   s.a.subVectors(b, a).normalize();
   s.b.subVectors(solved.joint, a).normalize();
   s.q.setFromUnitVectors(s.a, s.b);
@@ -111,6 +114,11 @@ export function applyTwoBoneIK(THREE, upper, lower, end, target, pole, weight = 
   s.b.subVectors(solved.end, b).normalize();
   s.q.setFromUnitVectors(s.a, s.b);
   rotateBoneWorld(lower, s.q, s);
+  if (before) {
+    upper.quaternion.copy(before[0].slerp(upper.quaternion, weight));
+    lower.quaternion.copy(before[1].slerp(lower.quaternion, weight));
+    upper.updateMatrixWorld(true);
+  }
   return solved;
 }
 
@@ -429,12 +437,27 @@ export function strideTimeScale(speed, clipSpeed, { min = 0.3, max = 1.6 } = {})
   return Math.min(max, Math.max(min, speed / clipSpeed));
 }
 
-const GAITS = new Set(['walk', 'hurry']);
-const GESTURES = new Set(['wave', 'check-phone', 'chat', 'stretch', 'watch-train', 'shelter']);
+/** Gait clips: they blend in step. Walk variants (walk-formal, walk-carry) count too. */
+const GAITS = new Set(['walk', 'hurry', 'walk-formal', 'walk-carry']);
+const GESTURES = new Set([
+  'wave',
+  'check-phone',
+  'chat',
+  'stretch',
+  'watch-train',
+  'shelter',
+  'nod-yes',
+  'shake-no',
+  'eat',
+]);
 /** Cross-fade seconds for a clip pair: short between gaits, long into and out of sitting. */
 export function fadeFor(from, to) {
   if (!from || from === to) return 0;
   if (to === 'board') return 0.25;
+  // Sitting down and standing up are one-shots whose ends match the poses either side.
+  if (to === 'sit-enter' || to === 'sit-exit') return 0.3;
+  if (from === 'sit-enter' && to === 'sit') return 0.2;
+  if (from === 'sit-exit') return 0.3;
   if (to === 'sit' || from === 'sit') return 0.7;
   if (GAITS.has(from) && GAITS.has(to)) return 0.35;
   if (to === 'turn' || from === 'turn') return 0.3;

@@ -27,6 +27,25 @@ Installed with pnpm into `apps/game` on 23 September 2026. The lockfile pins the
 
 ## Models, textures and motion
 
-None yet. The VRM test cast and its clips (`apps/game/public/models/characters/vrm/`) are made by our own scripts from the Blender cast. They contain no downloaded meshes, textures, rigs or motion data.
+### Quaternius Universal Animation Library 1 and 2 [Standard]
 
-The next downloads are listed, with URLs, sizes and licence locations, under "Files awaiting approval" in [anime characters](../docs/research/ANIME-CHARACTERS.md). Quaternius UAL 1 and 2 are approved but not downloaded.
+Downloaded by hand on 23 September 2026 from the pack pages below and kept outside the repository (default folder `~/Downloads/maple-assets/quaternius`, or `$MAPLE_UAL_DIR`). Licence: CC0 1.0 Universal, as stated in each zip's `License.txt` (https://creativecommons.org/publicdomain/zero/1.0/) and on https://quaternius.com/faq.html. Credit is not required.
+
+| File                          | Page                                                     | Bytes      | SHA-256                                                            |
+| ----------------------------- | -------------------------------------------------------- | ---------- | ------------------------------------------------------------------ |
+| `UAL1-Standard.zip`           | https://quaternius.itch.io/universal-animation-library   | 15,904,933 | `cc73fc4e495b82958207316596317a3f40b9fa38065bde1027937452da537724` |
+| `UAL2-Standard.zip`           | https://quaternius.itch.io/universal-animation-library-2 | 18,735,003 | `4008ea208a604773a2b2177d965f0f5d3195498b5bf838c3f5785d68e95f2a68` |
+| ↳ `UAL1_Standard.glb` (in 1)  | `Unreal-Godot/`, no root motion                          | 7,618,436  | `69591853d817488edaa8fd9bf8fc1d821eaeaf789f8627b3cd23b41c4ed67997` |
+| ↳ `UAL1_Standard_RM.glb`      | `Unreal-Godot/`, root motion (stride speed only)         | 7,620,504  | `be684571ed655a1b892c2c07e6e2aeca053b606c442d34004adaf1d944090d01` |
+| ↳ `UAL2_Standard.glb` (in 2)  | `Unreal-Godot/`, no root motion                          | 8,091,444  | `8cee20ab1bc55130092447e810e26df22dd2803eccc54f52137a7d54d7ab88a8` |
+| ↳ `UAL2_Standard_RM.glb`      | `Unreal-Godot/`, root motion (stride speed only)         | 8,095,936  | `814eee878f82934992d3ea746c539df25e981487109c591f5efbb8dd03286f99` |
+
+Neither the zips nor the library GLBs are committed. `asset-src/characters/vrm-cast/retarget.mjs` reads them and writes only the retargeted, trimmed clips to `apps/game/public/models/characters/vrm/cast-clips.vrma` (358,196 bytes, 17 clips, 30 fps, key-reduced, quaternions as 16-bit integers). `clips.report.json` beside the script records the GLB hashes of each build.
+
+Clips used (UAL name → game name): UAL1 `Idle_Loop` → idle (and the base of wave and stretch), `Idle_Talking_Loop` → chat, `Walk_Loop` → walk (and the legs of walk-carry and hurry), `Walk_Formal_Loop` → walk-formal, `Jog_Fwd_Loop` → upper body of hurry, `Sitting_Idle_Loop` → sit, `Sitting_Enter` → sit-enter, `Sitting_Exit` → sit-exit, `Interact` → board, `Pistol_Aim_Up` → arms of stretch; UAL2 `Idle_TalkingPhone_Loop` → check-phone, `Idle_FoldArms_Loop` → watch-train and shelter, `Walk_Carry_Loop` → arms of walk-carry, `Idle_Rail_Call` → arm of wave, `Yes` → nod-yes, `Idle_No_Loop` → shake-no, `Consume` → eat. The `_RM` files give the ground speed of `Walk_Loop`, `Walk_Formal_Loop` and `Walk_Carry_Loop`.
+
+### Our own
+
+The VRM test cast (`apps/game/public/models/characters/vrm/*.vrm`) is made by our own scripts from the Blender cast. It contains no downloaded meshes, textures or rigs.
+
+The next downloads are listed, with URLs, sizes and licence locations, under "Files awaiting approval" in [anime characters](../docs/research/ANIME-CHARACTERS.md).

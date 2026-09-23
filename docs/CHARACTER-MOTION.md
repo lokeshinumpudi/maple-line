@@ -4,6 +4,30 @@ How the Momiji cast (Mr. Sato, Riko, Mr. Ishida) move and hold things. It applie
 
 The population simulation still decides where each person goes. The code described here only decides how the body gets there and what its hands, feet and head do on the way.
 
+## Clips
+
+The VRM figures play the Quaternius Universal Animation Library (UAL 1 and 2, CC0), retargeted offline into one file, `models/characters/vrm/cast-clips.vrma` (350 KB, 17 clips). The Blender GLBs keep their own clips inside the GLB; those clips are no longer used on VRMs. Provenance is in [third-party files](../asset-src/THIRD_PARTY.md).
+
+| Game clip                | UAL source                                                                | Notes                                                   |
+| ------------------------ | ------------------------------------------------------------------------- | ------------------------------------------------------- |
+| idle                     | `Idle_Loop`                                                               |                                                         |
+| chat                     | `Idle_Talking_Loop`                                                       |                                                         |
+| walk                     | `Walk_Loop`                                                               | 0.98 m/s for the 1.8 m mannequin, scaled by hips height |
+| walk-formal              | `Walk_Formal_Loop`                                                        | Mr. Sato's walk                                         |
+| walk-carry               | `Walk_Loop` legs, `Walk_Carry_Loop` arms (in step)                        | Riko walking with the radio; no arm swing               |
+| hurry                    | `Walk_Loop` at 1.4 times the cadence, half of `Jog_Fwd_Loop`'s upper body | `Jog_Fwd_Loop` alone is a 5.4 m/s run                   |
+| sit, sit-enter, sit-exit | `Sitting_Idle_Loop`, `Sitting_Enter`, `Sitting_Exit`                      | The transitions play once                               |
+| check-phone              | `Idle_TalkingPhone_Loop`                                                  |                                                         |
+| watch-train, shelter     | `Idle_FoldArms_Loop`                                                      | shelter is an alias: no extra bytes                     |
+| board                    | `Interact`                                                                | A reach for the door button                             |
+| wave                     | `Idle_Loop` with the calling arm of `Idle_Rail_Call`, forearm swung       | UAL has no wave                                         |
+| stretch                  | `Idle_Loop` with the arms of `Pistol_Aim_Up`, eased in and out            |                                                         |
+| nod-yes, shake-no, eat   | `Yes`, `Idle_No_Loop`, `Consume`                                          | Acting notes only (below)                               |
+
+`asset-src/characters/vrm-cast/retarget.mjs` builds the file. It reads the UAL packs from `--ual <folder>`, `$MAPLE_UAL_DIR` or `~/Downloads/maple-assets/quaternius`; nothing from the packs is committed except the output. The mannequin's rest is a T-pose, so the rest correction is the identity: its rest body counts as the VRM's rest body. Finger joints are mapped and kept, root motion is dropped (the `_Standard` files have none), walking speeds come from the `_RM` files' root travel, and the seat height is measured on the mannequin's skinned body in `Sitting_Idle_Loop`. Keys are sampled at 30 fps, then dropped where linear interpolation stays within 0.25° (0.6° on fingers, 1.5 mm on the hips).
+
+Acting notes (`direct_npc`, an episode's `direct` cue) may also ask for `nod-yes`, `shake-no` and `eat` (`GESTURE_INTENTS` in `simulation/npc-minds.js`). Local rules and Jev never choose them, and a character showing one is reported to Jev as lingering. The UAL farm clips (`Farm_Harvest`, `Farm_PlantSeed`, `Farm_Watering`) are not built yet; they suit residents working fields, who are still instanced figures.
+
 ## Where the code lives
 
 | File                                         | What it does                                                                                                                            |
@@ -48,7 +72,8 @@ The Blender build uses the same rule, so its props are stored in socket space. P
 - **Two hands:** the reader's paper is held by the right hand; the left hand reaches its `grip2` point by arm IK.
 - **Cradle:** while standing still, Riko brings the radio up in front of her with both hands, and lets it down again to walk. The pose is defined in `PROP_GRIPS` in `character-motion.js`.
 - **Pocket:** Riko's phone only appears while she checks it (`pocketed` in `MOMIJI_CAST`).
-- **Grip:** a hand holding something closes. Rigs with finger bones curl them; the Blender figures, which have none, use `grip-l` and `grip-r` shape keys.
+- **Grip:** a hand holding something closes. Rigs with finger bones curl them; the Blender figures, which have none, use `grip-l` and `grip-r` shape keys. The UAL clips animate fingers, so each finger joint is only topped up to the grip angle, never bent further.
+- **Carry:** Riko walks with `walk-carry`, whose arms stay in front without a swing. The radio stays in her left hand and no arm IK runs while she walks; standing, she cradles it again.
 
 ## Walking and turning
 
@@ -60,12 +85,17 @@ A steering layer sits between the simulation position and the drawn body:
 - A low-passed copy of the simulation position decides when a standing body sets off (more than 22 cm away) and closes the last centimetres slowly. Frame-to-frame jitter cannot make a standing person shuffle.
 - Jumps of more than 3.5 m (Places, alighting at a door) teleport the body. Seated and boarding people follow the simulation exactly.
 
-The walk and hurry clips play at the body's real speed divided by the model's own foot speed (`walkSpeed`, `hurrySpeed` from the model). Walk and hurry blend in step. Cross-fades are eased and their length depends on the pair: 0.35 s between gaits, 0.4 s setting off, 0.5 s stopping, 0.7 s into or out of sitting.
+The walk and hurry clips play at the body's real speed divided by the model's own foot speed (`walkSpeed`, `hurrySpeed`, and a speed for each walk variant). Walk and hurry blend in step. The switch to hurry has 0.1 m/s of hysteresis either side, so a speed that hovers at the boundary does not flip the gait.
+
+Cross-fades: each playing clip's weight follows a critically damped spring toward 1 (the current clip) or 0, all with one stiffness, and the weights are normalised to sum to 1. A fade that changes direction halfway carries on from its present weight and speed instead of restarting. The stiffness comes from the pair's fade length: 0.35 s between gaits, 0.4 s setting off, 0.5 s stopping, 0.7 s into or out of the sit loop, 0.3 s into sit-enter and sit-exit. A mind's intent must hold 1.5 s before the body changes gesture.
+
+Sitting down plays `sit-enter` once and then the sit loop; standing up plays `sit-exit` while the body waits on the spot, then walks on. The UAL sitting pose puts the pelvis 0.31 m behind the figure origin (for Riko's size), so a seated body moves forward by that much, and lifts to the bench height as its hips go down.
 
 ## Feet, head and idle life
 
-- **Feet:** while walking, the foot that is moving least over the ground is pinned where it landed until the other foot has landed. Standing, both feet are pinned. Leg IK holds them, and the hips drop when a pinned foot would be out of reach.
-- **Look-at:** the head and neck turn toward someone talking nearby, the person this character is talking to, the camera when a director portrait frames them, or the train when the mind says so (within 140 m). Turns are limited to 1.2 rad either side (0.6 while walking), split 40% neck and 60% head, and eased in and out. VRM eyes follow the same point.
+- **Feet:** while walking, the foot that is moving least over the ground is pinned where it landed until the other foot has landed. Standing, both feet are pinned. Leg IK holds them, and the hips drop (on a stiff spring) when a bearing foot would be out of reach. A foot plants over 0.12 s and lets go over 0.2 s, both eased. A foot left more than 0.3 m behind (a turn on the spot) is let go smoothly and planted again, instead of snapping across. Targets near full leg stretch are eased back toward the hip (soft IK), because the solver is unstable when the knee is straight.
+- **Look-at:** the head and neck turn toward someone talking nearby, the person this character is talking to, the camera when a director portrait frames them, or the train when the mind says so (within 140 m). Turns are limited to 1.2 rad either side (0.6 while walking), split 40% neck and 60% head. Yaw, pitch and weight follow critically damped springs, and the aim only moves when the wanted direction leaves a 0.05 rad dead zone, so a speaker's head bob does not shake the listener's head. Look-at owns only the neck and head. VRM eyes follow the same point.
+- **Arm IK** blends the two joint rotations by its weight (not the target position), so an IK hold that fades out moves the arm less and less and never pops when it stops.
 - **Idle life:** breathing lifts the chest and shoulders, the hips sway slowly over one leg and back, and the head drifts. Periods and phases are random per person, so two people never move in step.
 
 ## The back-and-forth fix
@@ -79,17 +109,36 @@ Two simulation rules walked Momiji passengers back and forth in director mode an
 
 Momiji, both people walking to the canopy and back, 30 s at 30 fps on a virtual clock:
 
-| Build                | Foot slide (slowest heel or toe, share of distance walked) | Largest heading change in one frame |
-| -------------------- | ---------------------------------------------------------- | ----------------------------------- |
-| Before, Blender cast | 32%                                                        | 180°                                |
-| After, Blender cast  | 9–10%                                                      | 6.5°                                |
-| After, VRM cast      | 9–11%                                                      | 4.6°                                |
+| Build                         | Foot slide (slowest heel or toe, share of distance walked) | Largest heading change in one frame |
+| ----------------------------- | ---------------------------------------------------------- | ----------------------------------- |
+| Before, Blender cast          | 32%                                                        | 180°                                |
+| After, Blender cast           | 9–10%                                                      | 6.5°                                |
+| VRM cast, Blender-made clips  | 10.6–10.8%                                                 | 4.6°                                |
+| VRM cast, UAL clips           | 2.4–4.8% (Sato, Riko)                                      | 4.6°                                |
+| VRM cast, UAL, feet layer off | 12–15%                                                     |                                     |
 
-Standing still, foot slide went to zero. The rest of the walking slide happens when weight passes from one foot to the other: the current walk clips have no real double-support phase.
+Jitter: root-mean-square angular acceleration of each rendered joint's local rotation, rad/s², 60 fps, 5 s standing and 12 s walking, averaged over bone groups. One fresh session per condition, so layers off and on see the same events. Riko first, then Mr. Sato.
+
+| Scenario | Bones         | Blender clips, layers on | UAL, layers off | UAL, layers on |
+| -------- | ------------- | ------------------------ | --------------- | -------------- |
+| Idle     | Arms          | 751 / 1,253              | 2.5 / 2.3       | 2.7 / 2.1      |
+| Idle     | Legs          | 2.2 / 6.1                | 2.1 / 2.4       | 2.1 / 1.9      |
+| Walk     | Arms          | 1,299 / 1,191            | 1.7 / 5.8       | 1.8 / 5.7      |
+| Walk     | Legs          | 421 / 391                | 77 / 72         | 53 / 39        |
+| Walk     | Neck and head | 33 / 30                  | 4.9 / 2.7       | 4.9 / 2.7      |
+| Sit      | Legs          | 2,357 / 1,580            | 0 / 0           | 0 / 0          |
+
+The Blender-made clips shook the arms and head even with every layer off; that was most of the unsteady look. Two layer faults added to it: the rig reset each bone to its rest pose before the clips ran, and three.js does not rewrite a bone whose mixed value has not changed, so bones held still by a clip dropped to the rest pose after a cross-fade settled; and foot IK stretched the leg straight when a releasing foot stayed pinned behind the body. The rig now restores the clips' own last pose instead, and a releasing foot never pulls the hips. With the UAL clips, every bone group is within 10% of the layers-off value except Riko's hands (0.8 to 1.7 walking, 0 to 1.9 standing): the radio cradle and grip, well under 2 rad/s². Foot IK lowers leg jitter while walking, because the planted foot no longer slides.
+
+The measurement scripts are kept with the captures (`artifacts/screenshots/ual/motion.mjs`, not committed): they switch layers through the hero's development `setDebug({ layers })` and read bones through `window.__mapleHeroes`.
 
 ## Limits
 
 - Haru and Emi in the campaign (`narrative/story-cast.js`) are a separate instanced-box figure system. None of this applies to them yet; their recorder, notebook and spanner are still fixed to the body.
 - The Blender figures have no finger bones and paddle-shaped hands; the grip is a shape key, not a real fist.
 - The cradle pose and grip points are tuned for these three people. A new cast member needs its own `PROP_GRIPS` entries or props with extras.
-- The VRM clip set has no `turn` clip, so VRM figures turn on the spot in their idle pose (feet stay planted).
+- The VRM clip set has no `turn` clip, so VRM figures turn on the spot in their idle pose; a foot left behind lets go and plants again.
+- UAL's walk is slower (0.92 m/s for Riko) than the residents' 1.05–1.29 m/s, so walks play up to 1.6 times faster than authored. The hurry clip is a quicker walk with a forward lean, not a run.
+- Riko's folded-arms clips (watch-train, shelter) and the cradle both want her arms; the cradle wins while she stands still, and the radio sticks out while it blends in.
+- `wave` and `stretch` are spliced from other clips; the stretch keeps the hands in front of the face rather than overhead.
+- Only Mr. Ishida sits in the simulation. Sitting down and standing up were checked on him in the game (standing up) and in tests (both).

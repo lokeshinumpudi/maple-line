@@ -9,10 +9,13 @@ import {
 } from './character-motion.js';
 
 /**
- * Cross-fades with eased weights and per-pair durations. Walk and hurry stay in step when
- * they blend (the incoming gait starts at the same phase), each loop starts at a random
- * phase the first time so two people never breathe in sync, and timeScale changes are
- * smoothed instead of jumping.
+ * Cross-fades between clips. Each playing clip's weight follows a critically damped spring
+ * toward 1 (the current clip) or 0, all with the same stiffness, and the weights are
+ * normalised to sum to 1. A fade that is re-targeted halfway (a quick change of mind)
+ * carries on from its present weight and speed, so it never kicks. The stiffness comes from
+ * the clip pair's fade length (fadeFor). Walk and hurry stay in step when they blend (the
+ * incoming gait starts at the same phase), each loop starts at a random phase the first time
+ * so two people never breathe in sync, and timeScale changes are smoothed.
  */
 export function createClipBlender(
   THREE,
@@ -23,7 +26,9 @@ export function createClipBlender(
   let current = null;
   let currentName = null;
   let targetScale = 1;
-  const fades = new Map();
+  let omega = 10;
+  /** action -> { x, v }: its weight spring. */
+  const weights = new Map();
   const started = new Set();
   return {
     get name() {
@@ -36,10 +41,10 @@ export function createClipBlender(
       targetScale = timeScale;
       if (next === current) return;
       const duration = fadeFor(currentName, nextName);
-      const fadingIn = fades.has(next) && next.isRunning();
+      const live = weights.has(next) && next.isRunning();
       next.setLoop(once ? THREE.LoopOnce : THREE.LoopRepeat, Infinity);
       next.clampWhenFinished = once;
-      if (!fadingIn) {
+      if (!live) {
         next.reset();
         if (current && GAITS.has(currentName) && GAITS.has(nextName)) {
           const phase = current.time / current.getClip().duration;
@@ -47,31 +52,19 @@ export function createClipBlender(
         } else if (!once && !started.has(nextName)) {
           next.time = random() * next.getClip().duration;
         }
-        next.setEffectiveWeight(0);
         next.timeScale = once ? 1 : timeScale;
+        weights.set(next, { x: 0, v: 0 });
       }
       started.add(nextName);
       next.play();
       if (!current || duration <= 0) {
-        for (const action of fades.keys()) if (action !== next) action.stop();
-        fades.clear();
+        for (const action of weights.keys()) if (action !== next) action.stop();
+        weights.clear();
+        weights.set(next, { x: 1, v: 0 });
         next.setEffectiveWeight(1);
       } else {
-        // Everything fading re-targets from its present weight: in for next, out for others.
-        for (const [action, fade] of fades) {
-          fade.from = action.getEffectiveWeight();
-          fade.to = action === next ? 1 : 0;
-          fade.t = 0;
-          fade.duration = duration;
-        }
-        for (const action of [next, current])
-          if (!fades.has(action))
-            fades.set(action, {
-              from: action.getEffectiveWeight(),
-              to: action === next ? 1 : 0,
-              t: 0,
-              duration,
-            });
+        // Critically damped: about 95% of the way after `duration`.
+        omega = 4.7 / duration;
       }
       current = next;
       currentName = nextName;
@@ -79,20 +72,32 @@ export function createClipBlender(
     update(dt) {
       if (current && current.loop !== THREE.LoopOnce)
         current.timeScale += (targetScale - current.timeScale) * (1 - Math.exp(-dt * 8));
-      for (const [action, fade] of fades) {
-        fade.t += dt;
-        const k = smoothstep(fade.t / fade.duration);
-        action.setEffectiveWeight(fade.from + (fade.to - fade.from) * k);
-        if (fade.t >= fade.duration) {
-          fades.delete(action);
-          if (fade.to === 0) action.stop();
+      for (const [action, w] of weights) {
+        spring(w, action === current ? 1 : 0, omega, dt);
+        if (action !== current && w.x < 0.002 && Math.abs(w.v) < 0.05) {
+          weights.delete(action);
+          action.stop();
         }
       }
+      let total = 0;
+      for (const w of weights.values()) total += Math.max(0, w.x);
+      for (const [action, w] of weights)
+        action.setEffectiveWeight(
+          total > 0 ? Math.max(0, w.x) / total : action === current ? 1 : 0,
+        );
       // A VRM runs its mixer inside its own update, so the blender only sets weights.
       if (drive) mixer.update(dt);
     },
     get fading() {
-      return fades.size;
+      return Math.max(0, weights.size - 1);
+    },
+    /** Effective weights of the playing clips, by action (for tests and measurement). */
+    weights() {
+      return [...weights.keys()].map((action) => action.getEffectiveWeight());
+    },
+    /** The current clip's playback time and speed (for measurement). */
+    get time() {
+      return current ? { t: current.time, scale: current.timeScale } : null;
     },
   };
 }
@@ -100,10 +105,29 @@ export function createClipBlender(
 const approach = (value, target, rate, dt) => value + (target - value) * (1 - Math.exp(-dt * rate));
 
 /**
+ * A critically damped spring toward `target` (exact step, stable at any dt). Unlike a
+ * first-order `approach`, its velocity is continuous, so a target that jumps or a layer that
+ * switches on does not kick the bones it drives. `omega` is the natural frequency (1/s).
+ */
+export function spring(state, target, omega, dt) {
+  const x = state.x - target;
+  const decay = Math.exp(-omega * dt);
+  const push = (state.v + omega * x) * dt;
+  state.v = (state.v - omega * push) * decay;
+  state.x = target + (x + push) * decay;
+  return state.x;
+}
+const springState = (x = 0) => ({ x, v: 0 });
+
+/** Layers the rig applies; all on by default. Switched off one by one for measurement. */
+export const RIG_LAYERS = Object.freeze(['life', 'look', 'hands', 'grip', 'feet']);
+
+/**
  * Per-frame procedural layers on a resolved skeleton, applied after the mixer: additive
  * life, look-at, hand holds (grip curl, cradles and second-hand IK) and foot planting.
  * `heightScale` is the figure's height over 1.7 m, for offsets authored in metres.
- * Call resetPose() before the mixer each frame so the layers never accumulate.
+ * Call resetPose() before the mixer each frame so the layers never accumulate: it puts back
+ * the pose the clips made last frame (captured at the start of apply()).
  *
  * `bones` are the canonical bones the layers write (a VRM's normalized bones); `raw` are the
  * rendered joints the hand sockets hang from (a VRM's skinned bones, or the same bones on a
@@ -186,8 +210,18 @@ export function createCharacterRig(
   const breathPeriod = 3.6 + random() * 1.2;
   const shiftPeriod = 9 + random() * 5;
   let time = random() * 20;
-  const look = { yaw: 0, pitch: 0, weight: 0 };
-  const feet = { L: { lock: null, weight: 0 }, R: { lock: null, weight: 0 } };
+  // Look-at: springs on yaw, pitch and weight; `aim` is the target angle pair, which only
+  // moves when the wanted angle leaves a small dead zone (a speaker's head bob is ignored).
+  const look = {
+    yaw: springState(),
+    pitch: springState(),
+    weight: springState(),
+    aim: null,
+  };
+  const feet = {
+    L: { lock: null, weight: 0, ramp: 0, release: 0 },
+    R: { lock: null, weight: 0, ramp: 0, release: 0 },
+  };
   const holds = { L: 0, R: 0 };
   const grips = { L: 0.3, R: 0.3 };
   const second = new Map();
@@ -211,10 +245,22 @@ export function createCharacterRig(
     bone.updateMatrixWorld(true);
   }
 
+  // The pose the clips produced last frame, before these layers. three.js only writes a
+  // bone when its mixed value changes, so a clip holding a bone still (a single key, or a
+  // settled cross-fade) does not write it again: restoring the rest pose here would leave
+  // that bone at rest. Restoring the clips' own last pose keeps it where the clip put it.
+  const clipPose = new Map();
+  for (const [bone, r] of rest) clipPose.set(bone, { q: r.q.clone(), p: r.p.clone() });
   function resetPose() {
-    for (const [bone, r] of rest) {
-      bone.quaternion.copy(r.q);
-      bone.position.copy(r.p);
+    for (const [bone, pose] of clipPose) {
+      bone.quaternion.copy(pose.q);
+      bone.position.copy(pose.p);
+    }
+  }
+  function capturePose() {
+    for (const [bone, pose] of clipPose) {
+      pose.q.copy(bone.quaternion);
+      pose.p.copy(bone.position);
     }
   }
 
@@ -242,12 +288,17 @@ export function createCharacterRig(
     rotateAbout(bones.shoulderR, axes.x, 0.014 * Math.sin(time * 0.47 + phase[2]) * idle);
   }
 
+  /** Angles smaller than this (radians) do not move the look target. */
+  const LOOK_DEAD_ZONE = 0.05;
   function lookAt(dt, target, { maxYaw, maxPitch, strength }) {
     const head = bones.head;
     if (!head || !chest) return;
     const want = target ? strength : 0;
-    look.weight = approach(look.weight, want, want > look.weight ? 3.5 : 2.2, dt);
-    if (look.weight < 0.003) return;
+    const weight = Math.min(1, Math.max(0, spring(look.weight, want, 4, dt)));
+    if (weight < 0.003 && !target) {
+      look.aim = null;
+      return;
+    }
     chest.getWorldQuaternion(s.q3);
     const up = s.b.copy(chestUp).applyQuaternion(s.q3).normalize();
     const fwd = s.a.copy(chestForward).applyQuaternion(s.q3);
@@ -261,19 +312,34 @@ export function createCharacterRig(
         -maxPitch,
         Math.min(maxPitch, Math.asin(Math.max(-1, Math.min(1, to.dot(up))))),
       );
-      // Smooth the angles, so a new target swings the head across instead of snapping.
-      const fresh = look.weight < 0.06;
-      look.yaw = fresh ? yaw : approach(look.yaw, yaw, 4, dt);
-      look.pitch = fresh ? pitch : approach(look.pitch, pitch, 4, dt);
+      if (!look.aim || weight < 0.02) {
+        // Starting from nothing: aim straight at the target; the weight eases it in.
+        look.aim = { yaw, pitch };
+        if (weight < 0.02) {
+          look.yaw.x = yaw;
+          look.pitch.x = pitch;
+          look.yaw.v = look.pitch.v = 0;
+        }
+      } else if (Math.hypot(yaw - look.aim.yaw, pitch - look.aim.pitch) > LOOK_DEAD_ZONE) {
+        look.aim.yaw = yaw;
+        look.aim.pitch = pitch;
+      }
     }
+    if (look.aim) {
+      spring(look.yaw, look.aim.yaw, 5, dt);
+      spring(look.pitch, look.aim.pitch, 5, dt);
+    }
+    if (weight < 0.003) return;
+    const yaw = look.yaw.x;
+    const pitch = look.pitch.x;
     const desired = new THREE.Vector3()
       .copy(fwd)
-      .multiplyScalar(Math.cos(look.yaw))
-      .addScaledVector(left, Math.sin(look.yaw))
-      .multiplyScalar(Math.cos(look.pitch))
-      .addScaledVector(up, Math.sin(look.pitch))
+      .multiplyScalar(Math.cos(yaw))
+      .addScaledVector(left, Math.sin(yaw))
+      .multiplyScalar(Math.cos(pitch))
+      .addScaledVector(up, Math.sin(pitch))
       .normalize();
-    // The neck takes 40% of the turn and the head the rest.
+    // Only the neck and head: the neck takes 40% of the turn and the head the rest.
     for (const [bone, share] of [
       [bones.neck, 0.4],
       [head, 1],
@@ -282,7 +348,7 @@ export function createCharacterRig(
       head.getWorldQuaternion(s.q3);
       const current = new THREE.Vector3().copy(headForward).applyQuaternion(s.q3);
       const delta = new THREE.Quaternion().setFromUnitVectors(current, desired);
-      delta.slerp(new THREE.Quaternion(), 1 - share * look.weight);
+      delta.slerp(new THREE.Quaternion(), 1 - share * weight);
       rotateBoneWorld(bone, delta, s);
     }
   }
@@ -340,13 +406,22 @@ export function createCharacterRig(
     holds[prop.other] = Math.max(holds[prop.other], weight);
   }
 
+  const cradleSprings = new Map();
+  const secondSprings = new Map();
+  /**
+   * Holds. `cradle` brings cradle props up to the chest with both hands (arm IK toward a
+   * point fixed to the body, so the arms stay still while the legs walk). `twoHand` lets the
+   * second hand reach a two-hand prop's grip. Weights follow springs, so a hold eases in and
+   * out without a kick.
+   */
   function handsAndProps(dt, cradle, twoHand) {
     for (const prop of props) {
       if (!prop.node.visible) continue;
       holds[prop.side] = 1;
       if (prop.cradle && sockets[prop.side]) {
-        // Cradle: brought up to the chest and steadied with the other hand while still.
-        const w = approach(cradles.get(prop) ?? 0, cradle ? 1 : 0, cradle ? 2.4 : 4, dt);
+        const cradleState = cradleSprings.get(prop) ?? springState();
+        cradleSprings.set(prop, cradleState);
+        const w = Math.min(1, Math.max(0, spring(cradleState, cradle ? 1 : 0, 3.5, dt)));
         cradles.set(prop, w);
         if (w > 0.002) {
           const at = prop.cradle.at;
@@ -359,14 +434,26 @@ export function createCharacterRig(
           if (prop.cradle.grip2) secondHand(prop, prop.cradle.grip2, w);
         }
       }
-      if (prop.hold === 'two' && prop.grip2 && twoHand) {
-        const w = approach(second.get(prop) ?? 0, 1, 6, dt);
+      if (prop.hold === 'two' && prop.grip2) {
+        const state = secondSprings.get(prop) ?? springState();
+        secondSprings.set(prop, state);
+        const w = Math.min(1, Math.max(0, spring(state, twoHand ? 1 : 0, 5, dt)));
         second.set(prop, w);
-        secondHand(prop, prop.grip2, w);
+        if (w > 0.002) secondHand(prop, prop.grip2, w);
       }
     }
   }
 
+  /** Rotation of a bone away from its rest orientation, in radians. */
+  const bentBy = (bone) => {
+    const r = rest.get(bone);
+    return r ? 2 * Math.acos(Math.min(1, Math.abs(r.q.dot(bone.quaternion)))) : 0;
+  };
+  /**
+   * Grip: a holding hand closes. Clips with finger tracks (UAL) already curl or relax the
+   * fingers, so each joint is only topped up to the grip's angle, never bent past it: a fist
+   * in the clip stays a fist, and a flat hand from a clip without fingers relaxes a little.
+   */
   function curlFingers(dt) {
     for (const side of ['L', 'R']) {
       grips[side] = approach(grips[side], holds[side] > 0.5 ? 1 : 0.3, 10, dt);
@@ -380,14 +467,32 @@ export function createCharacterRig(
       );
       for (const finger of FINGERS) {
         const angle = (finger === 'thumb' ? 0.3 : 0.55) * grips[side];
-        for (let joint = 1; joint <= 3; joint++)
-          rotateAbout(bones[`${finger}${side}${joint}`], across, angle);
+        for (let joint = 1; joint <= 3; joint++) {
+          const bone = bones[`${finger}${side}${joint}`];
+          if (!bone) continue;
+          const more = angle - bentBy(bone);
+          if (more > 0.002) rotateAbout(bone, across, more);
+        }
       }
     }
   }
 
+  /**
+   * Soft IK reach: distances up to 94% of the leg pass through; beyond that they approach
+   * 99.5% of the leg exponentially instead of reaching full stretch.
+   */
+  const softReach = (distance, length) => {
+    const start = length * 0.94;
+    const span = length * 0.995 - start;
+    if (distance <= start) return distance;
+    return start + span * (1 - Math.exp(-(distance - start) / span));
+  };
   let stance = null;
   let pelvisDrop = 0;
+  const pelvis = springState();
+  /** Seconds a foot takes to plant fully or to let go; eased with smoothstep. */
+  const PLANT_SECONDS = 0.12;
+  const LIFT_SECONDS = 0.2;
   /**
    * Walking, the stance foot (the one the animation moves least over the ground) is pinned
    * where it landed and stays pinned until the other foot is clearly the slower one, so one
@@ -424,17 +529,26 @@ export function createCharacterRig(
       const { f } = leg;
       const floor = floorOf(leg);
       const bearing = enabled && (moving ? leg.side === stance : lift(leg) < 0.06 * heightScale);
-      if (bearing && !f.lock) f.lock = leg.position.clone();
+      f.release = Math.max(0, f.release - dt);
       if (
         f.lock &&
-        Math.hypot(f.lock.x - leg.position.x, f.lock.z - leg.position.z) > 0.35 * heightScale
+        !f.release &&
+        Math.hypot(f.lock.x - leg.position.x, f.lock.z - leg.position.z) > 0.3 * heightScale
       ) {
-        // Left far behind (a stop, a snap): plant again rather than stretch the leg.
-        f.lock.copy(leg.position);
-        f.weight = Math.min(f.weight, 0.3);
+        // Left far behind (a turn on the spot, a stop): let the foot go smoothly and plant
+        // it again where the animation has it, instead of snapping it across.
+        f.release = LIFT_SECONDS;
       }
-      f.weight = approach(f.weight, bearing ? 1 : 0, bearing ? 20 : 9, dt);
-      if (!bearing && f.weight < 0.02) f.lock = null;
+      const planting = bearing && !f.release;
+      leg.planting = planting;
+      if (planting && !f.lock) f.lock = leg.position.clone();
+      // A linear ramp shaped by smoothstep: the weight starts and ends with zero velocity.
+      f.ramp = Math.min(
+        1,
+        Math.max(0, f.ramp + (planting ? dt / PLANT_SECONDS : -dt / LIFT_SECONDS)),
+      );
+      f.weight = smoothstep(f.ramp);
+      if (!planting && f.ramp <= 0) f.lock = null;
       leg.target = leg.position.clone();
       if (f.lock) {
         // Keep the animation's heel lift; pin only where the foot is on the ground.
@@ -443,10 +557,11 @@ export function createCharacterRig(
       }
       if (enabled) leg.target.y = Math.max(leg.target.y, floor);
     }
-    // Pelvis: lower the hips just enough for every planted foot to reach its target.
+    // Pelvis: lower the hips just enough for every bearing foot to reach its target. A foot
+    // that is letting go never pulls the hips down: it is let off its lock instead (below).
     let drop = 0;
     for (const leg of legs) {
-      if (!leg.f.lock) continue;
+      if (!leg.f.lock || !leg.planting) continue;
       const hip = leg.upper.getWorldPosition(v());
       const reach = legLength[leg.side] * 0.995;
       const flat = Math.hypot(hip.x - leg.target.x, hip.z - leg.target.z);
@@ -454,13 +569,20 @@ export function createCharacterRig(
       const need = hip.y - leg.target.y - Math.sqrt(reach * reach - flat * flat);
       drop = Math.max(drop, need * leg.f.weight);
     }
-    // Drop at once when a foot needs it (a lag would let the foot slide); rise back gently.
+    // A stiff spring: fast enough that a planted foot does not slide, without a kick.
     const need = enabled ? Math.min(drop, 0.12 * heightScale) : 0;
-    pelvisDrop = need > pelvisDrop ? need : approach(pelvisDrop, need, 8, dt);
+    pelvisDrop = Math.max(0, spring(pelvis, need, need > pelvisDrop ? 30 : 10, dt));
     if (pelvisDrop > 1e-4) moveBoneWorld(bones.hips, s.a.set(0, -pelvisDrop, 0));
     for (const leg of legs) {
       const now = leg.foot.getWorldPosition(v());
       if (leg.target.distanceToSquared(now) < 1e-8) continue;
+      // Soft reach: a target near or past full stretch is eased back toward the hip, so the
+      // knee never snaps straight (the solver is unstable at full extension).
+      const hip = leg.upper.getWorldPosition(v());
+      const toTarget = s.b.subVectors(leg.target, hip);
+      const distance = toTarget.length();
+      const eased = softReach(distance, legLength[leg.side]);
+      if (eased < distance) leg.target.copy(hip).addScaledVector(toTarget, eased / distance);
       const keep = leg.foot.getWorldQuaternion(new THREE.Quaternion());
       const knee = leg.lower.getWorldPosition(v()).addScaledVector(axes.z, 0.4);
       applyTwoBoneIK(THREE, leg.upper, leg.lower, leg.foot, leg.target, knee, 1, s);
@@ -483,27 +605,36 @@ export function createCharacterRig(
      * @param {boolean} [o.moving] walking: only the stance foot is pinned
      * @param {number} [o.groundY]
      * @param {boolean} [o.cradle] bring cradle props up in both hands
+     * @param {Partial<Record<string, boolean>>} [o.layers] switch layers off (RIG_LAYERS)
      */
     apply(dt, o = {}) {
+      capturePose();
       root.updateMatrixWorld(true);
       root.getWorldQuaternion(rootQ);
       axes.x.set(1, 0, 0).applyQuaternion(rootQ);
       axes.y.set(0, 1, 0).applyQuaternion(rootQ);
       axes.z.set(0, 0, 1).applyQuaternion(rootQ);
-      life(dt, o.idle ?? 0, o.breath ?? 1);
-      lookAt(dt, o.lookTarget ?? null, {
-        strength: o.lookStrength ?? 1,
-        maxYaw: o.maxYaw ?? 1.2,
-        maxPitch: o.maxPitch ?? 0.45,
-      });
-      handsAndProps(dt, Boolean(o.cradle), o.twoHand !== false);
-      curlFingers(dt);
-      plantFeet(dt, Boolean(o.planted), o.groundY ?? root.position.y, Boolean(o.moving));
+      const on = (layer) => o.layers?.[layer] !== false;
+      if (on('life')) life(dt, o.idle ?? 0, o.breath ?? 1);
+      if (on('look'))
+        lookAt(dt, o.lookTarget ?? null, {
+          strength: o.lookStrength ?? 1,
+          maxYaw: o.maxYaw ?? 1.2,
+          maxPitch: o.maxPitch ?? 0.45,
+        });
+      if (on('hands')) handsAndProps(dt, Boolean(o.cradle), o.twoHand !== false);
+      if (on('grip')) curlFingers(dt);
+      if (on('feet'))
+        plantFeet(dt, Boolean(o.planted), o.groundY ?? root.position.y, Boolean(o.moving));
     },
     getState() {
       const round = (x) => Number(x.toFixed(2));
       return {
-        look: { yaw: round(look.yaw), pitch: round(look.pitch), weight: round(look.weight) },
+        look: {
+          yaw: round(look.yaw.x),
+          pitch: round(look.pitch.x),
+          weight: round(Math.max(0, look.weight.x)),
+        },
         feet: {
           stance,
           pelvisDrop: round(pelvisDrop),

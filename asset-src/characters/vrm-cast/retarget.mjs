@@ -7,26 +7,56 @@
  * motion by the target's hips height. Runtime does no retargeting maths.
  *
  * Per bone b with source rest world rotation R and posed world rotation W, the world delta
- * is D = W R^-1. Source rigs that are not in T-pose (arms down, for example) need a rest
- * correction A: the shortest rotation from the VRM T-pose direction of b to the source
- * rest direction. The normalized local rotation is then (D_p A_p)^-1 (D_b A_b), with p the
- * nearest mapped humanoid parent. A bone with no mapped child inherits its parent's A.
+ * is D = W R^-1. The normalized local rotation is (D_p A_p)^-1 (D_b A_b), with p the nearest
+ * mapped humanoid parent and A a rest correction:
  *
- * Gait is measured on the source (the planted foot's backward speed during stance) and
- * stored per unit of hips height in the scene extras, so the game can scale it to each
- * character's leg length.
+ * - `direction` (the Blender cast, whose rest has the arms down): A is the shortest rotation
+ *   from the VRM T-pose direction of b to the source rest direction. A bone with no mapped
+ *   child inherits its parent's A.
+ * - `identity` (Quaternius UAL, whose rest is already a T-pose): A = I. The source's rest
+ *   body counts as the VRM's rest body, so the mannequin's curved spine and swept-back
+ *   clavicles do not bend an upright VRM.
  *
- *   node asset-src/characters/vrm-cast/retarget.mjs            # the Momiji clip set
- *   node asset-src/characters/vrm-cast/retarget.mjs --source <glb> --rig ual --out <vrma>
+ * Gait is stored per unit of hips height in the scene extras, so the game can scale it to
+ * each character's leg length. For UAL the walking speed comes from the root-motion (_RM)
+ * file, which moves the `root` bone by the distance the feet cover.
+ *
+ *   node asset-src/characters/vrm-cast/retarget.mjs                 # the UAL cast clip set
+ *   node asset-src/characters/vrm-cast/retarget.mjs --ual <folder>  # UAL somewhere else
+ *   node asset-src/characters/vrm-cast/retarget.mjs --rig momiji --source <glb> --out <vrma>
+ *
+ * The UAL folder holds the two unzipped Standard packs. It defaults to $MAPLE_UAL_DIR, then
+ * ~/Downloads/maple-assets/quaternius. Library files are never copied into the repository.
  */
-import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, existsSync, readdirSync } from 'node:fs';
+import { homedir } from 'node:os';
 import { fileURLToPath } from 'node:url';
-import { dirname, join } from 'node:path';
+import { dirname, join, relative } from 'node:path';
 import { THREE, loadGlb } from '../../lib/three-node.mjs';
 import { encodeGlb, round } from '../../lib/glb.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, '..', '..', '..');
+
+const SIDES = ['left', 'right'];
+const FINGER_SEGMENTS = {
+  Thumb: ['Metacarpal', 'Proximal', 'Distal'],
+  Index: ['Proximal', 'Intermediate', 'Distal'],
+  Middle: ['Proximal', 'Intermediate', 'Distal'],
+  Ring: ['Proximal', 'Intermediate', 'Distal'],
+  Little: ['Proximal', 'Intermediate', 'Distal'],
+};
+
+/** VRM finger bones of one side, knuckle outward, with their humanoid parents. */
+function fingerParents(side) {
+  const out = {};
+  for (const [finger, segments] of Object.entries(FINGER_SEGMENTS))
+    segments.forEach((segment, i) => {
+      out[`${side}${finger}${segment}`] =
+        i === 0 ? `${side}Hand` : `${side}${finger}${segments[i - 1]}`;
+    });
+  return out;
+}
 
 /** VRM humanoid parent of each bone this pipeline animates. */
 export const VRM_PARENT = {
@@ -52,6 +82,8 @@ export const VRM_PARENT = {
   rightLowerLeg: 'rightUpperLeg',
   rightFoot: 'rightLowerLeg',
   rightToes: 'rightFoot',
+  ...fingerParents('left'),
+  ...fingerParents('right'),
 };
 
 /** Direction from each bone to its child in the VRM 1.0 T-pose (three.js axes, facing +Z). */
@@ -74,6 +106,18 @@ const TPOSE = {
   rightLowerLeg: [0, -1, 0],
   rightFoot: [0, -0.45, 0.89],
 };
+
+/** UAL finger joint names: thumb_01_l .. pinky_03_r. */
+function ualFingers() {
+  const names = { Thumb: 'thumb', Index: 'index', Middle: 'middle', Ring: 'ring', Little: 'pinky' };
+  const out = {};
+  for (const side of SIDES)
+    for (const [finger, segments] of Object.entries(FINGER_SEGMENTS))
+      segments.forEach((segment, i) => {
+        out[`${names[finger]}_0${i + 1}_${side[0]}`] = `${side}${finger}${segment}`;
+      });
+  return out;
+}
 
 /** Source bone names per rig. `momiji` is the Blender cast rig (Mixamo-style names). */
 export const RIGS = {
@@ -101,8 +145,9 @@ export const RIGS = {
     RightFoot: 'rightFoot',
     RightToeBase: 'rightToes',
   },
-  // Quaternius Universal Animation Library (UE mannequin-style names). Check against the
-  // downloaded file before use: print the joint names and adjust.
+  // Quaternius Universal Animation Library 1 and 2 (UE mannequin names, checked against
+  // UAL1_Standard.glb and UAL2_Standard.glb). `root` carries root motion in the _RM files;
+  // the `*_leaf_*` tip joints and `root` itself are not humanoid bones and are dropped.
   ual: {
     pelvis: 'hips',
     spine_01: 'spine',
@@ -126,10 +171,107 @@ export const RIGS = {
     calf_r: 'rightLowerLeg',
     foot_r: 'rightFoot',
     ball_r: 'rightToes',
+    ...ualFingers(),
   },
 };
 
+/** How each rig's rest pose relates to the VRM T-pose (see the header). */
+export const RIG_REST = { momiji: 'direction', ual: 'identity' };
+
 const FPS = 30;
+
+/** Right arm chain, and both arms, for clips spliced from two sources. */
+const ARM = (side) => [
+  `${side}Shoulder`,
+  `${side}UpperArm`,
+  `${side}LowerArm`,
+  `${side}Hand`,
+  ...Object.keys(fingerParents(side)),
+];
+
+/**
+ * The hero-cast clip set, from Quaternius UAL 1 and 2. `name` is what the game plays;
+ * `pack` and `clip` name the source. `loop: false` marks a one-shot. `speed` plays the source
+ * faster (a quicker cadence; measured speeds scale with it). `splice` lays some bones of
+ * another UAL clip over the base clip (local rotations), at `weight`, in step (`phase`) or
+ * faded by `envelope` (seconds: in-start, in-end, out-start, out-end). `wave` adds a forearm
+ * swing about the facing axis.
+ * `alias` clips share another clip's animation in the game (no bytes in the file).
+ */
+export const UAL_CAST = Object.freeze([
+  { name: 'idle', pack: 'UAL1', clip: 'Idle_Loop' },
+  { name: 'chat', pack: 'UAL1', clip: 'Idle_Talking_Loop' },
+  { name: 'walk', pack: 'UAL1', clip: 'Walk_Loop' },
+  { name: 'walk-formal', pack: 'UAL1', clip: 'Walk_Formal_Loop' },
+  // Walk_Carry_Loop itself is a slow, heavy trudge (0.65 m/s); its arms, held in front with
+  // no swing, go over the ordinary walk so a carried radio does not slow the legs.
+  {
+    name: 'walk-carry',
+    pack: 'UAL1',
+    clip: 'Walk_Loop',
+    // Fingers stay the walk's relaxed ones; the hand holding the radio closes on it (grip layer).
+    splice: {
+      pack: 'UAL2',
+      clip: 'Walk_Carry_Loop',
+      bones: [...ARM('left'), ...ARM('right')],
+      phase: true,
+      fingers: false,
+    },
+  },
+  // Jog_Fwd_Loop is a 5.4 m/s run. Hurrying people walk fast: the walk at 1.4 times its
+  // cadence, with half of the jog's forward lean and arm drive laid over it in step.
+  {
+    name: 'hurry',
+    pack: 'UAL1',
+    clip: 'Walk_Loop',
+    speed: 1.4,
+    splice: {
+      pack: 'UAL1',
+      clip: 'Jog_Fwd_Loop',
+      bones: ['spine', 'chest', 'upperChest', ...ARM('left'), ...ARM('right')],
+      weight: 0.5,
+      phase: true,
+    },
+  },
+  { name: 'sit', pack: 'UAL1', clip: 'Sitting_Idle_Loop' },
+  { name: 'sit-enter', pack: 'UAL1', clip: 'Sitting_Enter', loop: false },
+  { name: 'sit-exit', pack: 'UAL1', clip: 'Sitting_Exit', loop: false },
+  { name: 'check-phone', pack: 'UAL2', clip: 'Idle_TalkingPhone_Loop' },
+  { name: 'watch-train', pack: 'UAL2', clip: 'Idle_FoldArms_Loop' },
+  { name: 'shelter', alias: 'watch-train' },
+  // Reaching for the door button as the doors are reached.
+  { name: 'board', pack: 'UAL1', clip: 'Interact', loop: false },
+  // UAL has no wave: the calling arm of Idle_Rail_Call over an upright idle, swung.
+  {
+    name: 'wave',
+    pack: 'UAL1',
+    clip: 'Idle_Loop',
+    splice: { pack: 'UAL2', clip: 'Idle_Rail_Call', bones: ARM('right'), fingers: false },
+    envelope: [0, 0.35, 2.15, 2.5],
+    wave: { side: 'right', amplitude: 0.42, hertz: 2 },
+  },
+  // Arms overhead from Pistol_Aim_Up (hands together) over the idle: a stretch.
+  {
+    name: 'stretch',
+    pack: 'UAL1',
+    clip: 'Idle_Loop',
+    seconds: 4,
+    splice: {
+      pack: 'UAL1',
+      clip: 'Pistol_Aim_Up',
+      bones: [...ARM('left'), ...ARM('right')],
+      fingers: false,
+    },
+    envelope: [0.3, 1.2, 2.8, 3.7],
+  },
+  // Directed gestures (episode `direct` intents).
+  { name: 'nod-yes', pack: 'UAL2', clip: 'Yes' },
+  { name: 'shake-no', pack: 'UAL2', clip: 'Idle_No_Loop' },
+  { name: 'eat', pack: 'UAL2', clip: 'Consume' },
+]);
+
+/** Locomotion clips whose speed is measured from the root-motion file. */
+export const UAL_GAITS = Object.freeze(['walk', 'walk-formal', 'walk-carry', 'hurry']);
 
 export function mappedParent(bone, present) {
   let parent = VRM_PARENT[bone];
@@ -137,19 +279,29 @@ export function mappedParent(bone, present) {
   return parent ?? null;
 }
 
-/**
- * Retarget every clip of a loaded source glTF. Returns { rest, clips, gait } where rest
- * maps VRM bone -> world position and clips are { name, duration, loop, times,
- * rotations: {bone: Float32Array}, hips: Float32Array }.
- */
-export function retarget(gltf, rigMap, { loops = {}, rename = {} } = {}) {
-  const scene = gltf.scene;
-  scene.updateMatrixWorld(true);
+/** Map a scene's nodes to VRM bones with a rig table. */
+export function mapBones(scene, rigMap) {
   const source = new Map();
   scene.traverse((node) => {
     const bone = rigMap[node.name];
     if (bone && !source.has(bone)) source.set(bone, node);
   });
+  return source;
+}
+
+/**
+ * Retarget clips of a loaded source glTF. Returns { rest, clips, gait, order } where rest
+ * maps VRM bone -> world position and clips are { name, duration, loop, times,
+ * rotations: {bone: Float32Array}, hips: Float32Array }. `only` limits the clips read.
+ */
+export function retarget(
+  gltf,
+  rigMap,
+  { loops = {}, rename = {}, only = null, rest: restMode = 'direction' } = {},
+) {
+  const scene = gltf.scene;
+  scene.updateMatrixWorld(true);
+  const source = mapBones(scene, rigMap);
   if (!source.has('hips')) throw new Error('source rig has no hips bone');
   const present = new Set(source.keys());
   const order = Object.keys(VRM_PARENT).filter((bone) => present.has(bone));
@@ -161,26 +313,7 @@ export function retarget(gltf, rigMap, { loops = {}, rename = {} } = {}) {
     restRot.set(bone, node.getWorldQuaternion(new THREE.Quaternion()));
     restPos.set(bone, node.getWorldPosition(new THREE.Vector3()));
   }
-  // Rest correction per bone.
-  const correction = new Map();
-  for (const bone of order) {
-    const child = order.find((other) => mappedParent(other, present) === bone && TPOSE[bone]);
-    const preferred = {
-      hips: 'spine',
-      upperChest: 'neck',
-      leftUpperLeg: 'leftLowerLeg',
-      rightUpperLeg: 'rightLowerLeg',
-    }[bone];
-    const target = preferred && present.has(preferred) ? preferred : child;
-    if (TPOSE[bone] && target) {
-      const actual = restPos.get(target).clone().sub(restPos.get(bone)).normalize();
-      const canonical = new THREE.Vector3(...TPOSE[bone]).normalize();
-      correction.set(bone, new THREE.Quaternion().setFromUnitVectors(canonical, actual));
-    } else {
-      const parent = mappedParent(bone, present);
-      correction.set(bone, parent ? correction.get(parent).clone() : new THREE.Quaternion());
-    }
-  }
+  const correction = restCorrections(order, present, restPos, restMode);
 
   const mixer = new THREE.AnimationMixer(scene);
   const clips = [];
@@ -189,6 +322,7 @@ export function retarget(gltf, rigMap, { loops = {}, rename = {} } = {}) {
   const hipsRestHeight = restPos.get('hips').y;
   const gait = {};
   for (const clip of gltf.animations) {
+    if (only && !only.includes(clip.name)) continue;
     const name = rename[clip.name] ?? clip.name;
     const frames = Math.max(1, Math.round(clip.duration * FPS));
     const times = new Float32Array(frames + 1);
@@ -217,17 +351,7 @@ export function retarget(gltf, rigMap, { loops = {}, rename = {} } = {}) {
         const parent = mappedParent(bone, present);
         q.copy(world.get(bone));
         if (parent) q.premultiply(world.get(parent).clone().invert());
-        // Keep neighbouring samples in the same hemisphere so interpolation takes the short way.
-        const out = rotations[bone];
-        if (f > 0) {
-          const dot =
-            out[(f - 1) * 4] * q.x +
-            out[(f - 1) * 4 + 1] * q.y +
-            out[(f - 1) * 4 + 2] * q.z +
-            out[(f - 1) * 4 + 3] * q.w;
-          if (dot < 0) q.set(-q.x, -q.y, -q.z, -q.w);
-        }
-        out.set([q.x, q.y, q.z, q.w], f * 4);
+        writeQuat(rotations[bone], f, q);
       }
       const hipsPos = source.get('hips').getWorldPosition(new THREE.Vector3());
       hips.set([hipsPos.x, hipsPos.y, hipsPos.z], f * 3);
@@ -237,6 +361,7 @@ export function retarget(gltf, rigMap, { loops = {}, rename = {} } = {}) {
       }
     }
     action.stop();
+    mixer.uncacheAction(clip);
     const loop = loops[name] ?? true;
     clips.push({ name, duration: times[frames], loop, times, rotations, hips });
     if (feet.left.length) {
@@ -256,6 +381,44 @@ export function retarget(gltf, rigMap, { loops = {}, rename = {} } = {}) {
     ]),
   );
   return { rest, clips, gait, hipsRestHeight: round(hipsRestHeight, 5), order };
+}
+
+/** Rest correction per bone (see the header). */
+export function restCorrections(order, present, restPos, mode = 'direction') {
+  const correction = new Map();
+  for (const bone of order) {
+    if (mode === 'identity') {
+      correction.set(bone, new THREE.Quaternion());
+      continue;
+    }
+    const child = order.find((other) => mappedParent(other, present) === bone && TPOSE[bone]);
+    const preferred = {
+      hips: 'spine',
+      upperChest: 'neck',
+      leftUpperLeg: 'leftLowerLeg',
+      rightUpperLeg: 'rightLowerLeg',
+    }[bone];
+    const target = preferred && present.has(preferred) ? preferred : child;
+    if (TPOSE[bone] && target) {
+      const actual = restPos.get(target).clone().sub(restPos.get(bone)).normalize();
+      const canonical = new THREE.Vector3(...TPOSE[bone]).normalize();
+      correction.set(bone, new THREE.Quaternion().setFromUnitVectors(canonical, actual));
+    } else {
+      const parent = mappedParent(bone, present);
+      correction.set(bone, parent ? correction.get(parent).clone() : new THREE.Quaternion());
+    }
+  }
+  return correction;
+}
+
+/** Store q at frame f, kept in the previous frame's hemisphere so interpolation is short. */
+function writeQuat(out, f, q) {
+  let { x, y, z, w } = q;
+  if (f > 0) {
+    const dot = out[(f - 1) * 4] * x + out[(f - 1) * 4 + 1] * y + out[(f - 1) * 4 + 2] * z;
+    if (dot + out[(f - 1) * 4 + 3] * w < 0) [x, y, z, w] = [-x, -y, -z, -w];
+  }
+  out.set([x, y, z, w], f * 4);
 }
 
 function minY(hips) {
@@ -284,8 +447,227 @@ export function stanceSpeed(positions, scale = 1) {
   return seconds > 0 ? (a.z - b.z) / seconds : 0;
 }
 
+/** Ground speed (m/s) of a root-motion clip: the `root` bone's travel over the clip. */
+export function rootMotionSpeed(gltf, clipName, rootName = 'root') {
+  const clip = gltf.animations.find((c) => c.name === clipName);
+  const node = gltf.scene.getObjectByName(rootName);
+  if (!clip || !node) return 0;
+  const mixer = new THREE.AnimationMixer(gltf.scene);
+  const action = mixer.clipAction(clip);
+  action.setLoop(THREE.LoopOnce, 1);
+  action.clampWhenFinished = true;
+  action.reset().play();
+  const at = (t) => {
+    mixer.setTime(t);
+    gltf.scene.updateMatrixWorld(true);
+    return node.getWorldPosition(new THREE.Vector3());
+  };
+  const start = at(0);
+  const end = at(clip.duration);
+  action.stop();
+  mixer.uncacheAction(clip);
+  return Math.hypot(end.x - start.x, end.z - start.z) / clip.duration;
+}
+
+/**
+ * Seat height of a sitting pose: the lowest point of the skinned body within 12 cm of the
+ * pelvis in depth and 20 cm to either side (the buttocks and thighs on the seat). Also the
+ * pelvis position, whose depth says how far behind the figure origin the seat is.
+ */
+export function measureSeat(gltf, clipName) {
+  const clip = gltf.animations.find((c) => c.name === clipName);
+  const scene = gltf.scene;
+  const mixer = new THREE.AnimationMixer(scene);
+  const action = mixer.clipAction(clip);
+  action.reset().play();
+  mixer.setTime(0);
+  scene.updateMatrixWorld(true);
+  const pelvis = scene.getObjectByName('pelvis').getWorldPosition(new THREE.Vector3());
+  let seat = Infinity;
+  const v = new THREE.Vector3();
+  scene.traverse((mesh) => {
+    if (!mesh.isSkinnedMesh) return;
+    const count = mesh.geometry.attributes.position.count;
+    for (let i = 0; i < count; i++) {
+      mesh.getVertexPosition(i, v);
+      v.applyMatrix4(mesh.matrixWorld);
+      if (Math.abs(v.z - pelvis.z) < 0.12 && Math.abs(v.x) < 0.2) seat = Math.min(seat, v.y);
+    }
+  });
+  action.stop();
+  return { seat, pelvis };
+}
+
+// ---- clip editing on retargeted (normalized local) rotations ------------------------------
+
+const qa = new THREE.Quaternion();
+const qb = new THREE.Quaternion();
+
+function readQuat(array, f, target) {
+  return target.fromArray(array, f * 4);
+}
+
+/** Fractional frame of a clip at time t: wrapped for loops, held at the end otherwise. */
+function frameAt(clip, t, wrap = clip.loop) {
+  const local = wrap ? ((t % clip.duration) + clip.duration) % clip.duration : t;
+  return Math.min(clip.times.length - 1, Math.max(0, local * FPS));
+}
+
+/** A bone's rotation at a fractional frame (slerp between the neighbouring keys). */
+function sampleQuat(values, frame, target) {
+  const last = values.length / 4 - 1;
+  const a = Math.min(last, Math.floor(frame));
+  const b = Math.min(last, a + 1);
+  return target.fromArray(values, a * 4).slerp(qb.fromArray(values, b * 4), frame - a);
+}
+
+function sampleVec(values, frame, target) {
+  const last = values.length / 3 - 1;
+  const a = Math.min(last, Math.floor(frame));
+  const b = Math.min(last, a + 1);
+  const u = frame - a;
+  for (let c = 0; c < 3; c++) target[c] = values[a * 3 + c] + (values[b * 3 + c] - values[a * 3 + c]) * u;
+  return target;
+}
+
+/**
+ * Resample a retargeted clip to `seconds` of output, reading the source `speed` times as
+ * fast (a faster cadence for speed > 1). Loops wrap; one-shots hold their last frame.
+ */
+export function resample(clip, seconds, { speed = 1, wrap = clip.loop } = {}) {
+  const frames = Math.round(seconds * FPS);
+  const times = new Float32Array(frames + 1);
+  const rotations = {};
+  const hips = new Float32Array((frames + 1) * 3);
+  const at = (f) => frameAt(clip, (f / FPS) * speed, wrap);
+  for (let f = 0; f <= frames; f++) times[f] = f / FPS;
+  for (const [bone, values] of Object.entries(clip.rotations)) {
+    const out = new Float32Array((frames + 1) * 4);
+    for (let f = 0; f <= frames; f++) writeQuat(out, f, sampleQuat(values, at(f), qa));
+    rotations[bone] = out;
+  }
+  const v = [0, 0, 0];
+  for (let f = 0; f <= frames; f++) hips.set(sampleVec(clip.hips, at(f), v), f * 3);
+  return { ...clip, duration: times[frames], times, rotations, hips };
+}
+
+/** Weight 0..1 at time t for an envelope [inStart, inEnd, outStart, outEnd] (smoothstep). */
+export function envelopeWeight(t, envelope) {
+  if (!envelope) return 1;
+  const [a, b, c, d] = envelope;
+  const s = (x) => x * x * (3 - 2 * x);
+  if (t <= a || t >= d) return 0;
+  if (t < b) return s((t - a) / (b - a));
+  if (t > c) return s((d - t) / (d - c));
+  return 1;
+}
+
+/**
+ * Lay `bones` of `other` over `base`, blended by `weight` and the envelope. `other` is read
+ * at the same time (wrapping), or at the same phase of its cycle when `phase` is set, so two
+ * gaits that both start on the left foot stay in step. Rotations are normalized local, so
+ * the spliced limb keeps its pose relative to the base body.
+ */
+export function splice(base, other, bones, { envelope = null, weight = 1, phase = false } = {}) {
+  const out = { ...base, rotations: { ...base.rotations } };
+  const q = new THREE.Quaternion();
+  for (const bone of bones) {
+    const from = base.rotations[bone];
+    const to = other.rotations[bone];
+    if (!from || !to) continue;
+    const values = new Float32Array(from.length);
+    for (let f = 0; f < base.times.length; f++) {
+      const t = base.times[f];
+      const u = phase ? (t / base.duration) * other.duration : t;
+      sampleQuat(to, frameAt(other, u, true), q);
+      readQuat(from, f, qa).slerp(q, weight * envelopeWeight(t, envelope));
+      writeQuat(values, f, qa);
+    }
+    out.rotations[bone] = values;
+  }
+  return out;
+}
+
+/** World (clip-space) rotation of a bone: the product of normalized locals down the chain. */
+function chainWorld(clip, bone, f, present) {
+  const chain = [];
+  for (let b = bone; b; b = mappedParent(b, present)) chain.unshift(b);
+  const out = new THREE.Quaternion();
+  for (const b of chain) out.multiply(readQuat(clip.rotations[b], f, qb));
+  return out;
+}
+
+/**
+ * A wave: swing the forearm side to side about the body's facing axis (+Z), at `hertz`,
+ * faded by the envelope. The hand follows the forearm.
+ */
+export function addWave(clip, { side = 'right', amplitude = 0.4, hertz = 2 }, envelope, order) {
+  const present = new Set(order);
+  const lower = `${side}LowerArm`;
+  const upper = `${side}UpperArm`;
+  const values = new Float32Array(clip.rotations[lower]);
+  const axis = new THREE.Vector3(0, 0, 1);
+  const swing = new THREE.Quaternion();
+  for (let f = 0; f < clip.times.length; f++) {
+    const t = clip.times[f];
+    const angle = amplitude * envelopeWeight(t, envelope) * Math.sin(2 * Math.PI * hertz * t);
+    const upperWorld = chainWorld(clip, upper, f, present);
+    const lowerWorld = upperWorld.clone().multiply(readQuat(values, f, qa));
+    swing.setFromAxisAngle(axis, angle);
+    const local = upperWorld.invert().multiply(swing.multiply(lowerWorld));
+    writeQuat(values, f, local);
+  }
+  return { ...clip, rotations: { ...clip.rotations, [lower]: values } };
+}
+
+// ---- key reduction ------------------------------------------------------------------------
+
+/**
+ * Indices of the keys to keep so that linear interpolation between kept keys stays within
+ * `tolerance` of every dropped key: radians for quaternions (slerp), metres for vectors.
+ * The first and last keys are always kept.
+ */
+export function reduceKeys(times, values, width, tolerance) {
+  const n = times.length;
+  if (n <= 2) return [...Array(n).keys()];
+  const keep = [0];
+  let a = 0;
+  const qi = new THREE.Quaternion();
+  const qk = new THREE.Quaternion();
+  const qe = new THREE.Quaternion();
+  const error = (i, b) => {
+    const u = (times[i] - times[a]) / (times[b] - times[a]);
+    if (width === 4) {
+      qi.fromArray(values, a * 4).slerp(qk.fromArray(values, b * 4), u);
+      qe.fromArray(values, i * 4);
+      return 2 * Math.acos(Math.min(1, Math.abs(qi.dot(qe))));
+    }
+    let sum = 0;
+    for (let c = 0; c < width; c++) {
+      const v = values[a * width + c] + (values[b * width + c] - values[a * width + c]) * u;
+      sum += (v - values[i * width + c]) ** 2;
+    }
+    return Math.sqrt(sum);
+  };
+  for (let b = 2; b < n; b++) {
+    let fits = true;
+    for (let i = a + 1; i < b && fits; i++) fits = error(i, b) <= tolerance;
+    if (!fits) {
+      keep.push(b - 1);
+      a = b - 1;
+    }
+  }
+  keep.push(n - 1);
+  return keep;
+}
+
+/** Degrees of rotation error allowed when dropping keys: tighter on the body than fingers. */
+export const KEY_TOLERANCE = { body: 0.25, finger: 0.6, hipsMetres: 0.0015 };
+
+const isFinger = (bone) => /(Thumb|Index|Middle|Ring|Little)/.test(bone);
+
 /** Encode the retarget result as a VRMA GLB (every clip one animation). */
-export function encodeVrma({ rest, clips, gait, order }, extras = {}) {
+export function encodeVrma({ rest, clips, gait, order }, extras = {}, { reduce = false } = {}) {
   const present = new Set(order);
   const nodes = order.map((bone) => {
     const parent = mappedParent(bone, present);
@@ -320,11 +702,26 @@ export function encodeVrma({ rest, clips, gait, order }, extras = {}) {
     return accessors.length - 1;
   };
   const still = addAccessor(new Float32Array([0]), 'SCALAR', { min: [0], max: [0] });
+  const pick = (array, keys, width) => {
+    const out = new array.constructor(keys.length * width);
+    keys.forEach((k, i) => out.set(array.subarray(k * width, k * width + width), i * width));
+    return out;
+  };
   const animations = clips.map((clip) => {
-    const input = addAccessor(clip.times, 'SCALAR', {
-      min: [clip.times[0]],
-      max: [clip.times[clip.times.length - 1]],
-    });
+    // Time accessors are shared inside a clip when two channels keep the same keys.
+    const inputs = new Map();
+    const inputFor = (keys) => {
+      const id = keys.length === clip.times.length ? 'all' : keys.join(',');
+      if (!inputs.has(id)) {
+        const times = pick(clip.times, keys, 1);
+        inputs.set(
+          id,
+          addAccessor(times, 'SCALAR', { min: [times[0]], max: [times[times.length - 1]] }),
+        );
+      }
+      return inputs.get(id);
+    };
+    const all = [...clip.times.keys()];
     const samplers = [];
     const channels = [];
     for (const bone of order) {
@@ -332,20 +729,26 @@ export function encodeVrma({ rest, clips, gait, order }, extras = {}) {
       // A bone that never moves in a clip is stored as a single key.
       const values = clip.rotations[bone];
       const moving = values.some((v, i) => Math.abs(v - values[i % 4]) > 2e-4);
-      const keys = moving ? values : values.slice(0, 4);
+      let keys = [0];
+      if (moving) {
+        const degrees = isFinger(bone) ? KEY_TOLERANCE.finger : KEY_TOLERANCE.body;
+        keys = reduce ? reduceKeys(clip.times, values, 4, (degrees * Math.PI) / 180) : all;
+      }
       const output = addAccessor(
-        Int16Array.from(keys, (v) => Math.round(Math.max(-1, Math.min(1, v)) * 32767)),
+        Int16Array.from(pick(values, keys, 4), (v) => Math.round(Math.max(-1, Math.min(1, v)) * 32767)),
         'VEC4',
         { componentType: 5122, normalized: true },
       );
-      samplers.push({ input: moving ? input : still, output, interpolation: 'LINEAR' });
+      samplers.push({ input: moving ? inputFor(keys) : still, output, interpolation: 'LINEAR' });
       channels.push({
         sampler: samplers.length - 1,
         target: { node: index.get(bone), path: 'rotation' },
       });
     }
-    const output = addAccessor(roundArray(clip.hips, 5), 'VEC3');
-    samplers.push({ input, output, interpolation: 'LINEAR' });
+    const hips = roundArray(clip.hips, 5);
+    const hipsKeys = reduce ? reduceKeys(clip.times, hips, 3, KEY_TOLERANCE.hipsMetres) : all;
+    const output = addAccessor(pick(hips, hipsKeys, 3), 'VEC3');
+    samplers.push({ input: inputFor(hipsKeys), output, interpolation: 'LINEAR' });
     channels.push({
       sampler: samplers.length - 1,
       target: { node: index.get('hips'), path: 'translation' },
@@ -389,44 +792,203 @@ function roundArray(array, digits) {
   return Float32Array.from(array, (v) => Math.round(v * f) / f);
 }
 
+// ---- the UAL cast set ---------------------------------------------------------------------
+
+/** The UAL folder: --ual, then $MAPLE_UAL_DIR, then ~/Downloads/maple-assets/quaternius. */
+export function ualFolder(argument = null) {
+  return argument ?? process.env.MAPLE_UAL_DIR ?? join(homedir(), 'Downloads/maple-assets/quaternius');
+}
+
+/** Paths of the Standard and root-motion GLBs of both packs under a UAL folder. */
+export function ualFiles(folder) {
+  const find = (dir, file) => {
+    if (!existsSync(dir)) return null;
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const path = join(dir, entry.name);
+      if (entry.isDirectory()) {
+        const found = find(path, file);
+        if (found) return found;
+      } else if (entry.name === file) return path;
+    }
+    return null;
+  };
+  const files = {};
+  for (const pack of ['UAL1', 'UAL2'])
+    for (const [key, suffix] of [
+      [pack, ''],
+      [`${pack}_RM`, '_RM'],
+    ]) {
+      const path = find(folder, `${pack}_Standard${suffix}.glb`);
+      if (!path) throw new Error(`${pack}_Standard${suffix}.glb not found under ${folder}`);
+      files[key] = path;
+    }
+  return files;
+}
+
+/** Build the hero-cast clip set from the UAL packs. Returns { result, report }. */
+export async function buildUalCast(folder, { cast = UAL_CAST } = {}) {
+  const files = ualFiles(folder);
+  const gltf = {};
+  for (const [key, path] of Object.entries(files)) gltf[key] = await loadGlb(path);
+  const wanted = { UAL1: new Set(), UAL2: new Set() };
+  for (const entry of cast) {
+    if (entry.alias) continue;
+    wanted[entry.pack].add(entry.clip);
+    if (entry.splice) wanted[entry.splice.pack].add(entry.splice.clip);
+  }
+  const sourced = {};
+  let order = null;
+  let rest = null;
+  let hipsRestHeight = null;
+  for (const pack of ['UAL1', 'UAL2']) {
+    const r = retarget(gltf[pack], RIGS.ual, { only: [...wanted[pack]], rest: RIG_REST.ual });
+    for (const clip of r.clips) sourced[`${pack}/${clip.name}`] = clip;
+    order ??= r.order;
+    rest ??= r.rest;
+    hipsRestHeight ??= r.hipsRestHeight;
+    if (r.order.join() !== order.join()) throw new Error(`${pack} bones differ from UAL1`);
+  }
+  const clips = [];
+  const gait = {};
+  const aliases = {};
+  const speeds = {};
+  for (const entry of cast) {
+    if (entry.alias) {
+      aliases[entry.name] = entry.alias;
+      continue;
+    }
+    let clip = sourced[`${entry.pack}/${entry.clip}`];
+    if (!clip) throw new Error(`${entry.pack} has no clip ${entry.clip}`);
+    const speed = entry.speed ?? 1;
+    if (entry.seconds || speed !== 1)
+      clip = resample(clip, entry.seconds ?? clip.duration / speed, { speed });
+    if (entry.splice) {
+      const other = sourced[`${entry.splice.pack}/${entry.splice.clip}`];
+      const { fingers = true, weight = 1, phase = false } = entry.splice;
+      const bones = entry.splice.bones.filter((b) => fingers || !isFinger(b));
+      clip = splice(clip, other, bones, { envelope: entry.envelope, weight, phase });
+    }
+    if (entry.wave) clip = addWave(clip, entry.wave, entry.envelope, order);
+    clip = { ...clip, name: entry.name, loop: entry.loop ?? true };
+    clips.push(clip);
+    const drop = round((hipsRestHeight - minY(clip.hips)) / hipsRestHeight, 4);
+    gait[entry.name] = { footSpeedPerHipsHeight: 0, hipsDropPerHipsHeight: drop };
+    if (UAL_GAITS.includes(entry.name)) {
+      const ground = rootMotionSpeed(gltf[`${entry.pack}_RM`], entry.clip) * speed;
+      speeds[entry.name] = round(ground, 3);
+      gait[entry.name].footSpeedPerHipsHeight = round(ground / hipsRestHeight, 4);
+    }
+  }
+  // Seat: measured on the mannequin's skinned body in the sitting loop.
+  const sitEntry = cast.find((entry) => entry.name === 'sit');
+  const seat = measureSeat(gltf[sitEntry.pack], sitEntry.clip);
+  gait.sit.seatPerHipsHeight = round(seat.seat / hipsRestHeight, 4);
+  // How far behind the figure origin the pelvis sits, so the game can put it over the seat.
+  gait.sit.seatBackPerHipsHeight = round(-seat.pelvis.z / hipsRestHeight, 4);
+  const result = { rest, clips, gait, order, hipsRestHeight };
+  return {
+    result,
+    aliases,
+    report: {
+      speeds,
+      seatMetres: round(seat.seat, 3),
+      seatPelvis: seat.pelvis.toArray().map((v) => round(v, 3)),
+    },
+  };
+}
+
 function parseArgs(argv) {
   const args = {
-    source: 'apps/game/public/models/characters/student-riko.glb',
-    rig: 'momiji',
+    rig: 'ual',
     out: 'apps/game/public/models/characters/vrm/cast-clips.vrma',
-    // Seat height measured on the source model in its `sit` clip (the Blender cast report).
+    // Only for --rig momiji: the Blender cast source and its measured seat height.
+    source: 'apps/game/public/models/characters/student-riko.glb',
     'seat-report': 'asset-src/characters/momiji-cast/riko.report.json',
+    ual: null,
   };
   for (let i = 0; i < argv.length; i += 2) args[argv[i].replace(/^--/, '')] = argv[i + 1];
   return args;
 }
 
+const sha256 = async (path) => {
+  const { createHash } = await import('node:crypto');
+  return createHash('sha256').update(readFileSync(path)).digest('hex');
+};
+
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const args = parseArgs(process.argv.slice(2));
-  const gltf = await loadGlb(join(root, args.source));
-  const result = retarget(gltf, RIGS[args.rig], { loops: { board: false } });
-  if (args['seat-report'] && result.gait.sit) {
-    const seat = JSON.parse(readFileSync(join(root, args['seat-report']), 'utf8')).seatHeight;
-    result.gait.sit.seatPerHipsHeight = round(seat / result.hipsRestHeight, 4);
+  let bytes;
+  let report;
+  if (args.rig === 'ual') {
+    const folder = ualFolder(args.ual);
+    const { result, aliases, report: measured } = await buildUalCast(folder);
+    const files = ualFiles(folder);
+    const sources = {};
+    for (const [key, path] of Object.entries(files))
+      sources[key] = { file: relative(folder, path), sha256: await sha256(path) };
+    bytes = encodeVrma(
+      result,
+      {
+        source: 'Quaternius Universal Animation Library 1 and 2 [Standard], CC0 1.0',
+        rig: 'ual',
+        aliases,
+      },
+      { reduce: true },
+    );
+    report = {
+      source: 'Quaternius UAL 1 and 2 [Standard]',
+      sources,
+      rig: 'ual',
+      rest: RIG_REST.ual,
+      out: args.out,
+      bytes: bytes.length,
+      bones: result.order,
+      hipsRestHeight: result.hipsRestHeight,
+      aliases,
+      clips: result.clips.map((c) => {
+        const entry = UAL_CAST.find((e) => e.name === c.name);
+        return {
+          name: c.name,
+          from: `${entry.pack}/${entry.clip}${entry.splice ? ` + ${entry.splice.clip} arms` : ''}`,
+          seconds: round(c.duration, 3),
+          loop: c.loop,
+          frames: c.times.length,
+        };
+      }),
+      rootMotionSpeeds: measured.speeds,
+      seatMetres: measured.seatMetres,
+      seatPelvis: measured.seatPelvis,
+      gait: result.gait,
+    };
+  } else {
+    const gltf = await loadGlb(join(root, args.source));
+    const result = retarget(gltf, RIGS[args.rig], {
+      loops: { board: false },
+      rest: RIG_REST[args.rig] ?? 'direction',
+    });
+    if (args['seat-report'] && result.gait.sit) {
+      const seat = JSON.parse(readFileSync(join(root, args['seat-report']), 'utf8')).seatHeight;
+      result.gait.sit.seatPerHipsHeight = round(seat / result.hipsRestHeight, 4);
+    }
+    bytes = encodeVrma(result, { source: args.source, rig: args.rig });
+    report = {
+      source: args.source,
+      rig: args.rig,
+      out: args.out,
+      bytes: bytes.length,
+      bones: result.order,
+      hipsRestHeight: result.hipsRestHeight,
+      clips: result.clips.map((c) => ({
+        name: c.name,
+        seconds: round(c.duration, 3),
+        loop: c.loop,
+        frames: c.times.length,
+      })),
+      gait: result.gait,
+    };
   }
-  const bytes = encodeVrma(result, { source: args.source, rig: args.rig });
   mkdirSync(dirname(join(root, args.out)), { recursive: true });
   writeFileSync(join(root, args.out), bytes);
-  const report = {
-    source: args.source,
-    rig: args.rig,
-    out: args.out,
-    bytes: bytes.length,
-    bones: result.order,
-    hipsRestHeight: result.hipsRestHeight,
-    clips: result.clips.map((c) => ({
-      name: c.name,
-      seconds: round(c.duration, 3),
-      loop: c.loop,
-      frames: c.times.length,
-    })),
-    gait: result.gait,
-  };
   writeFileSync(join(here, 'clips.report.json'), `${JSON.stringify(report, null, 2)}\n`);
-  console.log(JSON.stringify(report, null, 1));
+  console.log(JSON.stringify({ ...report, bones: report.bones.length }, null, 1));
 }

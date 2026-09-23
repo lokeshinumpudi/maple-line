@@ -32,6 +32,15 @@ export const INTENTS = [
   'check-phone',
   'stretch',
 ];
+/**
+ * Short gestures only an acting note (direct_npc, an episode `direct` cue) can ask for. The
+ * local rules and Jev never choose them, and a character showing one is reported to Jev as
+ * lingering. The VRM cast plays them from the UAL clip set; other figures stand idle.
+ */
+export const GESTURE_INTENTS = ['nod-yes', 'shake-no', 'eat'];
+/** Everything an acting note may ask for. */
+export const DIRECTED_INTENTS = [...INTENTS, ...GESTURE_INTENTS];
+const GESTURES = new Set(GESTURE_INTENTS);
 export const MIND_ROLES = [
   'commuter',
   'student',
@@ -770,8 +779,8 @@ export function createNpcMinds({ seed = 1 } = {}) {
         throw new TypeError('A directive needs a mood, an intent, or both.');
       if (mood !== undefined && !MOODS.includes(mood))
         throw new TypeError(`mood must be one of: ${MOODS.join(', ')}.`);
-      if (intent !== undefined && !INTENTS.includes(intent))
-        throw new TypeError(`intent must be one of: ${INTENTS.join(', ')}.`);
+      if (intent !== undefined && !DIRECTED_INTENTS.includes(intent))
+        throw new TypeError(`intent must be one of: ${DIRECTED_INTENTS.join(', ')}.`);
       if (
         typeof holdSeconds !== 'number' ||
         !Number.isFinite(holdSeconds) ||
@@ -830,7 +839,8 @@ export function createNpcMinds({ seed = 1 } = {}) {
           id: e.id,
           role: e.role,
           mood: effectiveMood(e),
-          intent: effectiveIntent(e),
+          // Jev chooses among INTENTS only; a directed gesture reads as lingering.
+          intent: GESTURES.has(effectiveIntent(e)) ? 'linger' : effectiveIntent(e),
           valence: round2(e.valence),
           arousal: round2(e.arousal),
           needs: {

@@ -1,4 +1,9 @@
-import { INTENTS, MAX_DIRECTIVE_SECONDS, MIND_EVENTS, MOODS } from '../simulation/npc-minds.js';
+import {
+  DIRECTED_INTENTS,
+  MAX_DIRECTIVE_SECONDS,
+  MIND_EVENTS,
+  MOODS,
+} from '../simulation/npc-minds.js';
 
 /**
  * WebMCP tools for inspecting NPC minds and giving acting directions.
@@ -32,7 +37,7 @@ export function registerMindTools({ tool, minds, client }) {
             Number(b.source !== 'local') - Number(a.source !== 'local') || (a.id < b.id ? -1 : 1),
         )
         .slice(0, limit);
-      return { ...state, entities, jev: status(), moods: MOODS, intents: INTENTS };
+      return { ...state, entities, jev: status(), moods: MOODS, intents: DIRECTED_INTENTS };
     },
   );
   tool(
@@ -53,7 +58,7 @@ export function registerMindTools({ tool, minds, client }) {
       {
         entityId,
         mood: { type: 'string', enum: MOODS },
-        intent: { type: 'string', enum: INTENTS },
+        intent: { type: 'string', enum: DIRECTED_INTENTS },
         holdSeconds: { type: 'number', minimum: 1, maximum: MAX_DIRECTIVE_SECONDS },
       },
       ['entityId', 'holdSeconds'],

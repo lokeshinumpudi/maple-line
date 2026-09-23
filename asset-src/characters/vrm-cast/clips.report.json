@@ -1,8 +1,27 @@
 {
-  "source": "apps/game/public/models/characters/student-riko.glb",
-  "rig": "momiji",
+  "source": "Quaternius UAL 1 and 2 [Standard]",
+  "sources": {
+    "UAL1": {
+      "file": "UAL1/Universal Animation Library[Standard]/Unreal-Godot/UAL1_Standard.glb",
+      "sha256": "69591853d817488edaa8fd9bf8fc1d821eaeaf789f8627b3cd23b41c4ed67997"
+    },
+    "UAL1_RM": {
+      "file": "UAL1/Universal Animation Library[Standard]/Unreal-Godot/UAL1_Standard_RM.glb",
+      "sha256": "be684571ed655a1b892c2c07e6e2aeca053b606c442d34004adaf1d944090d01"
+    },
+    "UAL2": {
+      "file": "UAL2/Universal Animation Library 2[Standard]/Unreal-Godot/UAL2_Standard.glb",
+      "sha256": "8cee20ab1bc55130092447e810e26df22dd2803eccc54f52137a7d54d7ab88a8"
+    },
+    "UAL2_RM": {
+      "file": "UAL2/Universal Animation Library 2[Standard]/Unreal-Godot/UAL2_Standard_RM.glb",
+      "sha256": "814eee878f82934992d3ea746c539df25e981487109c591f5efbb8dd03286f99"
+    }
+  },
+  "rig": "ual",
+  "rest": "identity",
   "out": "apps/game/public/models/characters/vrm/cast-clips.vrma",
-  "bytes": 119892,
+  "bytes": 358196,
   "bones": [
     "hips",
     "spine",
@@ -25,122 +44,245 @@
     "rightUpperLeg",
     "rightLowerLeg",
     "rightFoot",
-    "rightToes"
+    "rightToes",
+    "leftThumbMetacarpal",
+    "leftThumbProximal",
+    "leftThumbDistal",
+    "leftIndexProximal",
+    "leftIndexIntermediate",
+    "leftIndexDistal",
+    "leftMiddleProximal",
+    "leftMiddleIntermediate",
+    "leftMiddleDistal",
+    "leftRingProximal",
+    "leftRingIntermediate",
+    "leftRingDistal",
+    "leftLittleProximal",
+    "leftLittleIntermediate",
+    "leftLittleDistal",
+    "rightThumbMetacarpal",
+    "rightThumbProximal",
+    "rightThumbDistal",
+    "rightIndexProximal",
+    "rightIndexIntermediate",
+    "rightIndexDistal",
+    "rightMiddleProximal",
+    "rightMiddleIntermediate",
+    "rightMiddleDistal",
+    "rightRingProximal",
+    "rightRingIntermediate",
+    "rightRingDistal",
+    "rightLittleProximal",
+    "rightLittleIntermediate",
+    "rightLittleDistal"
   ],
-  "hipsRestHeight": 0.8593,
+  "hipsRestHeight": 0.9167,
+  "aliases": {
+    "shelter": "watch-train"
+  },
   "clips": [
     {
-      "name": "board",
-      "seconds": 1.2,
-      "loop": false,
-      "frames": 37
+      "name": "idle",
+      "from": "UAL1/Idle_Loop",
+      "seconds": 2.5,
+      "loop": true,
+      "frames": 76
     },
     {
       "name": "chat",
-      "seconds": 3,
+      "from": "UAL1/Idle_Talking_Loop",
+      "seconds": 2.933,
       "loop": true,
-      "frames": 91
-    },
-    {
-      "name": "check-phone",
-      "seconds": 3,
-      "loop": true,
-      "frames": 91
-    },
-    {
-      "name": "hurry",
-      "seconds": 0.9,
-      "loop": true,
-      "frames": 28
-    },
-    {
-      "name": "idle",
-      "seconds": 4,
-      "loop": true,
-      "frames": 121
-    },
-    {
-      "name": "shelter",
-      "seconds": 3,
-      "loop": true,
-      "frames": 91
-    },
-    {
-      "name": "sit",
-      "seconds": 5,
-      "loop": true,
-      "frames": 151
-    },
-    {
-      "name": "stretch",
-      "seconds": 4,
-      "loop": true,
-      "frames": 121
+      "frames": 89
     },
     {
       "name": "walk",
-      "seconds": 1.2,
+      "from": "UAL1/Walk_Loop",
+      "seconds": 1.333,
       "loop": true,
-      "frames": 37
+      "frames": 41
+    },
+    {
+      "name": "walk-formal",
+      "from": "UAL1/Walk_Formal_Loop",
+      "seconds": 1.333,
+      "loop": true,
+      "frames": 41
+    },
+    {
+      "name": "walk-carry",
+      "from": "UAL1/Walk_Loop + Walk_Carry_Loop arms",
+      "seconds": 1.333,
+      "loop": true,
+      "frames": 41
+    },
+    {
+      "name": "hurry",
+      "from": "UAL1/Walk_Loop + Jog_Fwd_Loop arms",
+      "seconds": 0.967,
+      "loop": true,
+      "frames": 30
+    },
+    {
+      "name": "sit",
+      "from": "UAL1/Sitting_Idle_Loop",
+      "seconds": 1.667,
+      "loop": true,
+      "frames": 51
+    },
+    {
+      "name": "sit-enter",
+      "from": "UAL1/Sitting_Enter",
+      "seconds": 1.3,
+      "loop": false,
+      "frames": 40
+    },
+    {
+      "name": "sit-exit",
+      "from": "UAL1/Sitting_Exit",
+      "seconds": 1.033,
+      "loop": false,
+      "frames": 32
+    },
+    {
+      "name": "check-phone",
+      "from": "UAL2/Idle_TalkingPhone_Loop",
+      "seconds": 2.933,
+      "loop": true,
+      "frames": 89
     },
     {
       "name": "watch-train",
+      "from": "UAL2/Idle_FoldArms_Loop",
+      "seconds": 2.5,
+      "loop": true,
+      "frames": 76
+    },
+    {
+      "name": "board",
+      "from": "UAL1/Interact",
+      "seconds": 2,
+      "loop": false,
+      "frames": 61
+    },
+    {
+      "name": "wave",
+      "from": "UAL1/Idle_Loop + Idle_Rail_Call arms",
+      "seconds": 2.5,
+      "loop": true,
+      "frames": 76
+    },
+    {
+      "name": "stretch",
+      "from": "UAL1/Idle_Loop + Pistol_Aim_Up arms",
       "seconds": 4,
       "loop": true,
       "frames": 121
     },
     {
-      "name": "wave",
-      "seconds": 2,
+      "name": "nod-yes",
+      "from": "UAL2/Yes",
+      "seconds": 2.5,
       "loop": true,
-      "frames": 61
+      "frames": 76
+    },
+    {
+      "name": "shake-no",
+      "from": "UAL2/Idle_No_Loop",
+      "seconds": 2.5,
+      "loop": true,
+      "frames": 76
+    },
+    {
+      "name": "eat",
+      "from": "UAL2/Consume",
+      "seconds": 1.333,
+      "loop": true,
+      "frames": 41
     }
   ],
+  "rootMotionSpeeds": {
+    "walk": 0.975,
+    "walk-formal": 0.975,
+    "walk-carry": 0.975,
+    "hurry": 1.365
+  },
+  "seatMetres": 0.464,
+  "seatPelvis": [
+    0.003,
+    0.542,
+    -0.331
+  ],
   "gait": {
-    "board": {
-      "footSpeedPerHipsHeight": 0.1716,
-      "hipsDropPerHipsHeight": -0.0001
+    "idle": {
+      "footSpeedPerHipsHeight": 0,
+      "hipsDropPerHipsHeight": 0.0524
     },
     "chat": {
       "footSpeedPerHipsHeight": 0,
-      "hipsDropPerHipsHeight": -0.0001
+      "hipsDropPerHipsHeight": 0.0509
     },
-    "check-phone": {
-      "footSpeedPerHipsHeight": 0,
-      "hipsDropPerHipsHeight": -0.0001
+    "walk": {
+      "footSpeedPerHipsHeight": 1.0636,
+      "hipsDropPerHipsHeight": 0.0562
+    },
+    "walk-formal": {
+      "footSpeedPerHipsHeight": 1.0636,
+      "hipsDropPerHipsHeight": 0.0463
+    },
+    "walk-carry": {
+      "footSpeedPerHipsHeight": 1.0636,
+      "hipsDropPerHipsHeight": 0.0562
     },
     "hurry": {
-      "footSpeedPerHipsHeight": 1.8972,
-      "hipsDropPerHipsHeight": 0.0192
-    },
-    "idle": {
-      "footSpeedPerHipsHeight": 0,
-      "hipsDropPerHipsHeight": -0.0001
-    },
-    "shelter": {
-      "footSpeedPerHipsHeight": 0,
-      "hipsDropPerHipsHeight": -0.0001
+      "footSpeedPerHipsHeight": 1.489,
+      "hipsDropPerHipsHeight": 0.0556
     },
     "sit": {
       "footSpeedPerHipsHeight": 0,
-      "hipsDropPerHipsHeight": 0.4568,
-      "seatPerHipsHeight": 0.4562
+      "hipsDropPerHipsHeight": 0.4093,
+      "seatPerHipsHeight": 0.5066,
+      "seatBackPerHipsHeight": 0.3616
     },
-    "stretch": {
+    "sit-enter": {
       "footSpeedPerHipsHeight": 0,
-      "hipsDropPerHipsHeight": -0.0001
+      "hipsDropPerHipsHeight": 0.4096
     },
-    "walk": {
-      "footSpeedPerHipsHeight": 1.233,
-      "hipsDropPerHipsHeight": -0.0001
+    "sit-exit": {
+      "footSpeedPerHipsHeight": 0,
+      "hipsDropPerHipsHeight": 0.4093
+    },
+    "check-phone": {
+      "footSpeedPerHipsHeight": 0,
+      "hipsDropPerHipsHeight": 0.0509
     },
     "watch-train": {
       "footSpeedPerHipsHeight": 0,
-      "hipsDropPerHipsHeight": -0.0001
+      "hipsDropPerHipsHeight": 0.0524
+    },
+    "board": {
+      "footSpeedPerHipsHeight": 0,
+      "hipsDropPerHipsHeight": 0.0524
     },
     "wave": {
       "footSpeedPerHipsHeight": 0,
-      "hipsDropPerHipsHeight": -0.0001
+      "hipsDropPerHipsHeight": 0.0524
+    },
+    "stretch": {
+      "footSpeedPerHipsHeight": 0,
+      "hipsDropPerHipsHeight": 0.0524
+    },
+    "nod-yes": {
+      "footSpeedPerHipsHeight": 0,
+      "hipsDropPerHipsHeight": 0.0528
+    },
+    "shake-no": {
+      "footSpeedPerHipsHeight": 0,
+      "hipsDropPerHipsHeight": 0.0524
+    },
+    "eat": {
+      "footSpeedPerHipsHeight": 0,
+      "hipsDropPerHipsHeight": 0.0431
     }
   }
 }

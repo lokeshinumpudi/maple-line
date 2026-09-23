@@ -8,20 +8,32 @@ import { toneVrm } from './mtoon-tone.js';
 import { createVrmFace } from './vrm-expressions.js';
 import { vrmHumanoidRig } from './humanoid-bones.js';
 
-/** Fallback gait per unit of hips height (the Blender cast's measured values). */
-export const DEFAULT_GAIT = Object.freeze({ walk: 1.233, hurry: 1.897, seat: 0.456 });
+/** Fallback gait per unit of hips height (the UAL clip set's measured values). */
+export const DEFAULT_GAIT = Object.freeze({ walk: 1.064, hurry: 1.489, seat: 0.507 });
 
-/** Foot speeds and seat height in metres for a character whose hips rest at `hipsHeight`. */
+/**
+ * Foot speeds and seat geometry in metres for a character whose hips rest at `hipsHeight`.
+ * `speeds` has every locomotion clip's foot speed (walk variants included); `seatBack` is
+ * how far behind the figure origin the pelvis sits, and `seatDrop` how far the hips drop,
+ * in the sitting loop.
+ */
 export function vrmGait(extras, hipsHeight) {
   const gait = extras?.gait ?? {};
   const walk = gait.walk?.footSpeedPerHipsHeight || DEFAULT_GAIT.walk;
   const hurry = gait.hurry?.footSpeedPerHipsHeight || DEFAULT_GAIT.hurry;
   const seat = gait.sit?.seatPerHipsHeight || DEFAULT_GAIT.seat;
   const r = (v) => Math.round(v * 1000) / 1000;
+  const speeds = {};
+  for (const [name, entry] of Object.entries(gait))
+    if (entry?.footSpeedPerHipsHeight > 0.2)
+      speeds[name] = r(entry.footSpeedPerHipsHeight * hipsHeight);
   return {
     walkSpeed: r(walk * hipsHeight),
     hurrySpeed: r(hurry * hipsHeight),
     seatHeight: r(seat * hipsHeight),
+    seatBack: r((gait.sit?.seatBackPerHipsHeight ?? 0) * hipsHeight),
+    seatDrop: r((gait.sit?.hipsDropPerHipsHeight ?? 0) * hipsHeight),
+    speeds,
   };
 }
 
@@ -56,6 +68,9 @@ export function createVrmActor({ THREE, vrm, m, clipSet, mobile = false }) {
       clip.name = clipSet.names[i] ?? `clip-${i}`;
       actions.set(clip.name, mixer.clipAction(clip));
     });
+    // Names that share another clip's animation (shelter plays watch-train's folded arms).
+    for (const [alias, target] of Object.entries(clipSet.extras?.aliases ?? {}))
+      if (!actions.has(alias) && actions.has(target)) actions.set(alias, actions.get(target));
   }
   const gait = vrmGait(clipSet?.extras, hipsHeight);
   const scenePosture = vrm.scene.userData?.posture ?? {};

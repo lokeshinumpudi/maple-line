@@ -153,7 +153,21 @@ test('clips follow boarding, seating and speed first, then the mind’s intent',
   assert.equal(heroClip({ speed: 1.9 }).clip, 'hurry');
   assert.equal(heroClip({ speed: 3 }).timeScale, 1.5);
   assert.equal(heroClip({ speed: 1.3, walkSpeed: 1.07, hurrySpeed: 1.61 }).clip, 'walk');
-  assert.equal(heroClip({ speed: 1.4, walkSpeed: 1.07, hurrySpeed: 1.61 }).clip, 'hurry');
+  assert.equal(heroClip({ speed: 1.5, walkSpeed: 1.07, hurrySpeed: 1.61 }).clip, 'hurry');
+  // Hysteresis: at 1.4 m/s (boundary 1.34) a walker keeps walking and a hurrier keeps
+  // hurrying, so a speed hovering at the boundary cannot flip the gait.
+  assert.equal(heroClip({ speed: 1.4, walkSpeed: 1.07, hurrySpeed: 1.61 }).clip, 'walk');
+  assert.equal(
+    heroClip({ speed: 1.4, walkSpeed: 1.07, hurrySpeed: 1.61, hurrying: true }).clip,
+    'hurry',
+  );
+  // Sitting down and standing up play once, before the sit loop and after it.
+  assert.deepEqual(heroClip({ pose: 'reading', seat: 'enter' }), {
+    clip: 'sit-enter',
+    timeScale: 1,
+    once: true,
+  });
+  assert.equal(heroClip({ seat: 'exit', speed: 1 }).clip, 'sit-exit');
   assert.equal(heroClip({ speed: 0, intent: 'wave' }).clip, 'wave');
   assert.equal(heroClip({ speed: 0.1, intent: 'check-phone' }).clip, 'check-phone');
   assert.equal(heroClip({ pose: 'reading', intent: 'wave' }).clip, 'sit');

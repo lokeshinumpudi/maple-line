@@ -1,5 +1,10 @@
 import { normalizeShot } from '../camera/director.js';
-import { MOODS, INTENTS, MIND_EVENTS, ENTITY_ID_PATTERN } from '../simulation/npc-minds.js';
+import {
+  MOODS,
+  DIRECTED_INTENTS,
+  MIND_EVENTS,
+  ENTITY_ID_PATTERN,
+} from '../simulation/npc-minds.js';
 import { NARRATION_LANGUAGES, VOICE_CAST, VOICE_DELIVERY } from '@maple-line/voice-score';
 
 /**
@@ -279,7 +284,9 @@ export function normalizeEpisode(input, { stops = [], crossings = [] } = {}) {
             result.direct = clean({
               cast: direct.cast,
               mood: oneOf(direct.mood, MOODS, `${cueAt}.direct.mood`, { optional: true }),
-              intent: oneOf(direct.intent, INTENTS, `${cueAt}.direct.intent`, { optional: true }),
+              intent: oneOf(direct.intent, DIRECTED_INTENTS, `${cueAt}.direct.intent`, {
+                optional: true,
+              }),
               hold: number(direct.hold ?? 30, `${cueAt}.direct.hold`, 1, 300),
             });
           }

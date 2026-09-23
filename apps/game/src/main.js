@@ -970,6 +970,8 @@ const heroCasts = MOMIJI_CAST.map((member) =>
     ...member,
   }),
 );
+// Development: motion measurement scripts switch rig layers and read bones through this.
+if (import.meta.env.DEV) window.__mapleHeroes = heroCasts;
 const stationModules = createStationModules({ THREE, loader: modelLoader, parent: station });
 // The Blender train replaces the procedural exterior once its GLB loads. `?train=procedural`
 // keeps the code-built train, for comparisons and as a manual fallback.

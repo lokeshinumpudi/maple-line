@@ -47,20 +47,20 @@ Story conversations keep their own camera: the director pauses while a conversat
 
 These register through `registerGameWebMCP({ extensions })` in development builds, next to the existing game tools. Arguments are validated against the schemas in `agent/director-tools.js` and `camera/director.js` before anything moves.
 
-| Tool                        | Purpose                                                                                             |
-| --------------------------- | --------------------------------------------------------------------------------------------------- |
-| `get_director_state`        | Active shot, lens, queue, recent history, film look, nearby stop/bridge/tunnel and visible people   |
-| `direct_shot`               | Cut to one shot now; the editor continues afterwards                                                |
-| `play_sequence`             | 1–40 shots with an optional title card; each shot can carry `caption`, `subtitle`, `line` and `set` |
-| `stop_sequence`             | Clear queued shots                                                                                  |
-| `set_film_look`             | Change quality, or force letterbox bars outside the director                                        |
-| `get_npc_minds`             | Persona, mood, needs, intent and source (`local`, `jev`, `directed`) for background characters      |
-| `direct_npc`                | Give one character an acting note (`mood`, `intent`) for 1–300 seconds                              |
-| `cue_npc_event`             | Tell characters something happened (rain, a late train, a horn)                                     |
-| `grab_character`            | Grab the character at a screen point (NDC) or by id; see below                                      |
-| `list_grabbable_characters` | Visible characters with their screen centre, nearest first                                          |
-| `get_grabbed_characters`    | Recent grabs, including characters a person Alt-clicked                                             |
-| `get_world_state` …         | Existing game, story, route, duty and level-building tools                                          |
+| Tool                        | Purpose                                                                                                                |
+| --------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `get_director_state`        | Active shot, lens, queue, recent history, film look, nearby stop/bridge/tunnel and visible people                      |
+| `direct_shot`               | Cut to one shot now; the editor continues afterwards                                                                   |
+| `play_sequence`             | 1–40 shots with an optional title card; each shot can carry `caption`, `subtitle`, `line` and `set`                    |
+| `stop_sequence`             | Clear queued shots                                                                                                     |
+| `set_film_look`             | Change quality, or force letterbox bars outside the director                                                           |
+| `get_npc_minds`             | Persona, mood, needs, intent and source (`local`, `jev`, `directed`) for background characters                         |
+| `direct_npc`                | Give one character an acting note (`mood`, `intent`) for 1–300 seconds; `nod-yes`, `shake-no` and `eat` are notes only |
+| `cue_npc_event`             | Tell characters something happened (rain, a late train, a horn)                                                        |
+| `grab_character`            | Grab the character at a screen point (NDC) or by id; see below                                                         |
+| `list_grabbable_characters` | Visible characters with their screen centre, nearest first                                                             |
+| `get_grabbed_characters`    | Recent grabs, including characters a person Alt-clicked                                                                |
+| `get_world_state` …         | Existing game, story, route, duty and level-building tools                                                             |
 
 `set` accepts `weather`, `timeOfDay` (`daylight`, `sunrise`, `sunset`, `dusk`), `location` (a place id or route z) and `speedKmh`. It runs through the same actions as the UI, including Places travel for location jumps, and the cut fades through black. Unfinished station duties block location jumps here, as they block Places.
 

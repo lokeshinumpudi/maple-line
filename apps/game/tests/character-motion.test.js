@@ -77,14 +77,21 @@ test('two-bone IK drives a real bone chain to the target', () => {
   const target = V(0.1, 0.25, 0.2);
   applyTwoBoneIK(THREE, hips, knee, ankle, target, V(0, 0.5, 1));
   close(ankle.getWorldPosition(V()).distanceTo(target), 0, 1e-4);
-  // Weight 0.5 goes half way from where the foot was.
-  hips.quaternion.identity();
-  knee.quaternion.identity();
-  scene.updateMatrixWorld(true);
+  // A partial weight blends the joint rotations: part of the way, and a weight near zero
+  // moves the foot by almost nothing (no pop when an IK layer fades out).
+  const reset = () => {
+    hips.quaternion.identity();
+    knee.quaternion.identity();
+    scene.updateMatrixWorld(true);
+  };
+  reset();
   const start = ankle.getWorldPosition(V());
   applyTwoBoneIK(THREE, hips, knee, ankle, target, V(0, 0.5, 1), 0.5);
-  const half = start.clone().lerp(target, 0.5);
-  close(ankle.getWorldPosition(V()).distanceTo(half), 0, 1e-3);
+  const partway = ankle.getWorldPosition(V()).distanceTo(target);
+  assert.ok(partway > 0.05 && partway < start.distanceTo(target) * 0.75, String(partway));
+  reset();
+  applyTwoBoneIK(THREE, hips, knee, ankle, target, V(0, 0.5, 1), 0.001);
+  assert.ok(ankle.getWorldPosition(V()).distanceTo(start) < 0.002);
 });
 
 // ---- steering ---------------------------------------------------------------------------

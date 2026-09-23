@@ -38,6 +38,8 @@ export const MOMIJI_CAST = Object.freeze([
     path: 'models/characters/commuter-hero.glb',
     vrm: 'models/characters/vrm/sato.vrm',
     props: 'models/characters/props/sato.glb',
+    // The office commuter walks upright, arms close (UAL Walk_Formal_Loop).
+    clipVariants: { walk: 'walk-formal' },
   },
   {
     personId: 'commuter-2',
@@ -47,6 +49,9 @@ export const MOMIJI_CAST = Object.freeze([
     // Riko keeps her phone in a pocket and takes it out to check it; her hands are for the
     // radio she is carrying home.
     pocketed: ['phone'],
+    // Walking with the radio: the carry walk holds both hands in front without an arm swing,
+    // and the radio stays in her left hand. No arm IK runs against that clip.
+    carry: { prop: 'radio', walk: 'walk-carry', hurry: 'walk-carry' },
   },
   // The Momiji reading bench is 0.61 m above the reader's figure origin, matching the
   // instanced figure's seated thighs (population.js reading pose).
@@ -59,17 +64,46 @@ export const MOMIJI_CAST = Object.freeze([
   },
 ]);
 
-/** The shared clip set for every VRM, retargeted offline (asset-src/characters/vrm-cast). */
+/**
+ * The shared clip set for every VRM: Quaternius UAL 1 and 2, retargeted offline by
+ * asset-src/characters/vrm-cast/retarget.mjs. The Blender cast's own clips stay inside the
+ * Blender GLBs (`?cast=blender`) and are not used on VRMs.
+ */
 export const VRM_CLIPS = 'models/characters/vrm/cast-clips.vrma';
 
 /** Syllables per second in the talking rhythm below (the jaw's main 24 rad/s wave). */
 const SYLLABLE_RATE = 24 / (2 * Math.PI);
 
 /** Intents whose clip has the same name. Others (continue, linger, hurry, sit) stand idle. */
-const INTENT_CLIPS = new Set(['wave', 'check-phone', 'watch-train', 'shelter', 'chat', 'stretch']);
+const INTENT_CLIPS = new Set([
+  'wave',
+  'check-phone',
+  'watch-train',
+  'shelter',
+  'chat',
+  'stretch',
+  'nod-yes',
+  'shake-no',
+  'eat',
+]);
 const SEATED_POSES = new Set(['reading', 'seated']);
 /** How much idle life each clip takes: full while idle, a little under gestures. */
-const IDLE_LIFE = { idle: 1, 'watch-train': 0.6, chat: 0.4, shelter: 0.3, 'check-phone': 0.4 };
+const IDLE_LIFE = {
+  idle: 1,
+  'watch-train': 0.6,
+  chat: 0.4,
+  shelter: 0.3,
+  'check-phone': 0.4,
+  'nod-yes': 0.3,
+  'shake-no': 0.3,
+  eat: 0.3,
+};
+/** m/s either side of the walk/hurry boundary before the gait changes. */
+export const GAIT_HYSTERESIS = 0.1;
+/** Clips that are a sitting pose: the feet are not planted and idle life rests. */
+const SIT_CLIPS = new Set(['sit', 'sit-enter', 'sit-exit']);
+/** A mind's intent must hold this long before the body changes gesture: no flicker. */
+export const INTENT_HOLD_SECONDS = 1.5;
 /** Clips during which a cradled prop comes up to the chest. */
 const CRADLE_CLIPS = new Set(['idle', 'watch-train']);
 /** A train further away than this, out of sight down the line, is not looked at. */
@@ -91,11 +125,19 @@ export function heroClip({
   turning = false,
   walkSpeed = HERO_WALK_SPEED,
   hurrySpeed = HERO_HURRY_SPEED,
+  seat = null,
+  // Already hurrying: the switch back to walking waits until the body is clearly slower, so
+  // a speed that hovers at the boundary does not flip the gait every few frames.
+  hurrying = false,
 } = {}) {
   if (state === 'boarding') return { clip: 'board', timeScale: 1, once: true };
+  // Sitting down and standing up, when the model has the transitions (see seatPhase).
+  if (seat === 'enter') return { clip: 'sit-enter', timeScale: 1, once: true };
+  if (seat === 'exit') return { clip: 'sit-exit', timeScale: 1, once: true };
   if (SEATED_POSES.has(pose)) return { clip: 'sit', timeScale: 1 };
   if (speed > 0.25) {
-    if (speed > (walkSpeed + hurrySpeed) / 2)
+    const boundary = (walkSpeed + hurrySpeed) / 2 + (hurrying ? -GAIT_HYSTERESIS : GAIT_HYSTERESIS);
+    if (speed > boundary)
       return {
         clip: 'hurry',
         timeScale: strideTimeScale(speed, hurrySpeed, { min: 0.8, max: 1.5 }),
@@ -105,6 +147,23 @@ export function heroClip({
   if (turning) return { clip: 'turn', timeScale: 1 };
   if (INTENT_CLIPS.has(intent)) return { clip: intent, timeScale: 1 };
   return { clip: 'idle', timeScale: 1 };
+}
+
+/**
+ * The next sit-transition phase: 'enter' plays sit-enter, 'seated' the sit loop, 'exit'
+ * sit-exit, 'none' standing. `clipDone` says the current one-shot has finished. Without
+ * transition clips (the Blender GLBs) a person goes straight between 'none' and 'seated'.
+ */
+export function seatPhase(phase, { seated, clipDone = false, jumped = false, hasTransitions }) {
+  if (jumped || !hasTransitions) return seated ? 'seated' : 'none';
+  if (seated) {
+    if (phase === 'none' || phase === 'exit') return 'enter';
+    if (phase === 'enter' && clipDone) return 'seated';
+    return phase;
+  }
+  if (phase === 'seated' || phase === 'enter') return 'exit';
+  if (phase === 'exit' && clipDone) return 'none';
+  return phase;
 }
 
 /** Smile weight for a mind's mood; neutral moods keep a slight softness. */
@@ -132,6 +191,10 @@ export function createHeroCast({
   props: propsPath = null,
   // Props kept out of sight except while their clip needs them (a phone in a pocket).
   pocketed = [],
+  // Per-person clip names: { walk: 'walk-formal' } plays that clip in place of `walk`.
+  clipVariants = {},
+  // A prop carried in both hands while walking: { prop: 'radio', walk: 'walk-carry' }.
+  carry = null,
   random = Math.random,
 }) {
   let status = 'loading';
@@ -151,8 +214,25 @@ export function createHeroCast({
   let talkFor = 0;
   let talkT = 0;
   let smile = 0;
-  let gait = { walkSpeed: HERO_WALK_SPEED, hurrySpeed: HERO_HURRY_SPEED, seatHeight: 0 };
+  let gait = {
+    walkSpeed: HERO_WALK_SPEED,
+    hurrySpeed: HERO_HURRY_SPEED,
+    seatHeight: 0,
+    seatBack: 0,
+    seatDrop: 0,
+    speeds: {},
+  };
   let lookingAt = null;
+  // Sitting down and standing up (VRM clip sets carry sit-enter and sit-exit).
+  let seat = 'none';
+  let seatClipTime = 0;
+  let seatShift = 0;
+  let hipsRestY = null;
+  // The intent the body is showing, held for INTENT_HOLD_SECONDS before it may change.
+  let shownIntent = null;
+  let shownFor = Infinity;
+  // Development and measurement switches: { layers: {look: false, ...}, clip, intent }.
+  let debug = {};
   const steering = createSteering();
   const head = new THREE.Vector3();
   const lookPoint = new THREE.Vector3();
@@ -194,6 +274,7 @@ export function createHeroCast({
     root.traverse((node) => {
       if (Number.isFinite(node.userData?.walkSpeed))
         gait = {
+          ...gait,
           walkSpeed: node.userData.walkSpeed,
           hurrySpeed: node.userData.hurrySpeed ?? HERO_HURRY_SPEED,
           seatHeight: node.userData.seatHeight ?? 0,
@@ -233,6 +314,21 @@ export function createHeroCast({
     // A VRM's clips run inside actor.update(), after the blender sets the fade weights.
     blender = createClipBlender(THREE, mixer, actions, { random, drive: !actor });
     if (actor?.vrm.lookAt) scene.add(eyeTarget);
+    hipsRestY = humanoid.bones.hips?.position.y ?? null;
+  }
+
+  /** How far a sitting pose has gone down, 0 standing to 1 seated, read from the hips. */
+  function seatedFraction() {
+    if (seat === 'none') return 0;
+    if (seat === 'seated' || !(gait.seatDrop > 0) || hipsRestY === null) return 1;
+    const drop = hipsRestY - humanoid.bones.hips.position.y;
+    return Math.min(1, Math.max(0, drop / gait.seatDrop));
+  }
+
+  /** The clip a person's variants and carried props replace `name` with. */
+  function variantOf(name, carrying) {
+    const wanted = (carrying && carry?.[name]) || clipVariants[name];
+    return wanted && actions.has(wanted) ? wanted : name;
   }
 
   const ready = (async () => {
@@ -308,6 +404,7 @@ export function createHeroCast({
       }
       const seated = SEATED_POSES.has(figure.pose);
       const boarding = figure.state === 'boarding';
+      const firstFrame = !wasVisible;
       const target = {
         x: figure.position.x,
         y: figure.position.y,
@@ -320,14 +417,38 @@ export function createHeroCast({
       const before = { x: steering.state.x, z: steering.state.z };
       if (!wasVisible) steering.snap(target);
       const step = paused || !(dt > 0) ? 0 : dt;
-      const body = step ? steering.update(step, target) : steering.state;
+      // Standing up: the body stays on the spot until sit-exit ends, then walks on.
+      const standingUp = seat === 'exit' && !seated;
+      const body = step && !standingUp ? steering.update(step, target) : steering.state;
       const jumped =
         !wasVisible ||
         Math.hypot(body.x - before.x, body.z - before.z) > steering.options.snapDistance;
       wasVisible = true;
+      const clipDone =
+        (seat === 'enter' || seat === 'exit') &&
+        seatClipTime >= (actions.get(`sit-${seat}`)?.getClip().duration ?? 0);
+      const nextSeat = seatPhase(seat, {
+        seated,
+        clipDone,
+        jumped: firstFrame || jumped,
+        hasTransitions: actions.has('sit-enter') && actions.has('sit-exit'),
+      });
+      if (nextSeat !== seat) seatClipTime = 0;
+      seat = nextSeat;
       root.position.set(body.x, body.y, body.z);
       root.rotation.y = body.heading;
-      if (seated && seatHeight !== null) root.position.y += seatHeight - gait.seatHeight;
+      // Seated clips put the pelvis behind the figure origin: move forward so it lands over
+      // the bench, and lift by the bench height once the hips have gone down.
+      const shiftTarget = seat === 'none' ? 0 : gait.seatBack;
+      seatShift =
+        firstFrame || jumped
+          ? shiftTarget
+          : seatShift + (shiftTarget - seatShift) * (1 - Math.exp(-(step || 0) * 6));
+      if (seatShift) {
+        root.position.x += Math.sin(body.heading) * seatShift;
+        root.position.z += Math.cos(body.heading) * seatShift;
+      }
+      if (seatHeight !== null) root.position.y += (seatHeight - gait.seatHeight) * seatedFraction();
       entry.position.copy(root.position);
       for (const prop of props) {
         if (prop.name === 'newspaper') prop.node.visible = seated;
@@ -345,16 +466,42 @@ export function createHeroCast({
       if (!step) return;
 
       const expression = minds?.expressionFor(personId);
+      // Hold a shown intent for a moment, so a mind that changes its mind every frame does
+      // not restart gestures.
+      const wantedIntent = debug.intent ?? expression?.intent ?? 'continue';
+      shownFor += step;
+      if (wantedIntent !== shownIntent && shownFor >= INTENT_HOLD_SECONDS) {
+        shownIntent = wantedIntent;
+        shownFor = 0;
+      }
+      const carrying = Boolean(
+        carry && props.some((prop) => prop.name === carry.prop && prop.node.visible),
+      );
+      const walkName = variantOf('walk', carrying);
+      const hurryName = variantOf('hurry', carrying);
       const choice = heroClip({
         speed: body.speed,
-        intent: expression?.intent,
+        intent: shownIntent,
         pose: figure.pose,
         state: figure.state,
         turning: body.turning || Math.abs(body.turnVelocity) > 1.2,
-        walkSpeed: gait.walkSpeed,
+        walkSpeed: gait.speeds[walkName] ?? gait.walkSpeed,
         hurrySpeed: gait.hurrySpeed,
+        seat: seat === 'enter' || seat === 'exit' ? seat : null,
+        hurrying: blender.name === hurryName && hurryName !== walkName,
       });
       if (choice.clip === 'turn' && !actions.has('turn')) choice.clip = 'idle';
+      if (choice.clip === 'walk') choice.clip = walkName;
+      if (choice.clip === 'hurry' && hurryName !== 'hurry') {
+        // A carried radio: hurrying is the carry walk at a quicker cadence.
+        choice.clip = hurryName;
+        choice.timeScale = strideTimeScale(body.speed, gait.speeds[hurryName] ?? gait.walkSpeed);
+      }
+      if (debug.clip && actions.has(debug.clip)) {
+        choice.clip = debug.clip;
+        choice.timeScale = debug.timeScale ?? choice.timeScale;
+      }
+      seatClipTime += step;
       rig?.resetPose();
       blender.play(choice.clip, choice.timeScale, choice.once);
       blender.update(step);
@@ -364,16 +511,20 @@ export function createHeroCast({
         if (!rig) return;
         const look = chooseLook(expression, context, walking);
         lookingAt = look?.what ?? null;
+        const inSeat = seat !== 'none' || seated || SIT_CLIPS.has(blender.name);
         rig.apply(step, {
-          idle: walking ? 0 : (IDLE_LIFE[blender.name] ?? 0),
-          breath: seated ? 0.6 : 1,
+          idle: walking || inSeat ? 0 : (IDLE_LIFE[blender.name] ?? 0),
+          breath: inSeat ? 0.6 : 1,
           lookTarget: look?.point ?? null,
           lookStrength: look?.strength ?? 0,
           maxYaw: walking ? 0.6 : 1.2,
-          planted: !seated && !boarding,
+          planted: !inSeat && !boarding,
           moving: walking || blender.name === 'turn',
           groundY: body.y,
-          cradle: CRADLE_CLIPS.has(blender.name) && body.resting && !body.turning,
+          // Someone carrying the prop keeps it cradled while turning on the spot; otherwise
+          // it comes up only while standing still.
+          cradle: CRADLE_CLIPS.has(blender.name) && (carrying || (body.resting && !body.turning)),
+          layers: debug.layers,
         });
         humanoid.bones.head.getWorldPosition(head);
         if (actor?.vrm.lookAt) {
@@ -423,12 +574,26 @@ export function createHeroCast({
     get personId() {
       return personId;
     },
+    /**
+     * Development and measurement switches. `layers` turns rig layers off by name
+     * (character-rig.js RIG_LAYERS), `clip` forces a clip, `intent` replaces the mind's.
+     */
+    setDebug(next = {}) {
+      debug = { ...next };
+    },
+    /** The live model root, for inspection tools (null until loaded). */
+    get root() {
+      return root;
+    },
     getState() {
       const body = steering.state;
       return {
         status,
         personId,
         clip: blender?.name ?? null,
+        clipWeights: debug.trace ? blender?.weights().map((w) => Number(w.toFixed(3))) : undefined,
+        clipTime: debug.trace ? blender?.time : undefined,
+        seat,
         speed: Number(body.speed.toFixed(2)),
         talking: talkFor > 0,
         clips: [...actions.keys()],

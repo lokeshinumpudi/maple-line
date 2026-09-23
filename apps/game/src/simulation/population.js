@@ -14,6 +14,9 @@ const PAUSING_INTENTS = new Set([
   'sit',
   'stretch',
   'wave',
+  'nod-yes',
+  'shake-no',
+  'eat',
 ]);
 // Deterministic residents and passengers. No renderer or random position changes.
 export function createPopulation({ center, terrain, homes = [], stationZ = 525 }) {

@@ -32,16 +32,23 @@ import { MOMIJI_CAST, VRM_CLIPS } from '../src/world/hero-cast.js';
 
 const root = new URL('../../../', import.meta.url);
 const publicDir = new URL('apps/game/public/', root);
+/** Every clip in the shared VRM clip file (UAL); `shelter` is an alias of watch-train. */
 const CAST_CLIPS = [
   'board',
   'chat',
   'check-phone',
+  'eat',
   'hurry',
   'idle',
-  'shelter',
+  'nod-yes',
+  'shake-no',
   'sit',
+  'sit-enter',
+  'sit-exit',
   'stretch',
   'walk',
+  'walk-carry',
+  'walk-formal',
   'watch-train',
   'wave',
 ];
@@ -169,9 +176,16 @@ test('gait scales with leg length and the stoop leans the upper back forward', (
       sit: { seatPerHipsHeight: 0.46 },
     },
   };
-  assert.deepEqual(vrmGait(extras, 1), { walkSpeed: 1.2, hurrySpeed: 1.9, seatHeight: 0.46 });
+  assert.deepEqual(vrmGait(extras, 1), {
+    walkSpeed: 1.2,
+    hurrySpeed: 1.9,
+    seatHeight: 0.46,
+    seatBack: 0,
+    seatDrop: 0,
+    speeds: { walk: 1.2, hurry: 1.9 },
+  });
   assert.equal(vrmGait(extras, 0.5).walkSpeed, 0.6);
-  assert.ok(vrmGait({}, 0.9).walkSpeed > 1);
+  assert.ok(vrmGait({}, 0.9).walkSpeed > 0.9);
   assert.deepEqual(postureOffsets({}), []);
   const stoop = Object.fromEntries(postureOffsets({ stoop: 10 }));
   assert.ok(stoop.upperChest > 0 && stoop.head < 0);
@@ -206,23 +220,37 @@ test('the shared clip file holds every hero-cast clip with measured gait', () =>
   const { json, size } = glbJson(new URL(VRM_CLIPS, publicDir));
   assert.ok(json.extensionsUsed.includes('VRMC_vrm_animation'));
   assert.deepEqual(json.animations.map((a) => a.name).sort(), CAST_CLIPS);
-  const gait = json.scenes[0].extras.gait;
+  const extras = json.scenes[0].extras;
+  assert.deepEqual(extras.aliases, { shelter: 'watch-train' });
+  assert.match(extras.source, /Quaternius Universal Animation Library/);
+  const gait = extras.gait;
   assert.ok(gait.walk.footSpeedPerHipsHeight > 1 && gait.walk.footSpeedPerHipsHeight < 1.6);
   assert.ok(gait.hurry.footSpeedPerHipsHeight > gait.walk.footSpeedPerHipsHeight);
   assert.ok(gait.sit.seatPerHipsHeight > 0.35 && gait.sit.seatPerHipsHeight < 0.6);
-  assert.ok(size <= 200 * 1024, `clips are ${size} bytes`);
+  assert.ok(gait.sit.seatBackPerHipsHeight > 0.2 && gait.sit.seatBackPerHipsHeight < 0.5);
+  // Fingers are animated: the grip layer tops them up instead of replacing them.
+  const bones = Object.keys(json.extensions.VRMC_vrm_animation.humanoid.humanBones);
+  for (const bone of ['leftIndexProximal', 'rightThumbDistal', 'leftLittleDistal'])
+    assert.ok(bones.includes(bone), bone);
+  // No root motion: in-place clips keep the hips over the origin.
+  for (const animation of json.animations) assert.ok(animation.extras.loop !== undefined);
+  assert.ok(size <= 450 * 1024, `clips are ${size} bytes`);
 });
 
 test('a VRM loads in three-vrm with canonical bones, clips, springs and a sensible pose', async () => {
   const { vrm, actor } = await loadActor(MOMIJI_CAST[1].vrm);
   assert.ok(vrm.springBoneManager.joints.size >= 9);
-  assert.deepEqual([...actor.actions.keys()].sort(), CAST_CLIPS);
+  assert.deepEqual([...actor.actions.keys()].sort(), [...CAST_CLIPS, 'shelter'].sort());
+  assert.equal(actor.actions.get('shelter'), actor.actions.get('watch-train'));
   const rig = vrmHumanoidRig(vrm);
   assert.deepEqual(rig.missing, []);
   assert.equal(rig.get('upperArmL'), vrm.humanoid.getNormalizedBoneNode('leftUpperArm'));
-  // Retargeted walking matches the residents' walking pace for a 1.58 m student.
-  assert.ok(actor.gait.walkSpeed > 0.95 && actor.gait.walkSpeed < 1.2, actor.gait.walkSpeed);
-  assert.ok(actor.gait.seatHeight > 0.33 && actor.gait.seatHeight < 0.45);
+  // UAL's walk, scaled to a 1.57 m student: a little under the residents' 1.05-1.29 m/s,
+  // which the walk covers by playing up to 1.6 times faster.
+  assert.ok(actor.gait.walkSpeed > 0.85 && actor.gait.walkSpeed < 1.2, actor.gait.walkSpeed);
+  assert.ok(actor.gait.hurrySpeed > actor.gait.walkSpeed * 1.3);
+  assert.ok(actor.gait.speeds['walk-formal'] > 0.85);
+  assert.ok(actor.gait.seatHeight > 0.38 && actor.gait.seatHeight < 0.48);
   // Idle holds the arms down beside the body, not in the file's T-pose.
   actor.actions.get('idle').play();
   actor.update(1 / 30);

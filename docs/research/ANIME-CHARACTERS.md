@@ -6,14 +6,14 @@ This page covers four things: what is built now, the art direction, how each cha
 
 ## Status
 
-| Part                                                                                   | State                                                                                          |
-| -------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
-| VRM loading, MToon house tone, spring bones, expressions and visemes in `hero-cast.js` | Built. Momiji's Mr. Sato, Riko and Mr. Ishida load as VRMs.                                    |
-| Canonical humanoid bone map for IK, foot planting and look-at                          | Built (`apps/game/src/characters/humanoid-bones.js`).                                          |
-| Shared clip set retargeted offline to VRM Animation (`.vrma`)                          | Built, from the Blender cast's own clips. Quaternius UAL clips are not downloaded yet (below). |
-| Test VRMs for the three Momiji people                                                  | Built by our own script (`asset-src/characters/vrm-cast/build.py`). No outside assets.         |
-| Final cast from VRoid samples edited with the VRM Add-on for Blender                   | Planned. Waits on the approvals listed below.                                                  |
-| Route-story cast (Haru, Emi, Nao, Fumi, Jun, Yuta, Mika, Keiko)                        | Planned. The story cast still uses `story-cast.js` figures.                                    |
+| Part                                                                                   | State                                                                                     |
+| -------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| VRM loading, MToon house tone, spring bones, expressions and visemes in `hero-cast.js` | Built. Momiji's Mr. Sato, Riko and Mr. Ishida load as VRMs.                               |
+| Canonical humanoid bone map for IK, foot planting and look-at                          | Built (`apps/game/src/characters/humanoid-bones.js`).                                     |
+| Shared clip set retargeted offline to VRM Animation (`.vrma`)                          | Built, from Quaternius UAL 1 and 2 (CC0). See [character motion](../CHARACTER-MOTION.md). |
+| Test VRMs for the three Momiji people                                                  | Built by our own script (`asset-src/characters/vrm-cast/build.py`). No outside assets.    |
+| Final cast from VRoid samples edited with the VRM Add-on for Blender                   | Planned. Waits on the approvals listed below.                                             |
+| Route-story cast (Haru, Emi, Nao, Fumi, Jun, Yuta, Mika, Keiko)                        | Planned. The story cast still uses `story-cast.js` figures.                               |
 
 The test VRMs are for checking the pipeline. They are not the final art. They show the right shading, outlines, eyes, hair motion and expressions in the game's light. Their bodies are simple: smooth tubes, clothes as colour regions, no textures.
 
@@ -65,11 +65,7 @@ The final cast starts from pixiv's CC0 VRoid sample avatars. It is edited in Ble
 7. **Reduce to budget.** Remove body faces hidden under clothes. Decimate hair and clothes. Bake the atlas at 1024 px and compress it (KTX2). Merge materials.
 8. **Check in the lab and the game.** Run the character lab (`/character-lab.html` on the dev server; add `?compare=1` to see the Blender GLBs beside them). Then take director portraits at Momiji at daylight and sunset.
 
-Clips do not come with the avatars. `asset-src/characters/vrm-cast/retarget.mjs` turns a humanoid glTF's clips into one `.vrma` file. It has rig maps for the Blender cast and for Quaternius UAL. When UAL is downloaded:
-
-- Run `retarget.mjs --source <ual.glb> --rig ual`.
-- Check the bone names it prints against the `ual` map.
-- Keep the `hero-cast` clip names: `idle`, `walk`, `hurry`, `sit`, `board`, `wave`, `check-phone`, `watch-train`, `shelter`, `chat` and `stretch`.
+Clips do not come with the avatars. `asset-src/characters/vrm-cast/retarget.mjs` turns the Quaternius UAL packs into one `.vrma` file with the `hero-cast` clip names (`node asset-src/characters/vrm-cast/retarget.mjs`, packs from `--ual <folder>` or `$MAPLE_UAL_DIR`). The clip table and the measurements are in [character motion](../CHARACTER-MOTION.md). A new VRoid-based character needs no new clips: the file is in normalized VRM bones.
 
 ## Budgets
 
@@ -80,7 +76,7 @@ Measure with `measure_game_performance` on a phone before and after adding a cha
 | Hero, desktop (director close-ups) | ≤ 20,000  | One 1024² atlas, KTX2 or WebP | ≤ 8 (≤ 16 with outlines) | ≤ 40          | ≤ 2 MB   |
 | Hero, mobile (same file, runtime)  | same      | 512² mip used                 | outlines off: ≤ 8        | ≤ 20 active   | same     |
 | Background resident                | ≤ 3,000   | Shared palette texture        | 1                        | 0             | ≤ 150 KB |
-| Shared clip set (`.vrma`)          | n/a       | n/a                           | n/a                      | n/a           | ≤ 200 KB |
+| Shared clip set (`.vrma`)          | n/a       | n/a                           | n/a                      | n/a           | ≤ 450 KB |
 
 The test VRMs today:
 
@@ -90,7 +86,7 @@ The test VRMs today:
 | Mr. Sato   | 8,962     | 19        | 306 KB    |
 | Mr. Ishida | 8,493     | 21        | 306 KB    |
 
-The shared clips are 120 KB. Triangles are within budget. Materials are not: each face decal colour is its own flat material. The next build should draw the face and clothes from one small palette texture, which brings each figure down to three or four draws.
+The shared UAL clips are 350 KB (17 clips, fingers included). Triangles are within budget. Materials are not: each face decal colour is its own flat material. The next build should draw the face and clothes from one small palette texture, which brings each figure down to three or four draws.
 
 The VRoid samples are 26,706 to 34,395 triangles and 14 to 18 MB each. They must be cut down before use.
 
@@ -125,9 +121,9 @@ Rejected:
 
 Version 4.7.2 supports Blender 4.2 up to, but not including, 5.3, so Blender 5.2 is fine. It is also listed at https://extensions.blender.org/add-ons/vrm/. The add-on is a build tool. It is not shipped to players.
 
-### Approved but not yet downloaded: Quaternius Universal Animation Library
+### Downloaded: Quaternius Universal Animation Library
 
-These packs are approved (CC0: https://quaternius.com/faq.html and the pack pages). The automatic download was blocked in the agent session, because itch.io serves free downloads through a per-session form. A person needs to download them, or allow the agent to.
+These packs are approved (CC0: https://quaternius.com/faq.html and the pack pages) and were downloaded by hand on 23 September 2026. Hashes and the clips used are in [third-party files](../../asset-src/THIRD_PARTY.md).
 
 | File                                          | Page                                                     | Size (page, rounded) |
 | --------------------------------------------- | -------------------------------------------------------- | -------------------- |
@@ -138,8 +134,8 @@ Only the free Standard files are wanted. The Pro and Source files are paid, so t
 
 ## Next steps
 
-1. Decide on the VRoid licence question and approve the files above. Download UAL 1 and 2.
-2. Retarget UAL clips with `retarget.mjs --rig ual`. Replace `cast-clips.vrma` once the walk measures within 5 percent of the residents' pace.
+1. Decide on the VRoid licence question and approve the files above.
+2. Done: UAL clips retargeted into `cast-clips.vrma`. The UAL walk is about 20 percent slower than the residents' pace, so it plays faster than authored; a longer-stride walk would fit better.
 3. Build Riko from an approved sample, following the steps above. Compare her with the test figure in the lab and at Momiji.
 4. Move face decals and clothing colours onto one palette texture per character, to meet the draw budget.
 5. Extend VRM figures to the route-story cast, one chapter at a time. The IK and look-at module uses the canonical bone map, so the story cast needs no extra motion code.

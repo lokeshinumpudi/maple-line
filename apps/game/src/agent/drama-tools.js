@@ -1,7 +1,7 @@
 import { normalizeEpisode, episodeSeconds, EPISODE_LIMITS } from '../drama/episode-schema.js';
 import { episodeScreenplay } from '../drama/screenplay.js';
 import { SHOT_TYPES } from '../camera/director.js';
-import { MOODS, INTENTS, MIND_EVENTS } from '../simulation/npc-minds.js';
+import { MOODS, DIRECTED_INTENTS, MIND_EVENTS } from '../simulation/npc-minds.js';
 import { NARRATION_LANGUAGES, VOICE_CAST, VOICE_DELIVERY } from '@maple-line/voice-score';
 
 /**
@@ -113,7 +113,7 @@ export function registerDramaTools({
       ...catalog(),
       shotTypes: [...SHOT_TYPES],
       moods: [...MOODS],
-      intents: [...INTENTS],
+      intents: [...DIRECTED_INTENTS],
       events: [...MIND_EVENTS],
       timesOfDay: ['daylight', 'sunrise', 'sunset', 'dusk'],
       weather: ['clear', 'rain', 'snow', 'storm'],
