@@ -78,7 +78,13 @@
     "watch": "Watch how changing the view affects the apparent size of the scene.",
     "howItWorks": "A perspective camera describes a viewing position, a direction and an angle of view. Nearby objects cover more of the screen than equally sized distant objects. The near and far clipping planes define the range of distances it can draw. A camera rig adds rules for following the train or staying inside a carriage.",
     "inScene": "From the driver's view, nearby sleepers look large and distant rails appear to converge. A wider field of view includes more surroundings, but makes distant details look smaller. Moving the camera closer changes the spatial relationship between objects; changing the field of view changes the framing from the same location.",
-    "takeaway": "If the camera is inside a carriage, its movement must stay attached to that carriage. Smoothing its world position independently can make it lag behind and pass through the cab's walls."
+    "takeaway": "If the camera is inside a carriage, its movement must stay attached to that carriage. Smoothing its world position independently can make it lag behind and pass through the cab's walls.",
+    "sections": [
+      {
+        "heading": "Portrait framing for phone videos",
+        "body": "Rendered episodes can be 9:16 (1080 × 1920) for phones. The vertical format drops the 2.39:1 letterbox, which would leave a thin band of picture in a tall frame; raises subtitles above the bottom sixth, where messaging apps draw their controls; and stands portraits closer, 2.5 m instead of 3.2 m, with a narrower look-room offset, so a person stays large. The occlusion search is the same in both formats. Run pnpm render:episode --episode the-1742-1 --aspect 9:16,16:9 to compare the two from one episode."
+      }
+    ]
   },
   {
     "title": "Keep the train on a curved track",
@@ -123,7 +129,17 @@
     "watch": "Watch the extra drawing passes that feed the water surface.",
     "howItWorks": "An offscreen render target holds an image in graphics memory. Drawing into one creates an extra view that another material can sample later. A reflection capture provides a view of the surroundings; a refraction capture helps show what lies beneath the water. Surface-direction changes distort those views to suggest small waves.",
     "inScene": "The live camera faces the original valley river. Start with Riverbed, then add Depth color, reflections and Full water. Each step changes the actual water shader. Stronger ripples exaggerates surface-direction changes so their effect is easier to see. Pause ripples freezes the water while you inspect it; drag to compare another angle. The diagram shows the extra drawing passes that supply those layers.",
-    "takeaway": "Every extra capture costs drawing work. Updating it less often can save work but make reflected movement less current. This river technique creates a water appearance; it does not calculate flowing water volume or physically simulated waves."
+    "takeaway": "Every extra capture costs drawing work. Updating it less often can save work but make reflected movement less current. This river technique creates a water appearance; it does not calculate flowing water volume or physically simulated waves.",
+    "sections": [
+      {
+        "heading": "Reflection tiers",
+        "body": "apps/game/src/rendering/quality-tiers.js sets the river’s reflection per graphics tier: a 1024 × 1024 reflection on High, refreshed at up to 20 Hz; 512 × 512 on Medium at up to 15 Hz; and on Low no reflection or refraction pass at all, with the water showing the sky colour. Automatic starts phones on Low and desktops on High, steps down a tier when the 75th-percentile frame time passes 28 ms, and steps back up only after 30 healthy seconds. Lakes, the ravine river, paddies and the harbour reflect the cached sky, not nearby objects."
+      },
+      {
+        "heading": "Give the reflection something to show, and add rain rings",
+        "body": "A mirror pass only pays off when something stands near the bank: trees, rocks, a bridge. Over open grass the reflection is mostly sky, and the extra render adds cost for little visible change. Check it with a before/after pair from one camera, as in the water pass on 23 September. In rain every water surface draws rain rings, small circles that spread where drops land. They are on in all three tiers because they are drawn in the water shader and need no extra scene pass."
+      }
+    ]
   },
   {
     "title": "Make weather change the whole scene",
@@ -132,7 +148,21 @@
     "watch": "Watch visibility and particles change as the weather grows stronger.",
     "howItWorks": "Weather is a collection of settings that change together. Particles provide visible drops or flakes. Fog reduces distant contrast. Sky color, light strength and surface appearance help the whole scene agree with those effects. A transition blends from the previous settings to the new ones instead of changing everything in one frame.",
     "inScene": "In the railway scene, heavier weather changes how far along the route you can see. Wetness and snow coverage affect selected surfaces, while the driving simulation separately accounts for reduced braking grip. Visual rain and braking behavior need to read the same weather choice without becoming the same system.",
-    "takeaway": "Adding more particles alone can make rain busier without making the scene convincing. Check the sky, distance visibility and surfaces together. A static screenshot can show those relationships, but cannot establish that a transition is smooth."
+    "takeaway": "Adding more particles alone can make rain busier without making the scene convincing. Check the sky, distance visibility and surfaces together. A static screenshot can show those relationships, but cannot establish that a transition is smooth.",
+    "sections": [
+      {
+        "heading": "A storm is rain plus a flag",
+        "body": "The store keeps a storm as rain plus storm: true (apps/game/src/state/game-store.js). Braking grip, wipers, roof sound and residents already know what rain means, so they keep working with no new case. Choosing any other weather clears the flag. On top of rain, the storm adds a darker sky and grade, lower cloud, thicker fog, gusts that bend the trees, and lightning."
+      },
+      {
+        "heading": "Lightning with thunder delayed by distance",
+        "body": "apps/game/src/world/weather-state.js schedules the first strike 2.5–6 s after a storm starts and each next one 5–16 s later, 350–3,200 m away. Thunder waits for the time sound takes to travel that far at 343 m/s, so a strike 1.7 km away rumbles about 5 s after the flash. The module reads no clock of its own; time moves only through update(dt), which is also what lets a video render step it frame by frame."
+      },
+      {
+        "heading": "A colour grade for each weather",
+        "body": "The film finish (apps/game/src/rendering/film-pipeline.js) chooses a grade each frame with gradeKey(): storm once the storm blend passes 0.5 in rain; rainNight or dusk after dark; golden at sunrise and sunset; otherwise the weather’s own grade. Each grade sets lift, gamma, gain, saturation and contrast, and the pipeline blends toward the next one, so a weather change does not snap the colours."
+      }
+    ]
   },
   {
     "title": "Find what the player points at",
@@ -219,7 +249,17 @@
     "watch": "Watch how small edge changes make the main object easier to read.",
     "howItWorks": "A hero asset deserves detail because people repeatedly see it at close range. Its silhouette is the outside shape that remains visible even without surface color. A bevel adds a small angled or curved edge, giving light somewhere to form a highlight. Surface normals then control how smoothly neighboring faces appear to meet.",
     "inScene": "The train's roof, ends, window spacing and undercarriage establish its identity before tiny markings do. Compare those large forms first. A small bevel may help a close panel read as solid metal, while the same bevel on a distant building may occupy less than one visible pixel.",
-    "takeaway": "Choose detail by viewing distance and purpose. Extra triangles that never become visible still need processing and storage. The chapter's proposed refinements should be judged in the driving and passenger views, as well as in a close inspection image."
+    "takeaway": "Choose detail by viewing distance and purpose. Extra triangles that never become visible still need processing and storage. The chapter's proposed refinements should be judged in the driving and passenger views, as well as in a close inspection image.",
+    "sections": [
+      {
+        "heading": "The first-screen rule",
+        "body": "The first Blender asset pass looked like no change at all. Its 4 new models sat about 1 km from where the player starts, used one flat vertex-colour material, and flat lighting washed them out, so nobody saw them. Put new detail where the player looks first: the start screen, the train, which is on screen 100% of the time, and faces in close-ups. Then prove it with a before/after capture from the same camera (chapter 49)."
+      },
+      {
+        "heading": "Faces in close-ups",
+        "body": "Director portraits and episode videos stand 2.5–3.2 m from a face, so the face and hands are the hero assets of a dialogue shot. The VRM cast has shape keys for blinks, smiles and mouth shapes. A detailed bench behind a speaker adds nothing if the face is hidden: chapter 43 covers checking that the camera can actually see it, which took Episode 1 to 11 of 11 lines with the speaker’s face in view."
+      }
+    ]
   },
   {
     "title": "Make materials and lighting agree",
@@ -246,7 +286,17 @@
     "watch": "Watch where detail changes and whether it keeps switching at the boundary.",
     "howItWorks": "Level of detail changes the representation of an object as its visible size changes. A nearby tree may need branches and leaf groups; a distant one may only need its overall outline and color. Hysteresis creates a gap between switching thresholds so tiny camera movements do not repeatedly swap versions.",
     "inScene": "The repeated forest provides the example. Maple Line already batches scenery and limits visibility by distance. Replacing distant trees with simpler representations is a separate proposed improvement. The experiment demonstrates switching behavior, rather than proving that every tree in the game already has multiple detail levels.",
-    "takeaway": "A useful teaching example is to switch to a simpler version beyond 100 meters but restore the detailed version only inside 90 meters. The numbers are illustrative. Choose actual thresholds from screen size, visible differences and measured cost."
+    "takeaway": "A useful teaching example is to switch to a simpler version beyond 100 meters but restore the detailed version only inside 90 meters. The numbers are illustrative. Choose actual thresholds from screen size, visible differences and measured cost.",
+    "sections": [
+      {
+        "heading": "Leaf cards near, clusters far",
+        "body": "Broadleaf crowns near the camera are drawn as about 30 small leaf cards each; farther trees keep the cheap crossed clusters. apps/game/src/world/card-canopy.js makes the choice per tree in the vertex shader, using a twin instanced batch that shares the same instance matrices, so no instance data is copied. Card distance is 240 m on High, 150 m on Medium and 0 on Low. Shadows still come from the cheap clusters everywhere, so the shadow pass does not pay for the cards."
+      },
+      {
+        "heading": "No visible ring, no flip-flop",
+        "body": "Each tree switches at a slightly different distance, 0.86–1.14 times the card distance, so there is no ring where detail changes. The automatic graphics tier uses hysteresis in time: it steps down when the 75th-percentile frame passes 28 ms and steps back up only after 30 healthy seconds, so a short spike does not flip quality back and forth. In the session’s phone-sized test, draw calls fell to 411–728 per view from 674–1,674, about half."
+      }
+    ]
   },
   {
     "title": "Spread loading work across frames",
@@ -264,7 +314,17 @@
     "watch": "Watch what happens when control moves between camera systems.",
     "howItWorks": "Camera ownership means deciding which system has the final say about the view. A driving rig, mouse controls and a story shot may all calculate valid positions, yet produce a jump if they overwrite one another in an unclear order. A handoff defines how control starts, ends and responds to interruption.",
     "inScene": "The cab view needs to follow its carriage rigidly, while a conversation can frame Haru and Emi from another angle. Maple Line uses a story overlay alongside the normal camera rig. Restoring the base view and then applying the active story framing in the intended order keeps those responsibilities understandable.",
-    "takeaway": "Try ending a conversation, changing view and entering a tunnel. Each case should return to an appropriate owner. Reduced motion also needs a deliberate transition rule, because a long animated camera move may be unwanted even when its destination is correct."
+    "takeaway": "Try ending a conversation, changing view and entering a tunnel. Each case should return to an appropriate owner. Reduced motion also needs a deliberate transition rule, because a long animated camera move may be unwanted even when its destination is correct.",
+    "sections": [
+      {
+        "heading": "The director picks the shot; framing picks the spot",
+        "body": "In Director mode the director chooses each cut’s shot type and subject. For portraits, apps/game/src/camera/shot-framing.js then decides where the camera stands and whether it can see the face. Framing owns only the viewpoint of a held portrait: it re-checks 4 times a second, may move after two blocked checks in a row, eases over 0.9 s and then rests 1.5 s. Story conversations keep their own camera, and the director pauses while a conversation beat is active. Every framing substitution is written to the episode log with the prefix camera:, so each move can be traced to its owner."
+      },
+      {
+        "heading": "Render mode owns the clock",
+        "body": "With ?render=1 the game does not start its own animation loop. window.__mapleRender.step() advances one render clock by exactly 1/fps seconds and runs one frame; the train, the director camera, the episode runner, captions and fades all read that time. Caption fades are set from the render clock each frame instead of CSS transitions, which run on the wall clock and would finish between two captured frames. One clock with one owner is why an 88-second episode renders as the same 2,631 frames at 30 fps however slow the machine is."
+      }
+    ]
   },
   {
     "title": "Make characters feel attached to the ground",
@@ -272,8 +332,22 @@
     "analogy": "Imagine an articulated puppet whose joints move together, with clear rules for which foot is planted.",
     "watch": "Watch whether planted feet stay still as the character moves.",
     "howItWorks": "A rig defines connected parts and the points around which they move. A pivot at the shoulder makes an arm swing from the shoulder; a pivot at the mesh center makes it rotate differently. Acting combines these poses with timing, eye direction and pauses so another person can understand the character's attention.",
-    "inScene": "Haru's notebook and Emi's recorder make contact easy to inspect. Their hands should remain near the props while head and breathing motion add life. The current cast uses procedural parts and small motions; the lesson's richer poses and prop interactions are proposed refinements.",
-    "takeaway": "Start with a readable still pose before adding motion. Check feet against the ground and hands against props throughout the movement. More animation can make a contact error more distracting if the underlying pivots and positions are wrong."
+    "inScene": "Haru’s notebook and Emi’s recorder in this archived shot make contact easy to inspect. Haru and Emi still use the older figures made of instanced parts with small procedural motion. The Momiji episode cast (Riko, Mr. Sato and Mr. Ishida) uses VRM models with retargeted clips, hand sockets for props and foot planting; the sections below describe how that cast stays on the ground.",
+    "takeaway": "Start with a readable still pose before adding motion. Check feet against the ground and hands against props throughout the movement. More animation can make a contact error more distracting if the underlying pivots and positions are wrong.",
+    "sections": [
+      {
+        "heading": "Plant a foot only while it bears weight",
+        "body": "While walking, the foot that moves least over the ground is pinned where it landed until the other foot lands; standing, both feet are pinned. Leg IK (inverse kinematics: bending the leg so the foot reaches a target) holds them, and the hips drop on a stiff spring when a bearing foot would be out of reach. A foot plants over 0.12 s and lets go over 0.2 s, both eased. A foot left more than 0.3 m behind, after a turn on the spot, is released and planted again instead of snapping across. Targets near a straight knee are eased back toward the hip, because the solver is unstable when the knee is straight. The code is in apps/game/src/world/character-rig.js."
+      },
+      {
+        "heading": "Measure foot slide, and match the stride",
+        "body": "Foot slide is how far the slowest heel or toe moves over the ground while it should stay put, as a share of the distance walked. Momiji, two people walking to the canopy and back, 30 s at 30 fps on a virtual clock: 32% before any work on the Blender cast, 9–10% after it, 10.6–10.8% for the VRM cast on home-made clips, 2.4–4.8% with the Quaternius clips, and 12–15% with the feet layer switched off. Planting only works when the clip’s stride matches the body: strideTimeScale() in character-motion.js sets the clip’s timeScale to the body’s speed divided by the clip’s own foot speed, clamped to 0.3–1.6."
+      },
+      {
+        "heading": "Sit at the height of the seat",
+        "body": "The Quaternius sitting pose puts the pelvis 0.31 m behind the figure’s origin at Riko’s size, so a seated body moves forward by that much and rises to the bench as the hips go down. In the session check, seated Mr. Ishida’s hips were 0.685 m above the platform against a bench top of 0.605 m: the hip joint sits a little above the seat, as it does on a real person. apps/game/tests/hero-pose.test.js fails if the hips leave a 0.15 m band above the seat or drift more than 0.12 m from the seat point, and if either arm is more than 50° from hanging down."
+      }
+    ]
   },
   {
     "title": "Make actions easy to understand",
@@ -282,7 +356,13 @@
     "watch": "Watch the delay and feedback between an action and its result.",
     "howItWorks": "An interaction has several stages: the player expresses an intention, the game checks its rules, an action takes effect, and feedback explains the result. These stages can take different amounts of time. Immediate acknowledgement helps even when the physical result, such as slowing a train, cannot happen instantly.",
     "inScene": "At the station, requesting power while doors remain open must not move the train. The interface should explain the refusal so the player understands what to do next. Once doors finish closing, applied power and speed can respond according to the simulation rather than jumping to the requested value.",
-    "takeaway": "Do not add a success sound or animation before the rule check accepts the action. Tune feedback against actual state transitions, including blocked actions, so a pleasing response never tells a different story from the train's behavior."
+    "takeaway": "Do not add a success sound or animation before the rule check accepts the action. Tune feedback against actual state transitions, including blocked actions, so a pleasing response never tells a different story from the train's behavior.",
+    "sections": [
+      {
+        "heading": "Stories need the same clarity",
+        "body": "A player action reads when its result is visible. A story beat reads the same way: the viewer sees the want, the obstacle and the result instead of only hearing about them. The first 17:42 script put its conflict in arithmetic dialogue and never showed the bus or the clock, so muted it did not read at all. Chapter 44, “A story has to read with the sound off”, gives the recipe: one clear want, stakes, a visible clock, an obstacle, someone’s choice and a payoff shown on screen."
+      }
+    ]
   },
   {
     "title": "Let the important sound be heard",
@@ -309,7 +389,17 @@
     "watch": "Watch how the work fits into the available time per frame.",
     "howItWorks": "Frame time measures how long a picture takes to arrive. A target of 60 pictures per second leaves about 16.7 milliseconds between them. Averages can hide occasional long delays, so percentiles help describe the slower frames. The 95th percentile marks a time at or below which roughly 95 percent of measured frames fall.",
     "inScene": "Read live scene state to inspect the game’s current frame-timing summary and latest drawing counts. Compare shadows under the same camera and weather. These readings are observations from this browser session, not a controlled benchmark or GPU timing. The simplified diagram illustrates how a frame budget is divided; the development measurement tool provides bounded timed samples.",
-    "takeaway": "Compare the same camera, weather, viewport and route segment. Record how long the sample ran and whether resolution changed. Otherwise a lower frame time might come from drawing fewer pixels instead of improving the underlying work."
+    "takeaway": "Compare the same camera, weather, viewport and route segment. Record how long the sample ran and whether resolution changed. Otherwise a lower frame time might come from drawing fewer pixels instead of improving the underlying work.",
+    "sections": [
+      {
+        "heading": "A jitter number for characters",
+        "body": "Frame times say nothing about a shaking elbow. For characters, measure jitter: the root-mean-square angular acceleration of each joint’s local rotation, in rad/s², sampled at 60 fps and averaged per bone group (arms, legs, neck and head). Take 5 s standing and 12 s walking. On the Momiji cast, idle arms measured 751 (Riko) and 1,253 (Mr. Sato) rad/s² with the home-made Blender clips, and 2.7 and 2.1 with the Quaternius clips and the pose fix. A still arm scores near 0; a shaking one scores in the hundreds. Record the numbers next to a contact sheet so a reviewer can match each value to what it looked like."
+      },
+      {
+        "heading": "Layers on versus layers off",
+        "body": "To find which code adds shake, switch the procedural layers off through the hero’s development setDebug({ layers }) and measure again, one fresh browser session per condition so both runs see the same events. With the Quaternius clips every bone group stayed within 10% of its layers-off value or went down: walking legs fell from 77 to 53 (Riko) and from 72 to 39 (Mr. Sato), because planted feet stopped sliding. The exception was Riko’s hands, 0.8 to 1.7 rad/s² while walking, from the radio grip. The measurement scripts live with the captures and are not committed; docs/CHARACTER-MOTION.md keeps the tables."
+      }
+    ]
   },
   {
     "title": "Explain the game in more than one way",
@@ -401,7 +491,185 @@
         "evidence": "Inspection identifies the current surface settings. A temporary patch lets the agent compare the same object under the same camera and lighting. An animated system may overwrite the patch, so the agent must verify that the intended value remains active.",
         "decision": "Within an authorized visual-edit task, the agent tries a bounded change, observes the result, and undoes it if it fails the intended comparison. The tool does not write source files, and undo applies to object patches rather than every game action.",
         "verify": "If the comparison supports the change, edit the owning material source and reload. Verify the saved implementation in more than one lighting condition. A temporary improvement that disappears after reload is not a completed fix."
+      },
+      {
+        "title": "Render an episode frame by frame",
+        "question": "“Make a phone video of Episode 1 that plays on an iPhone.”",
+        "calls": "// In a page opened with ?render=1&fps=30&aspect=9:16:\nawait window.__mapleRender.ready()\nwindow.__mapleRender.play('the-1742-1')\nwindow.__mapleRender.step(1) // repeat; capture a screenshot after each\nwindow.__mapleRender.timeline()",
+        "evidence": "step() returns the frame, seconds, runner status, scene, beat, shot and done. timeline() lists every scene, beat and line with its start time t in seconds; Episode 1 is 2,631 frames at 30 fps. ready() reports the GPU, pixel ratio and canvas size, so a render on another machine can be compared.",
+        "decision": "Use pnpm render:episode rather than a hand loop: it pipes each screenshot to ffmpeg as H.264 yuv420p with +faststart and writes the poster and the timeline. Keep the game’s dev port free; the script starts its own server on 4373.",
+        "verify": "Play the MP4 in WhatsApp or iMessage on an iPhone, and check that each caption appears where the timeline says its line starts."
+      },
+      {
+        "title": "Voice an episode with a manifest",
+        "question": "“Add Telugu voices to the video.”",
+        "calls": "// Shell, from the workspace root:\npnpm voice:episode --episode the-1742-1 --lang te-IN --list // no requests\npnpm voice:episode --episode the-1742-1 --lang te-IN\npnpm render:episode --episode the-1742-1 --aspect 9:16 --audio <manifest path>",
+        "evidence": "The manifest lists clips by line id, scene/beat/line counted from 1, for example momiji-platform/2/1. Clips and translations are cached under .cache/narration/, so a re-run only fills gaps. A clip whose line was not played is listed as a warning and skipped.",
+        "decision": "Check lines with times, vehicle parts or pronouns first: in this session machine translation read a time as “inches”, turned “front car” into “motor car” and swapped he and she. Add a hand-written translation to the episode line for each wrong one.",
+        "verify": "Render again and have a native speaker watch it; confirm in the timeline that no line is cut off by the next."
+      },
+      {
+        "title": "Share an episode link",
+        "question": "“Give me a link that opens my custom episode for a friend.”",
+        "calls": "validate_episode({ episode })\nget_episode_share_link({ episode })\n// or, for a built-in or saved episode:\nget_episode_share_link({ id: 'the-1742-e1-two-minutes' })",
+        "evidence": "Built-in episodes get a short ?episode= link. Custom episodes are validated and carried in the link as #ep=, or on the Signal edition kept in the site store as ?watch=. A #ep= payload over 12,000 characters is refused.",
+        "decision": "If the link is too long, shorten the episode or use the Signal store. Before using the store, tell the person that it records the sharer’s email and that anyone with site access can list it.",
+        "verify": "Open the link in a fresh browser profile and check that the episode plays. Then change one character of the payload and check that the game shows a short notice and starts the ride normally."
+      },
+      {
+        "title": "Read the framing log",
+        "question": "“Why does this dialogue shot look at a wall?”",
+        "calls": "get_episode_state({})\n// In a ?render=1 page:\nwindow.__mapleRender.framing()",
+        "evidence": "get_episode_state includes a log of substitutions; every framing change starts with camera:. framing() returns the director’s current shot, the camera position, and each cast member’s head position and heading.",
+        "decision": "No camera: entry while the face is hidden means the blocker is not on the blocker list (glass, wires and leaves never block) or the head position is wrong; check the model’s head bone. Repeated entries at one spot point to object placement, like the bench that stood 0.6 m inside the station building.",
+        "verify": "Render one frame per spoken line and count visible faces. After the bench move and the framing fix, Episode 1 shows 11 of 11."
       }
     ]
+  },
+  {
+    "title": "Motion sells a character before the model does",
+    "explanation": "How a character moves tells people more than how its body is built. Good animation clips, played at the right speed, can make the same model look alive.",
+    "analogy": "A puppet with smooth, well-timed strings looks more alive than a finely carved puppet that jerks.",
+    "watch": "Watch the bars shrink when the home-made clips are swapped for motion-capture clips.",
+    "howItWorks": "Animation clips are recorded on one skeleton and reused on another. The game matches bones by their role (hips, upper arm, knee) through one shared list of names, so a clip made for one rig plays on another; this is called retargeting. Each walk clip also has its own foot speed. The game plays the clip faster or slower so the feet cover the same ground as the body; otherwise the feet skate.",
+    "inScene": "Riko, Mr. Sato and Mr. Ishida kept the same VRM bodies. The home-made Blender clips were replaced with the Quaternius Universal Animation Library (free, CC0, with motion-capture quality), and a pose bug was fixed. Idle arm jitter fell from 751 to 2.7 rad/s² for Riko and from 1,253 to 2.1 for Mr. Sato. Walk foot slide fell from about 10.7% of the distance walked to 2.4–4.8%. The user said they looked “much better and pretty”.",
+    "takeaway": "Before replacing a model, try better motion on it, and measure it. Jitter is how sharply joint rotations change speed between frames; foot slide is how far a planted foot moves while it should stay still.",
+    "sections": [
+      {
+        "heading": "How the numbers were measured",
+        "body": "Jitter is the root-mean-square angular acceleration of each joint’s local rotation, in radians per second squared (rad/s²), sampled at 60 fps and averaged over bone groups (arms, legs, neck and head): 5 s standing, 12 s walking, one fresh session per condition so both runs see the same events. Foot slide is the distance the slowest heel or toe moves over the ground, as a share of the distance walked, over 30 s at 30 fps. Take both before changing anything. The tables are in docs/CHARACTER-MOTION.md."
+      },
+      {
+        "heading": "One bone map for every rig",
+        "body": "apps/game/src/characters/humanoid-bones.js is the one list of bone names the motion code uses: hips, spine, chest, neck, head, and on each side shoulder, upperArm, lowerArm, hand, upperLeg, lowerLeg, foot and toes. humanoidRigFor() maps a new skeleton from a table, from names stored in the file, from common conventions (Mixamo, Unreal and Quaternius, MakeHuman, Rigify) or from the bone structure. asset-src/characters/vrm-cast/retarget.mjs uses the same roles to bake 17 Quaternius clips into one 350 KB file, sampled at 30 fps, dropping keys where straight-line blending stays within 0.25°."
+      },
+      {
+        "heading": "Match the clip’s stride to the body’s speed",
+        "body": "Each walk clip’s foot speed comes from the pack’s root-motion files, scaled by the character’s hips height. strideTimeScale() in apps/game/src/world/character-motion.js divides the body’s drawn speed by that foot speed and clamps the result to 0.3–1.6. The switch between walk and hurry has 0.1 m/s of hysteresis either side, a gap that stops a speed near the boundary flipping the gait every few frames. The Quaternius walk is 0.92 m/s for Riko, slower than the residents’ 1.05–1.29 m/s, so walks play up to 1.6 times faster than recorded."
+      }
+    ]
+  },
+  {
+    "title": "Never reset a skinned pose to rest every frame",
+    "explanation": "A character’s skeleton has a neutral rest pose. For VRM models it is a T-pose, arms straight out. Putting every bone back to that pose each frame, before the animation runs, can leave some bones stuck there.",
+    "analogy": "Imagine resetting a puppet to arms-out before every frame while the puppeteer only moves the strings that changed. Any string they leave alone keeps its arm sticking out.",
+    "watch": "Watch the arm the clip holds still: it stays at rest until the fix restores the clip’s own pose.",
+    "howItWorks": "The animation mixer blends clips and writes bone rotations. To save work, three.js skips writing a bone when its blended value has not changed. So when a clip holds a bone still, or a cross-fade has settled, that bone is not written again. If code has just reset it to the rest pose, it stays at rest. The fix keeps a copy of the pose the clips made last frame and puts that back instead, then adds the extra layers on top.",
+    "inScene": "In episode renders Riko and Mr. Sato snapped into T-poses and Mr. Ishida stood at his bench instead of sitting; the user said they looked “like they got some disease”. The picture shows the same moments before (left) and after (right) the fix. A test now runs each cast member through its standing clips and checks that both arms hang within 50° of straight down and that seated Mr. Ishida’s hips are at seat height.",
+    "takeaway": "Layers need a fresh starting pose each frame, and that pose should be the clip’s own pose, not the rest pose. Guard it with a test that fails on a T-pose.",
+    "sections": [
+      {
+        "heading": "The test that guards it",
+        "body": "apps/game/tests/hero-pose.test.js loads each Momiji cast member, forces each clip with setDebug({ clip }) and runs 2.5 s of updates at 30 fps: long enough for the cross-fade to settle, which is exactly when held bones used to fall back to rest. It then measures each arm’s angle from straight down: under 50° for idle, chat, walk and sit, 75° for the phone arm and 60° for the carry. A second test sits Mr. Ishida and checks that his hips are above the seat and less than 0.15 m above it, and within 0.12 m of the seat point."
+      }
+    ]
+  },
+  {
+    "title": "Layers must not fight the clip",
+    "explanation": "Small extra motions, such as turning the head toward a speaker or keeping a foot on the ground, are added on top of the animation clip. Each one should change only its own bones, only when it is needed, or it fights the clip and the joint shakes.",
+    "analogy": "Two people steering one bicycle make it wobble. Give each person one job and one handlebar.",
+    "watch": "Watch the bars stay about the same when the layers switch on: that is the goal.",
+    "howItWorks": "Each layer has a weight from 0 to 1 and owns a few bones. Look-at turns only the neck and head. Its angle follows a critically damped spring, which settles on the target without overshooting, and it ignores changes smaller than 0.05 rad (a dead zone), so a speaker’s small head bob does not shake the listener. Foot planting uses inverse kinematics (IK: bending the leg so the foot reaches a target) only while that foot bears weight. Arm IK stays off while the clip already puts the hand where it should be.",
+    "inScene": "Measured with the layers off and on, each in a fresh session: Riko’s idle arms went from 2.5 to 2.7 rad/s² and Mr. Sato’s from 2.3 to 2.1. Walking legs went down, from 77 to 53 and from 72 to 39, because the planted foot no longer slides. Neck and head stayed at 4.9 and 2.7. The only group more than 10% higher is Riko’s hands, from the radio grip, still under 2 rad/s².",
+    "takeaway": "Give each layer a list of bones and a reason to be on. Measure each layer on versus off and keep the difference within 10%.",
+    "sections": [
+      {
+        "heading": "Who owns which bones",
+        "body": "apps/game/src/world/character-rig.js applies the layers in order after the clips: life (breathing and weight shift), look, hands, grip and feet. Look-at turns up to 1.2 rad either side standing and 0.6 walking, split 40% neck and 60% head. A foot plants over 0.12 s and lets go over 0.2 s, and a foot left more than 0.3 m behind is released and planted again instead of snapping. Arm IK blends the two joint rotations by its weight, not the target position, so an IK hold that fades out never pops. docs/CHARACTER-MOTION.md has the full list."
+      }
+    ]
+  },
+  {
+    "title": "Build characters from real topology, not primitives",
+    "explanation": "A 3D body bends well only if its surface has rings of edges (edge loops) where it bends: around the eyes, mouth, shoulders, elbows and knees. Boxes, cylinders and tube shapes have no such rings, so their joints bend like pipes.",
+    "analogy": "A sleeve with a fold at the elbow bends neatly; a rigid tube kinks.",
+    "watch": "Follow the steps an indie artist takes from a drawing to a model the game can animate.",
+    "howItWorks": "Indie artists usually work in this order. Draw a turnaround sheet. Block out simple shapes against the front and side views. Box-model or sculpt the real forms. Rebuild the surface (retopology) with loops at the eyes, mouth, shoulders, elbows and knees. Unwrap UVs (the flat map of the surface) and paint a flat texture. Add the anime tricks: face normals copied from a sphere for soft shading, painted eyes, hair in clumps, a toon colour ramp, inverted-hull outlines and many shape keys for expressions. Then rig, paint skin weights, animate or retarget, and export VRM or GLB.",
+    "inScene": "Each cast member appears twice: the VRM model, then the earlier Blender-built figure made from primitives and skin-modifier tubes. The VRM bodies have loops at the joints and shape keys in the face; the tube bodies bend like pipes. A character studio for building the cast is being built; it is not in the game yet.",
+    "takeaway": "Most indies take a shortcut: start from a good base mesh and customise it. Check the licence before downloading, and keep licensed source files out of a public repository.",
+    "sections": [
+      {
+        "heading": "Where base meshes come from, and the licence traps",
+        "body": "Three sources came up in this session. Quaternius publishes free CC0 packs. Fab offers a free Personal licence for individuals under $100k revenue. Booth.pm shares and sells anime models with terms that differ per model. Two traps: the free Quaternius Universal Base Characters “Standard” pack contains only muscular superhero bodies, which do not suit a quiet anime cast, and Fab’s Standard licence forbids redistributing source files. The maple-line GitHub repository is public, so licensed source files stay outside git; commit only what the licence allows. asset-src/THIRD_PARTY.md records every outside file with its licence, size and SHA-256."
+      }
+    ]
+  },
+  {
+    "title": "Design on paper first",
+    "explanation": "Draw the character and the key story moments before building anything in 3D. Drawings are quick to change; models are slow.",
+    "analogy": "An architect sketches the house before anyone pours the foundation.",
+    "watch": "Follow a character from a written brief to a sheet the modeller can trace.",
+    "howItWorks": "A turnaround sheet shows one character from the front, side and back, in the same A-pose (arms angled down) and at one scale. In the 3D tool these views sit behind the model, seen straight on with no perspective (orthographic), so the modeller can match heights and joint positions. The same sheet can be projected onto the model as a paint guide. Story key frames are a few single pictures of the main moments; if they tell the plot with no words, the story works.",
+    "inScene": "The concept sheets for this session were made with openai/gpt-image-2.5-flare through the AI Gateway; each cost about $0.04 and took about 25 s. The Riko sheet in the picture is AI-generated concept art, not a game capture. A few story key frames told the whole plot with no words. The concept-built Riko is being modelled from these sheets and is not in the game yet.",
+    "takeaway": "Check that the three views agree before you model. Label generated art as generated, and treat it as a reference, not a finished asset."
+  },
+  {
+    "title": "Check what the camera can actually see",
+    "explanation": "Before holding a shot of someone talking, check that nothing stands between the camera and their face. If something does, move the camera a little and check again.",
+    "analogy": "A wedding photographer steps sideways when a pillar blocks the couple, but stays on the same side of the aisle.",
+    "watch": "Watch the planned view hit the wall, then the search find the nearest clear view.",
+    "howItWorks": "The director casts rays from the camera to the speaker’s eyes and chest. Buildings, benches, train cars and other people block; glass, wires and leaves do not. If the planned view is blocked, it tries angles 15–90° round, then higher, lower, closer or further, cheapest change first, and keeps the first fully clear one. It stays on its side of the 180° line (the line between two speakers) so the pair do not swap sides of the screen between cuts. It aims at the model’s head bone, not a guessed height.",
+    "inScene": "Dialogue shots used to stare at a wall: Mr. Ishida’s bench stood 0.6 m inside the station building. The bench was moved and occlusion-aware framing was added. Now 11 of 11 Episode 1 lines show the speaker’s face; the contact sheet shows one frame per line.",
+    "takeaway": "Never assume a planned camera can see its subject. Test the sightline, prefer the smallest change, and hold the choice long enough that the shot does not flicker.",
+    "sections": [
+      {
+        "heading": "Keeping the choice stable",
+        "body": "A held portrait is re-checked every 0.25 s by createFramingMonitor() in apps/game/src/camera/shot-framing.js. Only two blocked checks in a row allow a new search. A new angle must score at least 0.3 better, or be fully clear where the current one is not. The camera then eases to it over 0.9 s and rests for 1.5 s before it may move again. This stops two similar angles flickering when someone walks past. apps/game/tests/shot-framing.test.js covers the search order, the 180° line and the monitor."
+      }
+    ]
+  },
+  {
+    "title": "A story has to read with the sound off",
+    "explanation": "A short video should make sense with the sound off. The pictures carry who wants what, what is in the way, and what happens.",
+    "analogy": "A good comic strip still works if you skip the speech bubbles.",
+    "watch": "Walk through the six parts a short story needs.",
+    "howItWorks": "Give one character one clear want. Show the stakes: what they lose if they fail. Put a clock on screen that the viewer can read, such as a station clock or a bus about to leave. Add an obstacle. Let someone make a choice. Show the payoff on screen instead of saying it. Keep to 3–4 characters so each one gets a face and a reason to be there.",
+    "inScene": "The first script of The 17:42 failed this test. Its conflict was arithmetic in dialogue (“Seventeen forty-two in. Seventeen forty out.”), nothing was at stake, the payoff was never shown, six characters shared the episode, and the bus and the clock never appeared on screen. A rewrite built on this recipe is being written; it is not in the game yet.",
+    "takeaway": "Draw the key frames first and watch the cut muted. Keep “how it’s made” credits out of a story video; they belong in the blog or the post that shares it."
+  },
+  {
+    "title": "Render video on a fixed clock",
+    "explanation": "To record a smooth video, do not film the game while it plays. Step the game forward exactly one frame at a time, capture each frame, then join the frames into a video.",
+    "analogy": "Stop-motion film: move the figures, take one photo, move them again. The film plays smoothly however long each photo took.",
+    "watch": "Follow one frame from the clock step to the finished MP4.",
+    "howItWorks": "With ?render=1 the game does not run its own loop. A script calls window.__mapleRender.step(), which advances one controllable clock by exactly 1/30 s and runs one frame. The simulation, captions and fades all read that clock. Random numbers come from a fixed seed and adaptive resolution is off, so two renders match. Each frame is captured as a page screenshot, captions included, and sent to ffmpeg. The video is H.264 with yuv420p colour and +faststart, which plays in WhatsApp and iMessage; WebM from the browser’s MediaRecorder does not play on iPhones.",
+    "inScene": "The poster is the render script’s own output for Episode 1 of The 17:42. The episode is 88 s long: 2,631 frames at 30 fps. It took 114 s to render at 16:9 and 156 s at 9:16 on an Apple M4 Pro, and the file is about 20 MB. Voice clips are placed by line id (scene/beat/line, counted from 1) from an audio manifest.",
+    "takeaway": "Give video its own clock, seed and fixed resolution. Capture what the viewer sees, and choose a format the target phones play."
+  },
+  {
+    "title": "Voices in many languages",
+    "explanation": "The game can speak each line in 11 languages and show subtitles in the same language. Speech and translation come from an online service, so results are cached and checked.",
+    "analogy": "Dubbing a film: a translator writes the script, an actor reads it, and the edit waits for the actor to finish each line.",
+    "watch": "Follow one line from English text to a spoken clip the scene waits for.",
+    "howItWorks": "Each line starts in English. If the episode has a hand-written translation for the language, the game uses it; otherwise it asks machine translation, passing the speaker’s gender so verbs agree, and names stay as they are. Then a text-to-speech model speaks the line. Clips and translations are stored on disk, so a line never costs twice. The episode waits until the clip ends before moving on.",
+    "inScene": "Voices use Sarvam bulbul:v3 in 11 languages. bulbul:v4-flash (224 speakers tagged by style) exists but is beta-gated for this account, so the model is a setting. Machine translation made mistakes in this session: a clock time read as “inches”, “front car” as “motor car”, and he and she swapped. Voicing an episode costs about ₹1 in English and about ₹3 in Telugu.",
+    "takeaway": "Keep the model configurable, cache everything, and let hand-written translations win. Have a native speaker check a voiced video before it is shared."
+  },
+  {
+    "title": "Treat shared links as untrusted input",
+    "explanation": "A link that opens the game on a story was made by someone else, so the game checks it the way a server checks a form: size first, then content, then the same rules as everything else.",
+    "analogy": "A post room weighs and scans a parcel before anyone opens it.",
+    "watch": "Follow a shared link through each check before any text reaches the screen.",
+    "howItWorks": "There are four kinds of link: ?episode= for a built-in episode, ?scene= for a place, #ep= for a whole episode packed into the link (compressed with deflate, then written as base64url text), and ?watch= for a short id kept in the site store. For #ep=, the game refuses long or odd payloads before decoding, stops decompressing past 64 KB, requires valid UTF-8 and JSON, and runs the same validator as saved episodes, which refuses unknown cue types and __proto__ keys. Dialogue is set with textContent, so any markup shows as plain text.",
+    "inScene": "The station is one of the places a ?scene= link can open. The tests include a small link that expands to 4 MB of text, which the game refuses. On the Signal edition the site store records the sharer’s email and anyone with access can list it, so say so before someone shares.",
+    "takeaway": "Check size before decoding, cap what decoding can produce, then validate with the same rules as trusted data. Show text as text."
+  },
+  {
+    "title": "Run many agents without losing work",
+    "explanation": "Several coding agents can work on one game at once if each has its own copy of the code, its own server port and its own area of files, and everyone merges into one branch often.",
+    "analogy": "A kitchen with several cooks works when each has a station and finished plates leave the pass quickly.",
+    "watch": "Follow the rules from giving an agent a task to merging its work.",
+    "howItWorks": "Give each agent a git worktree (a separate checkout of the same repository), its own branch and its own dev port. Give each area of files one owner. Write numeric acceptance criteria and ask for evidence: contact sheets, before/after captures, jitter numbers. Merge into one integration branch early and often. Conflicts gather in shared hub files (main.js, the episode runner, docs); resolve them by keeping both behaviours. Message an agent mid-task when the scope changes.",
+    "inScene": "On 23 September many agents worked on characters, camera framing, video, voice, sharing, water and storms, each in its own worktree, merging into one integration branch. The contact sheet in the picture is the kind of evidence an agent returned with its numbers.",
+    "takeaway": "git branch --no-merged cannot see uncommitted work in an old worktree; run git status inside it before removing it. Agents must never touch the person’s everyday browser session."
+  },
+  {
+    "title": "Judge visual work by before/after captures",
+    "explanation": "To know whether a visual change worked, take two screenshots from the same camera, one before and one after, and put them side by side.",
+    "analogy": "Before-and-after photos of a room only convince you when they are taken from the same doorway.",
+    "watch": "Follow the steps that make a before/after pair fair.",
+    "howItWorks": "Save a camera pose, the weather, the time of day and the output size. Capture before the change and after it with exactly those settings, then compare side by side at normal viewing size. Put detail where the player looks first: the start screen, the train, which is on screen 100% of the time, and faces in close-ups.",
+    "inScene": "Each row in the picture is one fixed camera, before on the left and after on the right, from the water, storm and foliage work. The first Blender pass looked like no change at all because its 4 new models sat about 1 km from where the player starts, used one flat vertex-colour material, and flat lighting washed them out.",
+    "takeaway": "If a change does not show in a side-by-side of the first screen, the train or a face, the player will not see it either."
   }
 ]

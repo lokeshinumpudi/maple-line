@@ -30,9 +30,13 @@ await cp('apps/game/dist-embed', `${out}/game`, { recursive: true });
 await writeFile(`${out}/assets/maple-embed.js`, await readFile('runbook/embed-sdk.js'));
 let playbook = await readFile('runbook/playbook.html', 'utf8');
 const agentLesson = JSON.parse(await readFile('runbook/agent-tools-lesson.json', 'utf8'));
+// Chapters 38 onward come after the agent-tools chapter, so earlier chapter numbers stay put.
+const sessionLessons = JSON.parse(await readFile('runbook/session-lessons.json', 'utf8'));
+// Function replacements: lesson text may contain `$` sequences that String.replace would expand.
 playbook = playbook.replace(
   'studioLessons.forEach(l => {',
-  `studioLessons.push(${JSON.stringify(agentLesson)});\nstudioLessons.forEach(l => {`,
+  () =>
+    `studioLessons.push(${JSON.stringify([agentLesson, ...sessionLessons]).slice(1, -1)});\nstudioLessons.forEach(l => {`,
 );
 const start = playbook.indexOf("  const main = '");
 const end = playbook.indexOf('  let group;');
@@ -78,7 +82,7 @@ for (const [index, lesson] of data.lessons.entries()) {
 }
 playbook = playbook.replace(
   '  let group;',
-  `  const plainConcepts = ${JSON.stringify(concepts)};
+  () => `  const plainConcepts = ${JSON.stringify(concepts)};
   lessons.forEach((lesson, index) => {
     lesson.technicalDefinition = lesson.definition;
     lesson.plainTitle = plainConcepts[index].title;
@@ -96,9 +100,15 @@ const slug = (title) =>
     .slice(0, 63)
     .replace(/-$/, '');
 const allSkills = [];
+const captureSubjects = JSON.parse(await readFile('runbook/captures/subjects.json', 'utf8'));
 for (const [index, reference] of data.gameReferences.entries()) {
-  if (!data.referenceAssets[reference.asset])
+  if (!data.referenceAssets[reference.asset] && !captureSubjects.assets[reference.asset])
     throw new Error(`Chapter ${index + 1} has no image: ${reference.asset}`);
+  for (const spot of reference.spots) {
+    const asset = captureSubjects.subjects[spot.label]?.asset;
+    if (asset && !captureSubjects.assets[asset])
+      throw new Error(`Chapter ${index + 1} spot "${spot.label}" has no capture: ${asset}`);
+  }
 }
 if (data.lessons.length !== data.gameReferences.length)
   throw new Error('Every lesson needs a game reference.');
@@ -106,13 +116,12 @@ for (const [name, uri] of Object.entries(data.referenceAssets)) {
   await writeFile(`${out}/assets/${name}.jpg`, Buffer.from(uri.split(',')[1], 'base64'));
   playbook = playbook.split(uri).join(`./assets/${name}.jpg`);
 }
-const captureSubjects = JSON.parse(await readFile('runbook/captures/subjects.json', 'utf8'));
 for (const name of Object.keys(captureSubjects.assets)) {
   await writeFile(`${out}/assets/${name}.jpg`, await readFile(`runbook/captures/${name}.jpg`));
 }
 playbook = playbook.replace(
   '  let group;',
-  `
+  () => `
   const captureSubjects = ${JSON.stringify(captureSubjects)};
   Object.keys(captureSubjects.assets).forEach(name => { referenceAssets[name] = './assets/' + name + '.jpg'; });
   gameReferences.forEach(reference => {
@@ -120,7 +129,7 @@ playbook = playbook.replace(
     reference.spots = reference.spots.map(spot => {
       const detail = captureSubjects.subjects[spot.label] || {};
       const asset = detail.asset || reference.asset;
-      return {...spot, box: captureSubjects.assets[asset].box, ...detail, asset, caption: captureSubjects.assets[asset].caption};
+      return {...spot, box: captureSubjects.assets[asset].box, ...detail, asset, caption: captureSubjects.assets[asset].caption, note: captureSubjects.assets[asset].note};
     });
   });
   let group;`,
@@ -129,7 +138,7 @@ for (const lesson of data.lessons) {
   const name = slug(lesson.title);
   const source = `https://github.com/lokeshinumpudi/maple-line/blob/main/${lesson.source.split(';')[0]}`;
   const reference = lesson.docUrl || `https://threejs.org/docs/pages/${lesson.doc}.html`;
-  const skill = `---\nname: ${name}\ndescription: ${JSON.stringify(`Apply ${lesson.title.toLowerCase()} when implementing or reviewing the corresponding part of a browser game. Use for this concept's behavior and validation, not unrelated game systems.`)}\n---\n\n# ${lesson.title}\n\n${lesson.definition}\n\n${lesson.reading}\n\n## Apply the concept\n\nRead the relevant implementation before editing it. In Maple Line, start with [the related source](${source}); in another project, locate the equivalent system. Preserve the user's requested scope.\n\n${lesson.impact}\n\n${lesson.studio ? `Current Maple Line context: ${lesson.present}\n\nProposed improvement: ${lesson.next}\n\nAcceptance check: ${lesson.accept}\n\nTradeoff: ${lesson.tradeoff}` : `Use this focused exercise to check the concept: ${lesson.exercise.replace(/^Try next: |^Build next: /, '')}`}\n\n## Working example\n\nThis is ${lesson.studio ? 'a proposed sketch, not a completed feature' : 'a teaching example; check current source before copying API calls'}. Adapt surrounding setup to the project.\n\n\`\`\`js\n${lesson.sample}\n\`\`\`\n\n## Verify the result\n\nCompare the changed behavior in a fixed scene and camera. Inspect browser errors. For rendering cost, compare the same viewport and weather; for stateful behavior, test interruption and resumption. Report what was observed and what remains untested. In Maple Line, run the relevant package checks from the workspace root and preserve the separation of serializable state and Three.js objects.\n\nThe source snapshot was inspected on 21 September 2026. Planned improvements are not evidence of shipped behavior. This skill does not authorize publishing, changing credentials, or touching unrelated projects.\n\nReference: [${lesson.docLabel || 'Three.js documentation'}](${reference})\n`;
+  const skill = `---\nname: ${name}\ndescription: ${JSON.stringify(`Apply ${lesson.title.toLowerCase()} when implementing or reviewing the corresponding part of a browser game. Use for this concept's behavior and validation, not unrelated game systems.`)}\n---\n\n# ${lesson.title}\n\n${lesson.definition}\n\n${lesson.reading}\n\n## Apply the concept\n\nRead the relevant implementation before editing it. In Maple Line, start with [the related source](${source}); in another project, locate the equivalent system. Preserve the user's requested scope.\n\n${lesson.impact}\n\n${lesson.studio ? `Current Maple Line context: ${lesson.present}\n\nProposed improvement: ${lesson.next}\n\nAcceptance check: ${lesson.accept}\n\nTradeoff: ${lesson.tradeoff}` : `Use this focused exercise to check the concept: ${lesson.exercise.replace(/^Try next: |^Build next: /, '')}`}\n\n## Working example\n\nThis is ${lesson.sampleNote ? `a working pattern (${lesson.sampleNote.toLowerCase()}); check current source before copying API calls` : lesson.studio ? 'a proposed sketch, not a completed feature' : 'a teaching example; check current source before copying API calls'}. Adapt surrounding setup to the project.\n\n\`\`\`js\n${lesson.sample}\n\`\`\`\n\n## Verify the result\n\nCompare the changed behavior in a fixed scene and camera. Inspect browser errors. For rendering cost, compare the same viewport and weather; for stateful behavior, test interruption and resumption. Report what was observed and what remains untested. In Maple Line, run the relevant package checks from the workspace root and preserve the separation of serializable state and Three.js objects.\n\nThe source snapshot was inspected on ${lesson.inspected || '21 September 2026'}. Planned improvements are not evidence of shipped behavior. This skill does not authorize publishing, changing credentials, or touching unrelated projects.\n\nReference: [${lesson.docLabel || 'Three.js documentation'}](${reference})\n`;
   await mkdir(`${out}/skills/${name}`, { recursive: true });
   await writeFile(`${out}/skills/${name}/SKILL.md`, skill);
   allSkills.push({ title: lesson.title, name, skill });
@@ -152,7 +161,7 @@ const liveGame =
   (await readFile('runbook/live-game.js', 'utf8'));
 playbook = playbook.replace(
   '  update();\n})();',
-  `${enhance}\n${interactive}\n${liveGame}\n  update();\n})();`,
+  () => `${enhance}\n${interactive}\n${liveGame}\n  update();\n})();`,
 );
 playbook = playbook.replace(
   '<select id="maple-lesson" class="form-select">',

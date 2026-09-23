@@ -237,7 +237,7 @@ A separate 700 m rural railway between route z1550–2250 carries an alternating
 
 The [hosting guide](docs/HOSTING.md) covers the separate Vercel client and Jev server and the Signal Ship build. The standalone backend source is published at [maple-line-server](https://github.com/lokeshinumpudi/maple-line-server). Local development still runs both apps from this workspace.
 
-The [illustrated runbook](https://signal-ship.internal.loophealth.com/s/maple-line-runbook/) covers 37 concepts with live game inspections, interactive diagrams and copyable agent skills. Its [embed SDK](docs/EMBED-SDK.md) provides same-origin scene configuration, focused cameras, reversible rendering controls and read-only ray inspection. The runbook defaults to the embedded game and shares one container with the diagram. Saved level authoring remains separate.
+The [illustrated runbook](https://signal-ship.internal.loophealth.com/s/maple-line-runbook/) covers 49 concepts with live game inspections, interactive diagrams and copyable agent skills. Its [embed SDK](docs/EMBED-SDK.md) provides same-origin scene configuration, focused cameras, reversible rendering controls and read-only ray inspection. The runbook defaults to the embedded game and shares one container with the diagram. Saved level authoring remains separate.
 
 ## Storms and night rain
 

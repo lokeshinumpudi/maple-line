@@ -394,6 +394,69 @@ checks.push([
   'No. Collect a timed performance sample with its scene context.',
   'Yes. The number of objects proves the frame rate.',
 ]);
+// Chapters 38–49 (runbook/session-lessons.json), in the same order.
+checks.push(
+  [
+    'Why did the characters look better with the same bodies?',
+    'Their clips and pose handling changed.',
+    'Their meshes got more triangles.',
+  ],
+  [
+    'What should the rig restore before the mixer runs each frame?',
+    'The pose the clips made last frame.',
+    'The rest pose of every bone.',
+  ],
+  [
+    'How do you know a look-at layer is not fighting the clip?',
+    'Jitter with the layer on stays within 10% of the layer off.',
+    'The head moves more than it did before.',
+  ],
+  [
+    'Why do tube-built limbs bend like pipes?',
+    'They have no edge loops at the joints.',
+    'Their material is too shiny.',
+  ],
+  [
+    'What makes a turnaround sheet useful for modelling?',
+    'The front, side and back agree in pose and scale.',
+    'Each view uses a different pose.',
+  ],
+  [
+    'A wall blocks a planned portrait. What should the director do?',
+    'Try nearby angles and keep the first clear one on the same side.',
+    'Keep the shot; the dialogue carries the scene.',
+  ],
+  [
+    'How do you test whether a short story reads?',
+    'Watch it muted with someone who has not read the script.',
+    'Count the number of lines.',
+  ],
+  [
+    'Why step a fixed clock when rendering a video?',
+    'Every frame advances by exactly 1/fps, however slow the machine is.',
+    'It makes the machine render faster.',
+  ],
+  [
+    'Which translation should a line use first?',
+    'A hand-written translation, when the episode has one.',
+    'Always the machine translation.',
+  ],
+  [
+    'When should a shared link be size-checked?',
+    'Before it is decoded or decompressed.',
+    'After its text is shown on screen.',
+  ],
+  [
+    'Why give each agent its own worktree and dev port?',
+    'So agents do not overwrite each other’s files or servers.',
+    'So all agents can share one dev server.',
+  ],
+  [
+    'What makes a before/after pair fair?',
+    'The same camera, weather, time of day and size.',
+    'A better camera angle for the after shot.',
+  ],
+);
 if (checks.length !== lessons.length) throw new Error('Every concept needs a practice check.');
 const quiz = document.createElement('section');
 quiz.className = 'concept-check';
@@ -499,7 +562,10 @@ update = () => {
     `${String(selected + 1).padStart(2, '0')} / ${lessons[selected].plainTitle}`;
   technicalName.textContent = `Developer terms: ${lessons[selected].title}`;
   technicalExplanation.textContent = lessons[selected].technicalDefinition;
-  labHint.textContent = `${lessons[selected].watch} It plays automatically; pause whenever you want to look more closely. This is a teaching diagram, not a measurement of the game.`;
+  const diagramNote = lessons[selected].measured
+    ? `The bars use values measured in the game on ${lessons[selected].measured}; their lengths are to scale within each row.`
+    : 'This is a teaching diagram, not a measurement of the game.';
+  labHint.textContent = `${lessons[selected].watch} It plays automatically; pause whenever you want to look more closely. ${diagramNote}`;
   for (const [key, paragraph] of Object.entries(explanationCopy)) {
     paragraph.textContent = plainConcepts[selected][key];
   }
