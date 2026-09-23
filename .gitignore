@@ -23,3 +23,6 @@ dist-embed/
 
 __pycache__/
 *.pyc
+
+# Rendered episode videos, posters and timelines (docs/VIDEO.md).
+media/renders/

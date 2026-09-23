@@ -61,6 +61,8 @@ export default defineConfig(({ mode }) => ({
     strictPort: true,
     allowedHosts: true,
     proxy: { '/api/director': 'http://127.0.0.1:4175' },
+    // Episode renders (scripts/render-episode.mjs): a source edit must not reload the page mid-capture.
+    ...(process.env.MAPLE_RENDER_SERVER === '1' ? { hmr: false, watch: null } : {}),
   },
   preview: {
     host: '127.0.0.1',

@@ -23,9 +23,11 @@
     "narration:prepare": "node scripts/prepare-narration.mjs",
     "build:ship": "pnpm --filter @maple-line/game exec vite build --mode ship && node scripts/bundle-ship-function.mjs",
     "build:public": "pnpm --filter @maple-line/game exec vite build --mode public",
-    "build:runbook": "node scripts/build-runbook.mjs"
+    "build:runbook": "node scripts/build-runbook.mjs",
+    "render:episode": "node scripts/render-episode.mjs"
   },
   "devDependencies": {
+    "playwright": "1.62.0",
     "prettier": "3.9.8",
     "turbo": "2.11.2"
   }

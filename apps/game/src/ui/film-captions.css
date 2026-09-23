@@ -122,6 +122,16 @@
     transition-duration: 1ms;
   }
 }
+/* Render mode: fades come from the render clock (see film-captions.js), not CSS time. */
+.film-captions.manual-fades :is(.film-place, .film-line, .film-title, .film-place-rule) {
+  transition: none;
+}
+.film-captions.manual-fades :is(.film-place, .film-title) {
+  transform: none;
+}
+.film-captions.manual-fades .film-line {
+  transform: translate(-50%, 0);
+}
 /* Director mode: the HUD steps back from the frame until the pointer or keys wake it. */
 body.film-mode > :is(header, main, footer, .vignette, #speedometer, #mobile-hud-toggle) {
   transition: opacity 700ms ease;

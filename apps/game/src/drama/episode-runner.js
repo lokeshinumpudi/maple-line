@@ -1,4 +1,5 @@
 import { normalizeEpisode, readingSeconds, beatSeconds, episodeSeconds } from './episode-schema.js';
+import { beatId, lineId } from './render-timeline.js';
 
 /**
  * Plays a normalized episode through a host. The runner owns only the timeline;
@@ -17,11 +18,16 @@ import { normalizeEpisode, readingSeconds, beatSeconds, episodeSeconds } from '.
  *   resolve(subject)                { cast, entity } | { crossing } -> director subject or null
  *
  * Advance with update(dt) using simulation time, so pauses and menus hold the episode.
+ *
+ * onEvent (optional) hears the timeline as it plays, for video renders and voice:
+ *   { type: 'episode', id, title } · { type: 'scene', id, heading, index }
+ *   { type: 'beat', id, scene, index, shot } · { type: 'end' }
+ *   { type: 'line', id, scene, beat, cast, speaker, text, seconds, phone }
  */
 const TITLE_LEAD = 4.5;
 const WAIT_LIMIT = 45;
 
-export function createEpisodeRunner(host, { stops = [], crossings = [] } = {}) {
+export function createEpisodeRunner(host, { stops = [], crossings = [], onEvent = () => {} } = {}) {
   let episode = null;
   let status = 'idle';
   let sceneIndex = 0;
@@ -64,6 +70,7 @@ export function createEpisodeRunner(host, { stops = [], crossings = [] } = {}) {
     host.setStop(current.stopAt ?? null);
     if (current.set) host.setScene(current.set, current);
     note(`scene ${current.id}: ${current.heading}`);
+    onEvent({ type: 'scene', id: current.id, heading: current.heading, index });
     startBeat(0);
   }
 
@@ -74,6 +81,13 @@ export function createEpisodeRunner(host, { stops = [], crossings = [] } = {}) {
     planned = beatSeconds(current) + lead;
     const shot = resolveShot(current.shot);
     const { caption, subtitle, line } = current;
+    onEvent({
+      type: 'beat',
+      id: beatId(scene().id, index),
+      scene: scene().id,
+      index,
+      shot: shot.type,
+    });
     host.cut({
       ...shot,
       // A few spare seconds so the automatic editor never cuts before the beat ends.
@@ -84,9 +98,9 @@ export function createEpisodeRunner(host, { stops = [], crossings = [] } = {}) {
     });
     schedule = [];
     let t = lead + (current.dialogue.length ? 1 : 0);
-    for (const spoken of current.dialogue) {
+    for (const [lineIndex, spoken] of current.dialogue.entries()) {
       const seconds = readingSeconds(spoken.text);
-      schedule.push({ at: t, kind: 'line', line: spoken, seconds });
+      schedule.push({ at: t, kind: 'line', line: spoken, seconds, lineIndex });
       t += seconds + 0.35;
     }
     for (const cue of current.cues) schedule.push({ at: lead + cue.after, kind: 'cue', cue });
@@ -96,6 +110,17 @@ export function createEpisodeRunner(host, { stops = [], crossings = [] } = {}) {
 
   function perform(item) {
     if (item.kind === 'line') {
+      onEvent({
+        type: 'line',
+        id: lineId(scene().id, beatIndex, item.lineIndex),
+        scene: scene().id,
+        beat: beatIndex + 1,
+        cast: item.line.cast ?? null,
+        speaker: speakerOf(item.line),
+        text: item.line.text,
+        seconds: item.seconds,
+        phone: Boolean(item.line.phone),
+      });
       host.say({
         speaker: speakerOf(item.line),
         text: item.line.text,
@@ -148,6 +173,7 @@ export function createEpisodeRunner(host, { stops = [], crossings = [] } = {}) {
 
   function finish() {
     status = 'ended';
+    onEvent({ type: 'end' });
     host.setStop(null);
     host.card({
       kind: 'title',
@@ -176,6 +202,7 @@ export function createEpisodeRunner(host, { stops = [], crossings = [] } = {}) {
         seconds: TITLE_LEAD,
       });
       lead = TITLE_LEAD;
+      onEvent({ type: 'episode', id: episode.id, title: episode.title });
       startScene(0);
       return api.getState();
     },

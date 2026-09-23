@@ -117,13 +117,20 @@ import {
   createExtendedWorld,
 } from './world/extended-route.js';
 import { distanceAtZ, nextStop, recordStationVisit } from './simulation/stops.js';
+import { readRenderOptions, createRenderClock, seededRandom } from './rendering/render-clock.js';
+import { createRenderTimeline } from './drama/render-timeline.js';
+import { mountRenderOverlay, END_CARD_SECONDS } from './ui/render-overlay.js';
 const $ = (id) => document.getElementById(id);
+// Video capture (?render=1): a script steps fixed frames through window.__mapleRender.
+const renderMode = readRenderOptions(location.search);
+const renderClock = renderMode ? createRenderClock({ fps: renderMode.fps }) : null;
+if (renderMode) Math.random = seededRandom(1742);
 const scene = new THREE.Scene();
 scene.name = 'Maple Line world';
 scene.background = new THREE.Color('#abc9cd');
 scene.fog = new THREE.FogExp2('#abc9cd', 0.0028);
 const mobilePlay =
-  matchMedia('(pointer: coarse)').matches && Math.min(innerWidth, innerHeight) < 820;
+  !renderMode && matchMedia('(pointer: coarse)').matches && Math.min(innerWidth, innerHeight) < 820;
 let renderer;
 try {
   renderer = new THREE.WebGLRenderer({
@@ -139,6 +146,10 @@ const frameBudget = createFrameBudget({
   renderer,
   devicePixelRatio,
   ...(mobilePlay ? { pixelBudget: 700000, maxPixelRatio: 1 } : {}),
+  // Renders draw one CSS pixel per output pixel at the requested size, every frame.
+  ...(renderMode
+    ? { devicePixelRatio: 1, pixelBudget: Infinity, maxPixelRatio: 1, adaptive: false }
+    : {}),
 });
 frameBudget.resize(innerWidth, innerHeight);
 renderer.setSize(innerWidth, innerHeight);
@@ -188,8 +199,11 @@ const stableSunShadow = createStableSunShadow();
 // Linear HDR scene target with bloom, sun shafts, focus and grade; 'off' is the plain render.
 const filmPipeline = createFilmPipeline({ renderer, scene, camera, quality: 'off' });
 const filmQuality = (preference) =>
-  preference === 'auto' ? (mobilePlay ? 'off' : 'full') : preference;
-const filmCaptions = mountFilmCaptions();
+  renderMode ? 'full' : preference === 'auto' ? (mobilePlay ? 'off' : 'full') : preference;
+const filmCaptions = mountFilmCaptions(document.body, renderClock ? { clock: renderClock } : {});
+const renderOverlay = renderMode ? mountRenderOverlay({ clock: renderClock }) : null;
+const renderTimeline = renderMode ? createRenderTimeline() : null;
+let renderEventTime = 0;
 let forcedLetterbox = 0;
 if (import.meta.hot)
   import.meta.hot.dispose(() => {
@@ -1220,6 +1234,7 @@ const filmDirector = createDirector({
   THREE,
   camera,
   track,
+  portraitFraming: renderMode?.portrait ? 'subject' : 'wide',
   getTrackLength: () => track.getLength?.() ?? trackLength,
   groundAt: (x, z) => terrain(x - center(z), z),
   canopyAt: (x, z) => Math.max(activeCanopy.heightAt(x, z), extendedWorld.foliageHeight(x, z)),
@@ -1357,7 +1372,11 @@ const episodeRunner = createEpisodeRunner(
       if (line.entity) heroCasts.find((hero) => hero.personId === line.entity)?.talk(line.seconds);
       filmCaptions.show({ kind: 'dialogue', ...line });
     },
-    card: (caption) => filmCaptions.show(caption),
+    card(caption) {
+      // A rendered video closes on its own end card instead of the in-game one.
+      if (renderMode && !episodeRunner.playing) return;
+      filmCaptions.show(caption);
+    },
     direct: (entity, note) => minds.setDirective(entity, note),
     event: (type) => minds.observe({ type }),
     weather(value) {
@@ -1390,6 +1409,7 @@ const episodeRunner = createEpisodeRunner(
   {
     stops: routeStops.map((stop) => stop.id),
     crossings: levelCrossings.getState().crossings.map((item) => item.id),
+    onEvent: (event) => renderTimeline?.record(event, renderEventTime),
   },
 );
 const episodeLibrary = createEpisodeLibrary(embedded ? null : globalThis.localStorage);
@@ -1762,17 +1782,18 @@ if (import.meta.hot)
     surfaceDetail.dispose();
     rainImpacts.dispose();
   });
-let last = performance.now(),
+let last = renderClock ? renderClock.now() : performance.now(),
   missionChipRenderedAt = 0,
   hold = 0;
 document.addEventListener('visibilitychange', () => {
-  last = performance.now();
+  if (!renderClock) last = performance.now();
 });
 let reflectionElapsed = 1,
   mindsStop = null,
   mindsStopAge = 0;
 function frame(now) {
-  requestAnimationFrame(frame);
+  // Render mode has no animation-frame loop; the capture script calls frame().
+  if (!renderMode) requestAnimationFrame(frame);
   if (embedded && (embedSuspended || document.hidden)) {
     last = now;
     return;
@@ -2244,8 +2265,10 @@ function frame(now) {
     riverWater.capture({ refreshReflection: reflectionElapsed >= 0.05 });
     if (reflectionElapsed >= 0.05) reflectionElapsed = 0;
   }
-  if (directorLook) filmPipeline.setLook(directorLook);
-  else filmPipeline.setLook({ letterbox: forcedLetterbox, dofMaxBlur: 0 });
+  if (directorLook) filmPipeline.setLook(renderLook(directorLook));
+  else filmPipeline.setLook(renderLook({ letterbox: forcedLetterbox, dofMaxBlur: 0 }));
+  filmCaptions.tick();
+  renderOverlay?.tick();
   filmCaptions.setBar(
     (filmPipeline.getState().letterbox *
       Math.min(0.3, Math.max(0, 1 - innerWidth / innerHeight / 2.39)) *
@@ -3173,6 +3196,148 @@ if (embedded) {
   });
   window.addEventListener('pagehide', disposeEmbed, { once: true });
 }
+/** Vertical videos stay full frame; a 2.39:1 band inside 9:16 would leave a small picture. */
+function renderLook(look) {
+  return renderMode?.portrait ? { ...look, letterbox: 0 } : look;
+}
+/**
+ * Render mode control for scripts/render-episode.mjs. Every step() advances the
+ * render clock by exactly one frame and simulates and draws that frame; the script
+ * captures the page after each step. Episode events are recorded at the time of the
+ * frame that first shows them.
+ */
+function installRenderControl() {
+  // The same background services the embed turns off: no AI requests and no sound.
+  gameStore.setPreferences({ sound: false, narrationEnabled: false });
+  gameStore.updateDirector({ enabled: false });
+  director.setEnabled(false);
+  mindsClient.setEnabled(false);
+  $('start-with-sound').checked = false;
+  const { fps } = renderMode;
+  const TAIL_SECONDS = 1.5;
+  let current = null;
+  let videoFrames = 0;
+  let endCardFrame = null;
+  let ended = false;
+  const findEpisode = (key) =>
+    THE_1742.episodes.find(
+      (episode) =>
+        episode.id === key ||
+        `${THE_1742.id}-${episode.number}` === key ||
+        String(episode.number) === String(key),
+    ) ?? episodeLibrary.list().find((episode) => episode.id === key);
+  const inSeries = (episode) => THE_1742.episodes.some((item) => item.id === episode.id);
+  const titles = (episode) => ({
+    series: episode.series ?? episode.title,
+    native: inSeries(episode) ? THE_1742.japanese : '',
+    episode: [
+      episode.number ? `Episode ${episode.number}` : null,
+      episode.series ? episode.title : null,
+    ]
+      .filter(Boolean)
+      .join(' · '),
+    next: episode.endCard?.line ?? '',
+    credit: 'Maple Line · もみじ線',
+  });
+  const status = () => {
+    const runner = episodeRunner.getState();
+    const endCardElapsed = renderOverlay.endCardElapsed();
+    return {
+      frame: videoFrames,
+      seconds: Number((videoFrames / fps).toFixed(3)),
+      runner: runner.status,
+      scene: runner.scene?.id ?? null,
+      beat: runner.beat ? runner.beat.index + 1 : null,
+      shot: runner.beat?.shot ?? null,
+      waitingFor: runner.beat?.waitingFor ?? null,
+      endCard: endCardElapsed === null ? null : Number(endCardElapsed.toFixed(2)),
+      done: endCardElapsed !== null && endCardElapsed >= END_CARD_SECONDS,
+    };
+  };
+  const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+  window.__mapleRender = Object.freeze({
+    options: renderMode,
+    /** Waits for fonts and character models, then draws warm-up frames (not recorded). */
+    async ready({ warmupFrames = 10, timeoutMs = 60000 } = {}) {
+      const deadline = performance.now() + timeoutMs;
+      await document.fonts.ready;
+      while (Object.values(modelLoader.getState()).includes('loading')) {
+        if (performance.now() > deadline) throw new Error('Models did not finish loading.');
+        await wait(100);
+      }
+      await Promise.all(heroCasts.map((hero) => hero.ready));
+      for (let i = 0; i < warmupFrames; i++) frame(renderClock.advance());
+      const gl = renderer.getContext();
+      const info = gl.getExtension('WEBGL_debug_renderer_info');
+      return {
+        ...renderMode,
+        models: modelLoader.getState(),
+        gpu: gl.getParameter(info ? info.UNMASKED_RENDERER_WEBGL : gl.RENDERER),
+        pixelRatio: renderer.getPixelRatio(),
+        canvas: [renderer.domElement.width, renderer.domElement.height],
+      };
+    },
+    episodes: () =>
+      THE_1742.episodes.map((episode) => ({
+        id: episode.id,
+        alias: `${THE_1742.id}-${episode.number}`,
+        title: episode.title,
+        number: episode.number,
+      })),
+    /** Starts an episode by id, alias (the-1742-1) or number, or a draft object. */
+    play(source) {
+      const episode = typeof source === 'object' && source ? source : findEpisode(source);
+      if (!episode) throw new TypeError(`Unknown episode ${JSON.stringify(source)}.`);
+      renderTimeline.reset();
+      renderOverlay.reset();
+      videoFrames = 0;
+      endCardFrame = null;
+      ended = false;
+      renderEventTime = 0;
+      const playing = watchEpisode(episode);
+      current = { ...episode, ...playing.episode };
+      return { episode: playing.episode, plannedSeconds: playing.episode.plannedSeconds };
+    },
+    step(count = 1) {
+      for (let i = 0; i < count; i++) {
+        renderEventTime = videoFrames / fps;
+        frame(renderClock.advance());
+        videoFrames += 1;
+        if (!ended && current && episodeRunner.getState().status === 'ended') {
+          ended = true;
+          endCardFrame = videoFrames + Math.round(TAIL_SECONDS * fps);
+        }
+        if (videoFrames === endCardFrame) {
+          filmCaptions.hide();
+          renderOverlay.endCard(titles(current));
+        }
+      }
+      return status();
+    },
+    status,
+    /** Poster frames: hide dialogue and show the series and episode title. */
+    poster(enabled) {
+      const text = current ? titles(current) : {};
+      renderOverlay.setPoster(Boolean(enabled), {
+        series: [text.series, current?.number ? `Episode ${current.number}` : null]
+          .filter(Boolean)
+          .join(' · '),
+        title: current?.title ?? '',
+      });
+      renderOverlay.tick();
+    },
+    timeline: () =>
+      renderTimeline.toManifest({
+        episode: current,
+        fps,
+        width: renderMode.width,
+        height: renderMode.height,
+        frames: videoFrames,
+      }),
+    log: () => episodeRunner.getState().log,
+  });
+}
 updateCamera(1, true);
 $('loading').hidden = true;
-requestAnimationFrame(frame);
+if (renderMode) installRenderControl();
+else requestAnimationFrame(frame);
