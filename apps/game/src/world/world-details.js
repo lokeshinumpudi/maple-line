@@ -30,6 +30,8 @@ export function addWorldDetails({
     pedestrians = [];
   // People drawn by a loaded model instead of the instanced parts (see world/hero-cast.js).
   const standIns = new Set();
+  // People the crowd kit draws (characters/crowd/), hidden here the same way.
+  const crowdHidden = new Set();
   const homes = [];
   let area = 'Countryside',
     signTexture;
@@ -553,30 +555,37 @@ export function addWorldDetails({
         index: batch.parts.length,
         weatherOnly,
         poseOnly,
+        slot: null,
         position: local.position.clone(),
         rotation: local.rotation.clone(),
         scale: local.scale.clone(),
       };
       batch.parts.push(item);
       parts.push(item);
+      local.userData.item = item;
       return local;
     };
-    const head = part(sphereGeo, palette.cream, 0, 1.52, 0, 0.18, 0.22, 0.18);
-    const hair = part(sphereGeo, palette.ink, 0, 1.66, -0.025, 0.195, 0.13, 0.19);
-    const torso = part(boxGeo, coat, 0, 0.99, 0, 0.46, 0.74, 0.3, true);
+    // Palette slot per part, so the crowd can tint this far figure to the person's look.
+    const slot = (local, name) => {
+      local.userData.item.slot = name;
+      return local;
+    };
+    const head = slot(part(sphereGeo, palette.cream, 0, 1.52, 0, 0.18, 0.22, 0.18), 'skin');
+    const hair = slot(part(sphereGeo, palette.ink, 0, 1.66, -0.025, 0.195, 0.13, 0.19), 'hair');
+    const torso = slot(part(boxGeo, coat, 0, 0.99, 0, 0.46, 0.74, 0.3, true), 'top');
     const legs = [
-      part(boxGeo, palette.ink, -0.12, 0.32, 0, 0.16, 0.64, 0.18),
-      part(boxGeo, palette.ink, 0.12, 0.32, 0, 0.16, 0.64, 0.18),
+      slot(part(boxGeo, palette.ink, -0.12, 0.32, 0, 0.16, 0.64, 0.18), 'lower'),
+      slot(part(boxGeo, palette.ink, 0.12, 0.32, 0, 0.16, 0.64, 0.18), 'lower'),
     ];
     const arms = [
-      part(boxGeo, coat, -0.3, 1.02, 0, 0.14, 0.65, 0.16, true),
-      part(boxGeo, coat, 0.3, 1.02, 0, 0.14, 0.65, 0.16, true),
+      slot(part(boxGeo, coat, -0.3, 1.02, 0, 0.14, 0.65, 0.16, true), 'top'),
+      slot(part(boxGeo, coat, 0.3, 1.02, 0, 0.14, 0.65, 0.16, true), 'top'),
     ];
-    const bag = part(boxGeo, palette.wood, 0.36, 0.63, 0, 0.2, 0.35, 0.26);
+    const bag = slot(part(boxGeo, palette.wood, 0.36, 0.63, 0, 0.2, 0.35, 0.26), 'bag');
     for (const side of [-1, 1]) {
-      part(boxGeo, palette.ink, side * 0.12, 0.36, 0.38, 0.16, 0.62, 0.18, false, false, 'reading');
-      part(boxGeo, palette.ink, side * 0.12, 0.055, 0.45, 0.18, 0.11, 0.3, false, false, 'reading');
-      part(
+      slot(part(boxGeo, palette.ink, side * 0.12, 0.36, 0.38, 0.16, 0.62, 0.18, false, false, 'reading'), 'lower');
+      slot(part(boxGeo, palette.ink, side * 0.12, 0.055, 0.45, 0.18, 0.11, 0.3, false, false, 'reading'), 'shoes');
+      slot(part(
         sphereGeo,
         palette.cream,
         side * 0.3,
@@ -588,7 +597,7 @@ export function addWorldDetails({
         false,
         false,
         'reading',
-      );
+      ), 'skin');
     }
     part(boxGeo, palette.paper, 0, 1.14, 0.53, 0.78, 0.47, 0.025, false, false, 'reading');
     part(boxGeo, palette.print, 0, 1.3, 0.547, 0.66, 0.035, 0.01, false, false, 'reading');
@@ -607,7 +616,7 @@ export function addWorldDetails({
           false,
           'reading',
         );
-    part(
+    slot(part(
       coneGeo,
       index % 2 ? palette.vermilion : palette.roof,
       0,
@@ -618,7 +627,7 @@ export function addWorldDetails({
       0.95,
       false,
       true,
-    );
+    ), 'umbrella');
     part(cylinderGeo, palette.silver, 0.15, 1.7, 0, 0.016, 1.1, 0.016, false, true);
     pedestrians.push({
       group,
@@ -633,10 +642,25 @@ export function addWorldDetails({
       phase: index * 2.4,
       onPlatform,
       lookTurn: 0,
+      crowd: {
+        id: agent.id,
+        source: 'momiji',
+        role: agent.role,
+        position: group.position,
+        heading: 0,
+        walking: false,
+        pose: 'standing',
+        state: '',
+        visible: true,
+        intent: null,
+        seatHeight: 0.61,
+        region: 'forest',
+      },
     });
   }
   population.people.forEach(person);
   const personMatrix = new THREE.Matrix4();
+  const tint = new THREE.Color();
   for (const batch of peopleBatches.values()) {
     const mesh = new THREE.InstancedMesh(batch.geometry, batch.material, batch.parts.length);
     batch.mesh = mesh;
@@ -737,6 +761,41 @@ export function addWorldDetails({
       if (enabled) standIns.add(id);
       else standIns.delete(id);
     },
+    /** Momiji people for the crowd kit (characters/crowd/crowd.js), except hero stand-ins. */
+    crowdPeople(push) {
+      for (const person of pedestrians) {
+        const agent = person.agent;
+        // Riders are reported by their carriage (train/interior.js) while aboard.
+        if (standIns.has(agent.id) || !agent.visible) continue;
+        const record = person.crowd;
+        record.heading = person.group.rotation.y;
+        record.walking = Boolean(agent.walking);
+        record.pose = agent.pose ?? 'standing';
+        record.state = agent.state;
+        record.visible = agent.visible;
+        record.intent = agent.pose === 'talking' ? 'chat' : null;
+        push(record);
+      }
+    },
+    /** Hide or show one person's instanced figure while the crowd kit draws them. */
+    setCrowdHidden(id, hidden) {
+      if (hidden) crowdHidden.add(id);
+      else crowdHidden.delete(id);
+    },
+    /** Tint one person's simple figure to a crowd look's palette (far tier). */
+    tintPerson(id, look) {
+      const person = pedestrians.find((item) => item.agent.id === id);
+      if (!person || !look) return;
+      for (const item of person.parts) {
+        const hex = item.slot && look.colors[item.slot];
+        if (!hex) continue;
+        tint.set(hex);
+        const base = item.batch.material.color;
+        tint.setRGB(tint.r / Math.max(base.r, 0.02), tint.g / Math.max(base.g, 0.02), tint.b / Math.max(base.b, 0.02));
+        item.batch.mesh.setColorAt(item.index, tint);
+        item.batch.mesh.instanceColor.needsUpdate = true;
+      }
+    },
     /** Live placement of one person's figure, for a stand-in model to follow. */
     figureOf(id) {
       const person = pedestrians.find((item) => item.agent.id === id);
@@ -825,6 +884,7 @@ export function addWorldDetails({
           if (
             !agent.visible ||
             standIns.has(agent.id) ||
+            crowdHidden.has(agent.id) ||
             (part.weatherOnly && (!wet || agent.pose === 'reading')) ||
             (part.poseOnly && agent.pose !== part.poseOnly)
           )

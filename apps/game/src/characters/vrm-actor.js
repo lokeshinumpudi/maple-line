@@ -49,7 +49,7 @@ export function postureOffsets(posture = {}) {
   ];
 }
 
-export function createVrmActor({ THREE, vrm, m, clipSet, mobile = false }) {
+export function createVrmActor({ THREE, vrm, m, clipSet, mobile = false, extraClips = null }) {
   const hipsHeight = vrm.humanoid.normalizedRestPose.hips?.position?.[1] ?? 0.86;
   const height = hipsHeight / 0.545;
   toneVrm(vrm, { height, mobile });
@@ -71,6 +71,10 @@ export function createVrmActor({ THREE, vrm, m, clipSet, mobile = false }) {
     // Names that share another clip's animation (shelter plays watch-train's folded arms).
     for (const [alias, target] of Object.entries(clipSet.extras?.aliases ?? {}))
       if (!actions.has(alias) && actions.has(target)) actions.set(alias, actions.get(target));
+    // Clips made from this VRM's own clips (the crowd's seated variants).
+    const clips = new Map([...actions].map(([name, action]) => [name, action.getClip()]));
+    for (const clip of extraClips?.(vrm, m, clips) ?? [])
+      if (!actions.has(clip.name)) actions.set(clip.name, mixer.clipAction(clip));
   }
   const gait = vrmGait(clipSet?.extras, hipsHeight);
   const scenePosture = vrm.scene.userData?.posture ?? {};

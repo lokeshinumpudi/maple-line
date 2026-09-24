@@ -102,6 +102,8 @@ const IDLE_LIFE = {
 export const GAIT_HYSTERESIS = 0.1;
 /** Clips that are a sitting pose: the feet are not planted and idle life rests. */
 const SIT_CLIPS = new Set(['sit', 'sit-enter', 'sit-exit']);
+/** Seated variants (crowd/clips.js: phone, reading, dozing, window) count as sitting too. */
+const isSitClip = (name) => SIT_CLIPS.has(name) || (typeof name === 'string' && name.startsWith('sit-'));
 /** A mind's intent must hold this long before the body changes gesture: no flicker. */
 export const INTENT_HOLD_SECONDS = 1.5;
 /** Clips during which a cradled prop comes up to the chest. */
@@ -196,6 +198,13 @@ export function createHeroCast({
   // A prop carried in both hands while walking: { prop: 'radio', walk: 'walk-carry' }.
   carry = null,
   random = Math.random,
+  // Called once the model has loaded, before the rig is built: ({ root, actor, kind }).
+  // The crowd uses it to put its palette material on a kit body and add seated clips.
+  prepare = null,
+  // Extra AnimationClips for a VRM, made from its own clips: (vrm, m, clips) => clips.
+  extraClips = null,
+  // Parent for the model root; defaults to the scene.
+  parent = scene,
 }) {
   let status = 'loading';
   let kind = null;
@@ -247,7 +256,7 @@ export function createHeroCast({
       loaded.m.VRMUtils.deepDispose(loaded.vrm.scene);
       return true;
     }
-    actor = createVrmActor({ THREE, vrm: loaded.vrm, m: loaded.m, clipSet, mobile });
+    actor = createVrmActor({ THREE, vrm: loaded.vrm, m: loaded.m, clipSet, mobile, extraClips });
     root = actor.root;
     mixer = actor.mixer;
     actions = actor.actions;
@@ -339,10 +348,14 @@ export function createHeroCast({
       return;
     }
     root.name = `Hero / ${personId}`;
+    if (prepare) await prepare({ root, actor, kind });
+    if (status === 'disposed') return;
     buildRig();
-    scene.add(root);
-    worldDetails.setStandIn(personId, true);
-    stage.set(personId, entry);
+    parent.add(root);
+    if (personId) {
+      worldDetails.setStandIn(personId, true);
+      stage.set(personId, entry);
+    }
     status = 'ready';
   })();
 
@@ -395,7 +408,7 @@ export function createHeroCast({
     update(dt, context = {}) {
       if (status !== 'ready') return;
       const { paused = false } = context;
-      const figure = worldDetails.figureOf(personId);
+      const figure = personId ? worldDetails.figureOf(personId) : null;
       root.visible = Boolean(figure?.visible);
       entry.visible = root.visible;
       if (!root.visible) {
@@ -448,7 +461,9 @@ export function createHeroCast({
         root.position.x += Math.sin(body.heading) * seatShift;
         root.position.z += Math.cos(body.heading) * seatShift;
       }
-      if (seatHeight !== null) root.position.y += (seatHeight - gait.seatHeight) * seatedFraction();
+      const benchHeight = figure.seatHeight ?? seatHeight;
+      if (benchHeight !== null && benchHeight !== undefined)
+        root.position.y += (benchHeight - gait.seatHeight) * seatedFraction();
       entry.position.copy(root.position);
       for (const prop of props) {
         if (prop.name === 'newspaper') prop.node.visible = seated;
@@ -468,7 +483,7 @@ export function createHeroCast({
       const expression = minds?.expressionFor(personId);
       // Hold a shown intent for a moment, so a mind that changes its mind every frame does
       // not restart gestures.
-      const wantedIntent = debug.intent ?? expression?.intent ?? 'continue';
+      const wantedIntent = debug.intent ?? expression?.intent ?? figure.intent ?? 'continue';
       shownFor += step;
       if (wantedIntent !== shownIntent && shownFor >= INTENT_HOLD_SECONDS) {
         shownIntent = wantedIntent;
@@ -492,6 +507,9 @@ export function createHeroCast({
       });
       if (choice.clip === 'turn' && !actions.has('turn')) choice.clip = 'idle';
       if (choice.clip === 'walk') choice.clip = walkName;
+      // Per-person variants of the other clips (a seated reader's `sit` is `sit-read`).
+      else if (clipVariants[choice.clip] && actions.has(clipVariants[choice.clip]))
+        choice.clip = clipVariants[choice.clip];
       if (choice.clip === 'hurry' && hurryName !== 'hurry') {
         // A carried radio: hurrying is the carry walk at a quicker cadence.
         choice.clip = hurryName;
@@ -511,7 +529,7 @@ export function createHeroCast({
         if (!rig) return;
         const look = chooseLook(expression, context, walking);
         lookingAt = look?.what ?? null;
-        const inSeat = seat !== 'none' || seated || SIT_CLIPS.has(blender.name);
+        const inSeat = seat !== 'none' || seated || isSitClip(blender.name);
         rig.apply(step, {
           idle: walking || inSeat ? 0 : (IDLE_LIFE[blender.name] ?? 0),
           breath: inSeat ? 0.6 : 1,
@@ -567,12 +585,49 @@ export function createHeroCast({
         actor.update(step, { afterPose: layers });
       }
     },
+    /** Props kept out of sight (a returned spanner), or shown only for check-phone. */
+    setPocketed(list = []) {
+      pocketed = [...list];
+    },
     /** Move the jaw for a line on screen; `seconds` is the subtitle's reading time. */
     talk(seconds) {
       talkFor = Math.max(talkFor, seconds * 0.85);
     },
     get personId() {
       return personId;
+    },
+    /**
+     * Stand in for a different person (the crowd's pooled near figures). Motion state starts
+     * afresh at the new person's position; `options` replaces the per-person settings.
+     */
+    assign(nextId, options = {}) {
+      if (nextId === personId && !options.force) return;
+      if (personId) {
+        if (stage.get(personId) === entry) stage.delete(personId);
+        if (status === 'ready') worldDetails.setStandIn(personId, false);
+      }
+      personId = nextId ?? null;
+      entry.personId = personId;
+      if (options.seatHeight !== undefined) seatHeight = options.seatHeight;
+      if (options.clipVariants) clipVariants = options.clipVariants;
+      if (options.carry !== undefined) carry = options.carry;
+      if (options.pocketed) pocketed = options.pocketed;
+      wasVisible = false;
+      seat = 'none';
+      seatClipTime = 0;
+      seatShift = 0;
+      shownIntent = null;
+      shownFor = Infinity;
+      talkFor = 0;
+      lookingAt = null;
+      if (root) {
+        root.visible = false;
+        root.name = `Hero / ${personId ?? 'free'}`;
+      }
+      if (personId && status === 'ready') {
+        worldDetails.setStandIn(personId, true);
+        stage.set(personId, entry);
+      }
     },
     /**
      * Development and measurement switches. `layers` turns rig layers off by name
@@ -613,9 +668,11 @@ export function createHeroCast({
     },
     dispose() {
       status = 'disposed';
-      stage.delete(personId);
-      worldDetails.setStandIn(personId, false);
-      if (root) scene.remove(root);
+      if (personId) {
+        if (stage.get(personId) === entry) stage.delete(personId);
+        worldDetails.setStandIn(personId, false);
+      }
+      root?.removeFromParent();
       eyeTarget.removeFromParent();
       mixer?.stopAllAction();
       actor?.dispose();

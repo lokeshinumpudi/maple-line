@@ -456,9 +456,12 @@ export function fadeFor(from, to) {
   if (to === 'board') return 0.25;
   // Sitting down and standing up are one-shots whose ends match the poses either side.
   if (to === 'sit-enter' || to === 'sit-exit') return 0.3;
-  if (from === 'sit-enter' && to === 'sit') return 0.2;
+  // Seated variants (sit-phone, sit-read, ...) blend like the sit loop itself.
+  const seated = (name) => name === 'sit' || /^sit-(?!enter|exit)/.test(name);
+  if (from === 'sit-enter' && seated(to)) return 0.2;
   if (from === 'sit-exit') return 0.3;
-  if (to === 'sit' || from === 'sit') return 0.7;
+  if (seated(to) && seated(from)) return 0.6;
+  if (seated(to) || seated(from)) return 0.7;
   if (GAITS.has(from) && GAITS.has(to)) return 0.35;
   if (to === 'turn' || from === 'turn') return 0.3;
   if (GAITS.has(to)) return 0.4; // setting off

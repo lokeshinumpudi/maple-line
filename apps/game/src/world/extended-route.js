@@ -1153,6 +1153,19 @@ export function createExtendedWorld({
         result = Math.max(result, active.get(i)?.canopy.get(key) ?? -Infinity);
       return result;
     },
+    /** Loaded stations' residents for the crowd kit (characters/crowd/crowd.js). */
+    crowdPeople(push) {
+      for (const chunk of active.values())
+        for (const resident of chunk.residents) resident.crowdPeople?.(push);
+    },
+    setCrowdHidden(id, hidden) {
+      for (const chunk of active.values())
+        for (const resident of chunk.residents) if (resident.setHidden?.(id, hidden)) return;
+    },
+    tintResident(id, look) {
+      for (const chunk of active.values())
+        for (const resident of chunk.residents) if (resident.tint?.(id, look)) return;
+    },
     /** Loaded stations' residents only; cheaper than getState() for per-frame tools. */
     getResidents() {
       return [...active.values()].flatMap((chunk) =>

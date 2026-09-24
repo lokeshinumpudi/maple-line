@@ -883,6 +883,13 @@ export function createTrain({ THREE, scene, wireHeight = 12.1 }) {
         return modelState;
       });
     },
+    /** Seated riders of every carriage for the crowd kit (characters/crowd/crowd.js). */
+    crowdPeople(push) {
+      for (const interior of interiors) interior.crowdPeople(push);
+    },
+    setCrowdHidden(id, hidden) {
+      for (const interior of interiors) if (interior.setCrowdHidden(id, hidden)) return;
+    },
     /** World positions of seated passengers' heads in one car (see interior.js). */
     interiorHeads: (index) =>
       interiors.find((interior) => interior.state().carIndex === index)?.heads() ?? [],

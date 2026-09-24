@@ -80,6 +80,8 @@ import { NARRATION_LANGUAGES } from '@maple-line/voice-score';
 import { createModelLoader, createGltfLoader } from './rendering/model-loader.js';
 import { createHeroCast, MOMIJI_CAST } from './world/hero-cast.js';
 import { createVrmLoader } from './characters/vrm-loader.js';
+import { createCrowd } from './characters/crowd/crowd.js';
+import { createStoryCrowdSource } from './narrative/story-crowd.js';
 import { findHeadNode } from './characters/humanoid-bones.js';
 import { createStationModules } from './world/station-modules.js';
 import { createMindsClient, mindRegion } from './agent/minds-client.js';
@@ -973,6 +975,42 @@ const heroCasts = MOMIJI_CAST.map((member) =>
 );
 // Development: motion measurement scripts switch rig layers and read bones through this.
 if (import.meta.env.DEV) window.__mapleHeroes = heroCasts;
+// The crowd kit draws everyone else at three detail levels (docs/CROWD.md).
+// `?crowd=legacy` keeps the simple instanced figures and the older story figures.
+const crowd =
+  new URLSearchParams(location.search).get('crowd') === 'legacy'
+    ? null
+    : createCrowd({
+        THREE,
+        scene,
+        vrmLoader: vrmLoader ?? createVrmLoader(),
+        propLoader: modelLoader,
+        minds,
+        mobile: mobilePlay,
+        tier: sceneryEffects.tier,
+      });
+if (crowd) {
+  crowd.addSource({
+    id: 'momiji',
+    collect: (push) => worldDetails.crowdPeople?.(push),
+    hide: (id, hidden) => worldDetails.setCrowdHidden?.(id, hidden),
+    tint: (id, look) => worldDetails.tintPerson?.(id, look),
+  });
+  crowd.addSource({
+    id: 'regional',
+    collect: (push) => extendedWorld.crowdPeople(push),
+    hide: (id, hidden) => extendedWorld.setCrowdHidden(id, hidden),
+    tint: (id, look) => extendedWorld.tintResident(id, look),
+  });
+  crowd.addSource({
+    id: 'interior',
+    collect: (push) => trainModel.crowdPeople(push),
+    hide: (id, hidden) => trainModel.setCrowdHidden(id, hidden),
+  });
+}
+if (import.meta.env.DEV) window.__mapleCrowd = crowd;
+let crowdRolesAge = Infinity;
+let crowdRolesKey = '';
 const stationModules = createStationModules({ THREE, loader: modelLoader, parent: station });
 // The Blender train replaces the procedural exterior once its GLB loads. `?train=procedural`
 // keeps the code-built train, for comparisons and as a manual fallback.
@@ -981,6 +1019,7 @@ if (new URLSearchParams(location.search).get('train') !== 'procedural')
 if (import.meta.hot)
   import.meta.hot.dispose(() => {
     for (const hero of heroCasts) hero.dispose();
+    crowd?.dispose();
     stationModules.dispose();
   });
 if (import.meta.hot) import.meta.hot.dispose(() => mindsClient.dispose());
@@ -1644,6 +1683,7 @@ const episodeRunner = createEpisodeRunner(
     cut: (shot) => filmDirector.cut(shot),
     say(line) {
       if (line.entity) heroCasts.find((hero) => hero.personId === line.entity)?.talk(line.seconds);
+      if (line.entity) crowd?.talk(line.entity, line.seconds);
       filmCaptions.show({ kind: 'dialogue', ...line });
     },
     card(caption) {
@@ -2532,6 +2572,26 @@ function frame(now) {
     dusk,
     doorsOpen: state.doorsOpen,
   });
+  // After the train has moved: carriage riders are placed in this frame's car positions.
+  crowdRolesAge += realDt;
+  if (crowd && crowdRolesAge > 0.5) {
+    crowdRolesAge = 0;
+    // Drama episodes dress the residents they cast as their roles (NAMED_LOOKS).
+    const actors = episodeRunner.getState().scene?.actors ?? {};
+    const key = JSON.stringify(actors);
+    if (key !== crowdRolesKey) {
+      crowdRolesKey = key;
+      crowd.setRoles(actors);
+    }
+  }
+  crowd?.update(dt, {
+    camera,
+    weather: localWeather,
+    season: gameStore.getState().worldBuilder.active?.plan.season ?? 'autumn',
+    hero: heroContext,
+    paused: state.paused,
+    insideTrain: view === 'passenger' || view === 'cab',
+  });
   if (state.doorsClosing && trainModel.getDoorState().openFraction === 0) {
     changeDrive((next) => {
       next.doorsClosing = false;
@@ -2775,6 +2835,22 @@ storyGuests = createStoryGuests({
   railPoint,
   terrainHeight: (x, z) => terrain(x - center(z), z),
 });
+// Haru, Emi and the scene guests as hero-level kit characters (narrative/story-crowd.js).
+const storyCrowd = crowd ? createStoryCrowdSource({ storyCast, storyGuests }) : null;
+if (storyCrowd) crowd.addSource(storyCrowd);
+let storySpeaker = null;
+const onStoryVoice = (event) => {
+  const { status, character, quoted, text = '' } = event.detail ?? {};
+  const speaking = status === 'playing' && quoted && character ? character : null;
+  if (storySpeaker && storySpeaker !== speaking) storyCrowd?.setSpeaking(storySpeaker, false);
+  storySpeaker = speaking;
+  if (!speaking) return;
+  storyCrowd?.setSpeaking(speaking, true);
+  crowd?.talk(speaking, Math.max(1.2, text.length / 13));
+};
+window.addEventListener('maple:story-voice', onStoryVoice);
+if (import.meta.hot)
+  import.meta.hot.dispose(() => window.removeEventListener('maple:story-voice', onStoryVoice));
 /** Everyone a grab can find: Momiji people, loaded regional residents, and story figures. */
 function grabbableCharacters() {
   const list = [];
@@ -3300,6 +3376,7 @@ if (import.meta.env.DEV) {
             ...directorContext(),
             models: {
               heroes: heroCasts.map((hero) => hero.getState()),
+              crowd: crowd?.getState() ?? null,
               modules: stationModules.getState(),
               files: modelLoader.getState(),
             },
@@ -3637,9 +3714,10 @@ $('graphics-quality').value = gameStore.getState().preferences.graphics;
 $('graphics-quality').onchange = () =>
   gameStore.setPreferences({ graphics: $('graphics-quality').value });
 sceneryEffects.setPreference(gameStore.getState().preferences.graphics);
-sceneryEffects.onTier((settings) => {
+sceneryEffects.onTier((settings, tier) => {
   riverWater.setQuality(settings);
   atmosphere.setQuality(settings);
+  crowd?.setTier(tier);
 });
 if (embedded) {
   embedVisuals = createEmbedVisuals({
