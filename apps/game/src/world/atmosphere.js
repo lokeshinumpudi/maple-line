@@ -166,6 +166,7 @@ export function createAtmosphere({
     ground: new THREE.Color(STORM_PROFILE.ground),
   };
   const flashColor = new THREE.Color('#dfe8ff');
+  const nightSky = new THREE.Color('#5b7299');
   const rainTint = new THREE.Color();
   // Lighting targets are kept separately so a lightning flash never feeds back into them.
   const base = {
@@ -226,7 +227,11 @@ export function createAtmosphere({
       lerp(config.ambient, STORM_PROFILE.ambient, stormAmount) *
       (isDusk ? 0.76 : 1) *
       light.ambient;
-    const exposure = lerp(config.exposure, STORM_PROFILE.exposure, stormAmount);
+    // Blue hour: a cool sky fill and a little more exposure, so shapes and faces still read
+    // between the lamps. Strongest in rain, when the cloud glows with the town's light.
+    const nightFill = night * (0.65 + rainAmount * 0.35);
+    const exposure =
+      lerp(config.exposure, STORM_PROFILE.exposure, stormAmount) * (1 + nightFill * 0.22);
     base.fogColor.lerp(fogTarget, blend);
     scene.fog.density = lerp(scene.fog.density, density, blend);
     scene.environmentIntensity = lerp(
@@ -239,8 +244,8 @@ export function createAtmosphere({
     );
     base.sunColor.lerp(sunTarget, blend);
     base.sunIntensity = lerp(base.sunIntensity, sunPower, blend);
-    base.hemiIntensity = lerp(base.hemiIntensity, ambient, blend);
-    hemi.color.lerp(zenithTarget, blend);
+    base.hemiIntensity = lerp(base.hemiIntensity, ambient * (1 + nightFill * 0.55), blend);
+    hemi.color.lerp(scratch.copy(zenithTarget).lerp(nightSky, nightFill * 0.75), blend);
     hemi.groundColor.lerp(
       groundTarget.set(config.ground).lerp(stormColors.ground, stormAmount),
       blend,
