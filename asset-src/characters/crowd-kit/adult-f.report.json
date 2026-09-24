@@ -1,0 +1,89 @@
+{
+  "blender": "5.2.2 LTS",
+  "body": "adult-f",
+  "facing": "-Y in Blender, +Z in three.js (VRM 1.0)",
+  "heightMetres": 1.6,
+  "parts": {
+    "acc:backpack": 16,
+    "acc:cap": 10,
+    "acc:glasses": 12,
+    "acc:scarf": 15,
+    "acc:shoulder-bag": 13,
+    "acc:straw-hat": 11,
+    "acc:umbrella": 14,
+    "hair:bob": 1,
+    "hair:bun": 4,
+    "hair:long": 3,
+    "hair:low-ponytail": 5,
+    "hair:ponytail": 2,
+    "outfit:apron": 7,
+    "outfit:casual-f": 8,
+    "outfit:coat": 9,
+    "outfit:office-f": 6
+  },
+  "shapeKeys": {
+    "lod0": [
+      "blinkL",
+      "blinkR",
+      "happy",
+      "relaxed",
+      "surprised",
+      "aa",
+      "ih",
+      "ou",
+      "ee",
+      "oh",
+      "lookUp",
+      "lookDown",
+      "lookLeft",
+      "lookRight"
+    ],
+    "lod1": [
+      "blink"
+    ]
+  },
+  "triangles": {
+    "lod0": 28133,
+    "lod1": 5494
+  },
+  "trianglesPerPart": {
+    "lod0": {
+      "acc:backpack": 120,
+      "acc:cap": 220,
+      "acc:glasses": 86,
+      "acc:scarf": 240,
+      "acc:shoulder-bag": 232,
+      "acc:straw-hat": 288,
+      "acc:umbrella": 116,
+      "base": 6713,
+      "hair:bob": 3634,
+      "hair:bun": 2664,
+      "hair:long": 3804,
+      "hair:low-ponytail": 3208,
+      "hair:ponytail": 3964,
+      "outfit:apron": 120,
+      "outfit:casual-f": 896,
+      "outfit:coat": 896,
+      "outfit:office-f": 932
+    },
+    "lod1": {
+      "acc:backpack": 24,
+      "acc:cap": 110,
+      "acc:glasses": 86,
+      "acc:scarf": 88,
+      "acc:shoulder-bag": 72,
+      "acc:straw-hat": 120,
+      "acc:umbrella": 28,
+      "base": 1488,
+      "hair:bob": 650,
+      "hair:bun": 494,
+      "hair:long": 650,
+      "hair:low-ponytail": 530,
+      "hair:ponytail": 662,
+      "outfit:apron": 24,
+      "outfit:casual-f": 144,
+      "outfit:coat": 144,
+      "outfit:office-f": 180
+    }
+  }
+}

@@ -1,0 +1,84 @@
+{
+  "blender": "5.2.2 LTS",
+  "body": "adult-m",
+  "facing": "-Y in Blender, +Z in three.js (VRM 1.0)",
+  "heightMetres": 1.72,
+  "parts": {
+    "acc:backpack": 15,
+    "acc:cap": 9,
+    "acc:glasses": 11,
+    "acc:scarf": 14,
+    "acc:shoulder-bag": 12,
+    "acc:straw-hat": 10,
+    "acc:umbrella": 13,
+    "hair:buzz": 3,
+    "hair:low-ponytail": 4,
+    "hair:short": 1,
+    "hair:side-part": 2,
+    "outfit:coat": 8,
+    "outfit:staff": 7,
+    "outfit:suit": 5,
+    "outfit:work": 6
+  },
+  "shapeKeys": {
+    "lod0": [
+      "blinkL",
+      "blinkR",
+      "happy",
+      "relaxed",
+      "surprised",
+      "aa",
+      "ih",
+      "ou",
+      "ee",
+      "oh",
+      "lookUp",
+      "lookDown",
+      "lookLeft",
+      "lookRight"
+    ],
+    "lod1": [
+      "blink"
+    ]
+  },
+  "triangles": {
+    "lod0": 17839,
+    "lod1": 3734
+  },
+  "trianglesPerPart": {
+    "lod0": {
+      "acc:backpack": 120,
+      "acc:cap": 220,
+      "acc:glasses": 86,
+      "acc:scarf": 240,
+      "acc:shoulder-bag": 232,
+      "acc:straw-hat": 288,
+      "acc:umbrella": 116,
+      "base": 6497,
+      "hair:buzz": 852,
+      "hair:low-ponytail": 3208,
+      "hair:short": 2412,
+      "hair:side-part": 2566,
+      "outfit:coat": 896,
+      "outfit:staff": 53,
+      "outfit:suit": 53
+    },
+    "lod1": {
+      "acc:backpack": 24,
+      "acc:cap": 110,
+      "acc:glasses": 86,
+      "acc:scarf": 88,
+      "acc:shoulder-bag": 72,
+      "acc:straw-hat": 120,
+      "acc:umbrella": 28,
+      "base": 1428,
+      "hair:buzz": 158,
+      "hair:low-ponytail": 530,
+      "hair:short": 414,
+      "hair:side-part": 426,
+      "outfit:coat": 144,
+      "outfit:staff": 53,
+      "outfit:suit": 53
+    }
+  }
+}
