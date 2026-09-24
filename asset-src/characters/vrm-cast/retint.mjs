@@ -4,10 +4,11 @@
  *
  *   node asset-src/characters/vrm-cast/retint.mjs <file.vrm> --extract <atlas.jpg>
  *   node asset-src/characters/vrm-cast/retint.mjs <file.vrm> [--texture <atlas.jpg>] \
- *     [--color skin=#cf8c5b ...] [--hide ribbon] [--name "Meera"]
+ *     [--color skin=#cf8c5b ...] [--shade skin=#9e6450] [--hide ribbon] [--name "Meera"]
  *
  * `--color` sets a material's base colour (sRGB hex) and moves its MToon shade and outline
- * colours by the same factor per channel, so the house shading keeps its shape. `--texture`
+ * colours by the same factor per channel, so the house shading keeps its shape. `--shade`
+ * then sets the MToon shade colour itself. `--texture`
  * swaps the first embedded image (the painted atlas) for a new JPEG; the binary buffer is
  * rebuilt so the old image bytes do not stay behind. `--hide` cuts a material's surface out
  * completely and drops its outline (a tie on a student uniform). The skin recolour of an atlas is done
@@ -48,7 +49,10 @@ function rebuildBuffer(json, bin, replace = new Map()) {
   return out;
 }
 
-export function retint(glb, { colors = {}, texture = null, name = null, hide = [] } = {}) {
+export function retint(
+  glb,
+  { colors = {}, shades = {}, texture = null, name = null, hide = [] } = {},
+) {
   const { json } = glb;
   for (const materialName of hide) {
     const material = json.materials.find((m) => m.name === materialName);
@@ -77,6 +81,12 @@ export function retint(glb, { colors = {}, texture = null, name = null, hide = [
       mtoon.outlineColorFactor = scale(mtoon.outlineColorFactor);
     }
   }
+  for (const [materialName, hex] of Object.entries(shades)) {
+    const material = json.materials.find((m) => m.name === materialName);
+    const mtoon = material?.extensions?.VRMC_materials_mtoon;
+    if (!mtoon) throw new Error(`no MToon material ${materialName}`);
+    mtoon.shadeColorFactor = hexLinear(hex).map((c) => round(c, 4));
+  }
   if (texture) {
     const image = json.images?.[0];
     if (!image || image.bufferView === undefined) throw new Error('no embedded image to replace');
@@ -91,6 +101,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const args = process.argv.slice(2);
   const file = args.shift();
   const colors = {};
+  const shades = {};
   let texture = null;
   let extract = null;
   let name = null;
@@ -101,6 +112,9 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     if (flag === '--color') {
       const [key, hex] = value.split('=');
       colors[key] = hex;
+    } else if (flag === '--shade') {
+      const [key, hex] = value.split('=');
+      shades[key] = hex;
     } else if (flag === '--texture') texture = readFileSync(value);
     else if (flag === '--extract') extract = value;
     else if (flag === '--name') name = value;
@@ -114,7 +128,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     writeFileSync(extract, glb.bin.subarray(start, start + view.byteLength));
     console.log(`wrote ${extract}`);
   } else {
-    retint(glb, { colors, texture, name, hide });
+    retint(glb, { colors, shades, texture, name, hide });
     writeGlb(file, glb);
     console.log(`retinted ${file}`);
   }
