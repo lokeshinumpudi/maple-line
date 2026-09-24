@@ -2902,6 +2902,8 @@ function frame(now) {
     frameMs: intervalMs,
     night: dusk || isTunnel(routePosition.z) ? 1 : 0,
     pixelHeight: renderer.getDrawingBufferSize(drawingBuffer).y,
+    // Halos hide behind the same people capsules the director's sightlines use.
+    people: dusk || isTunnel(routePosition.z) ? peopleCapsules() : null,
   });
   for (const chunk of railChunks) chunk.mesh.visible = Math.abs(chunk.z - camera.position.z) < 1200;
   reflectionElapsed += dt;

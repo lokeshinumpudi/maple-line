@@ -3,12 +3,40 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import {
   LIGHT_POOL_TIERS,
+  capCharacterLight,
   chooseSources,
   createLightPool,
   createSlotBank,
   sourceScore,
 } from '../src/rendering/light-pools.js';
+import { haloHiddenBy } from '../src/rendering/light-halos.js';
 import { createAonumaPlanting } from '../src/world/aonuma-planting.js';
+
+test('a person between the camera and a lamp hides its halo; one off to the side does not', () => {
+  const camera = new THREE.Vector3(0, 1.6, 0);
+  const lamp = new THREE.Vector3(0, 1.7, 10);
+  const person = (x, z) => ({ x, z, bottom: 0, top: 1.75 });
+  assert.ok(haloHiddenBy([person(0, 4)], camera, lamp, 0.8) > 0.9);
+  assert.ok(haloHiddenBy([person(0.45, 4)], camera, lamp, 0.8) > 0.2, 'a glow wrapping a head');
+  assert.equal(haloHiddenBy([person(3, 4)], camera, lamp, 0.8), 0);
+  assert.equal(haloHiddenBy([person(0, 12)], camera, lamp, 0.8), 0, 'behind the lamp');
+  assert.equal(haloHiddenBy([], camera, lamp), 0);
+});
+
+test('character light is capped only on MToon materials and only once', () => {
+  assert.equal(capCharacterLight(new THREE.MeshStandardMaterial()), false);
+  const toon = new THREE.ShaderMaterial();
+  toon.isMToonMaterial = true;
+  assert.equal(capCharacterLight(toon), true);
+  assert.equal(capCharacterLight(toon), false);
+  const shader = {
+    uniforms: {},
+    fragmentShader: 'vec3 col = reflectedLight.directDiffuse + reflectedLight.indirectDiffuse;',
+  };
+  toon.onBeforeCompile(shader);
+  assert.ok(shader.uniforms.mapleCharacterLight);
+  assert.match(shader.fragmentShader, /mapleCeiling/);
+});
 
 const at = (x, y, z) => new THREE.Vector3(x, y, z);
 const lamp = (id, x, level = 1, intensity = 10) => ({

@@ -16,6 +16,36 @@ export function emissiveStrength(material) {
   return (0.2126 * r + 0.7152 * g + 0.0722 * b) * material.emissiveIntensity;
 }
 
+/**
+ * How much of a halo a person hides, 0..1: the camera-to-lamp sightline tested against each
+ * person's upright capsule, widened by the halo's own size where the line passes them, so a
+ * glow that would wrap a head fades as well as one right behind it.
+ */
+export function haloHiddenBy(people, camera, lamp, haloRadius = 1) {
+  const dx = lamp.x - camera.x,
+    dy = lamp.y - camera.y,
+    dz = lamp.z - camera.z;
+  const flat = dx * dx + dz * dz;
+  if (flat < 1e-6) return 0;
+  let hidden = 0;
+  for (const person of people) {
+    const u = ((person.x - camera.x) * dx + (person.z - camera.z) * dz) / flat;
+    if (u <= 0.02 || u >= 0.98) continue;
+    const across = Math.hypot(camera.x + dx * u - person.x, camera.z + dz * u - person.z);
+    const height = camera.y + dy * u;
+    const margin = haloRadius * u + 0.12;
+    const side = 1 - smooth(0.26, 0.26 + margin, across);
+    const above = 1 - smooth(person.top, person.top + margin, height);
+    const below = smooth(person.bottom - 0.1, person.bottom + 0.2, height);
+    hidden = Math.max(hidden, side * above * below);
+  }
+  return hidden;
+}
+function smooth(edge0, edge1, x) {
+  const t = Math.min(1, Math.max(0, (x - edge0) / (edge1 - edge0)));
+  return t * t * (3 - 2 * t);
+}
+
 export function createLightHalos({ THREE, scene, layer = 0, radius = 420 }) {
   const positions = new Float32Array(MAX_HALOS * 3);
   const colors = new Float32Array(MAX_HALOS * 3);
@@ -80,6 +110,7 @@ export function createLightHalos({ THREE, scene, layer = 0, radius = 420 }) {
   if (layer) points.layers.set(layer);
   scene.add(points);
   let sinceScan = SCAN_INTERVAL,
+    scale = 1,
     count = 0,
     strength = 0;
   // Each halo remembers its lamp, so moving lamps (the train, crossing cars) are followed
@@ -90,19 +121,9 @@ export function createLightHalos({ THREE, scene, layer = 0, radius = 420 }) {
     matrix = new THREE.Matrix4(),
     sphere = new THREE.Sphere();
 
-  // People near the camera: a halo just behind a head is shrunk so it does not sit on a face.
-  const people = [];
-  const head = new THREE.Vector3(),
-    toLamp = new THREE.Vector3(),
-    toHead = new THREE.Vector3();
   function scan(cameraPosition) {
     sources.length = 0;
-    people.length = 0;
     scene.traverseVisible((object) => {
-      if (object.isSkinnedMesh && people.length < 24) {
-        object.getWorldPosition(head);
-        if (head.distanceTo(cameraPosition) < 45) people.push(object);
-      }
       if (sources.length >= MAX_HALOS || object === points || !object.isMesh) return;
       if (object.userData.noHalo) return;
       const materialValue = Array.isArray(object.material) ? object.material[0] : object.material;
@@ -125,30 +146,7 @@ export function createLightHalos({ THREE, scene, layer = 0, radius = 420 }) {
       } else add(object.matrixWorld, -1);
     });
   }
-  /** 0..1 size factor for a lamp at world: small near the lens and behind a nearby head. */
-  function clearOfFaces(world, cameraPosition) {
-    const distance = world.distanceTo(cameraPosition);
-    let factor = Math.min(1, Math.max(0, (distance - 2.5) / 8));
-    if (!people.length || distance > 60) return factor;
-    toLamp.copy(world).sub(cameraPosition).normalize();
-    for (const person of people) {
-      if (!person.parent) continue;
-      if (!person.geometry.boundingSphere) person.geometry.computeBoundingSphere();
-      head.copy(person.geometry.boundingSphere.center).applyMatrix4(person.matrixWorld);
-      head.y +=
-        person.geometry.boundingSphere.radius * 0.55 * person.matrixWorld.getMaxScaleOnAxis();
-      toHead.copy(head).sub(cameraPosition);
-      const headDistance = toHead.length();
-      // In front of a face or just behind it, a halo would sit on the face.
-      if (headDistance < 0.2) continue;
-      // Angle between the lamp and the head, against the head's apparent size.
-      const apart = Math.acos(Math.min(1, toLamp.dot(toHead.divideScalar(headDistance))));
-      const size = 0.45 / headDistance;
-      if (apart < size * 3.5) factor = Math.min(factor, 0.05 + 0.95 * (apart / (size * 3.5)) ** 2);
-    }
-    return factor;
-  }
-  function place(cameraPosition) {
+  function place(cameraPosition, people, step) {
     count = 0;
     for (const source of sources) {
       const glow = emissiveStrength(source.material);
@@ -161,12 +159,22 @@ export function createLightHalos({ THREE, scene, layer = 0, radius = 420 }) {
       positions[count * 3] = world.x;
       positions[count * 3 + 1] = world.y;
       positions[count * 3 + 2] = world.z;
+      const size = 1.1 + Math.min(1.6, glow) * 0.9;
+      // A lamp close to the lens or behind someone keeps its light but loses the halo.
+      const distance = world.distanceTo(cameraPosition);
+      const near = Math.min(1, Math.max(0, (distance - 2.5) / 8));
+      const hidden = people?.length
+        ? haloHiddenBy(people, cameraPosition, world, (size * scale) / 2)
+        : 0;
+      source.hidden = (source.hidden ?? hidden) + (hidden - (source.hidden ?? hidden)) * step;
+      const shown = near * (1 - source.hidden);
+      if (shown < 0.02) continue;
       const c = source.material.emissive,
-        level = Math.min(1.4, glow * 1.2);
+        level = Math.min(1.4, glow * 1.2) * shown;
       colors[count * 3] = c.r * level;
       colors[count * 3 + 1] = c.g * level;
       colors[count * 3 + 2] = c.b * level;
-      sizes[count] = (1.1 + Math.min(1.6, glow) * 0.9) * clearOfFaces(world, cameraPosition);
+      sizes[count] = size * (0.4 + 0.6 * shown);
       count++;
     }
     geometry.setDrawRange(0, count);
@@ -178,12 +186,14 @@ export function createLightHalos({ THREE, scene, layer = 0, radius = 420 }) {
   return {
     points,
     /** night 0..1 (dusk), wet 0..1 (rain/fog makes halos wider), pixelHeight of the canvas. */
-    update(dt, { cameraPosition, night = 0, wet = 0, pixelHeight = 900 } = {}) {
+    /** people: upright capsules { x, z, bottom, top } of the characters near the camera. */
+    update(dt, { cameraPosition, night = 0, wet = 0, pixelHeight = 900, people = null } = {}) {
       const step = Math.max(0, dt);
+      scale = 1 + wet * 0.8;
       strength += (night - strength) * (1 - Math.exp(-step * 1.5));
       points.visible = strength > 0.02;
       material.uniforms.haloStrength.value = strength * (0.55 + wet * 0.3);
-      material.uniforms.haloScale.value = 1 + wet * 0.8;
+      material.uniforms.haloScale.value = scale;
       material.uniforms.pixelHeight.value = pixelHeight;
       if (!points.visible) {
         sinceScan = SCAN_INTERVAL;
@@ -194,7 +204,7 @@ export function createLightHalos({ THREE, scene, layer = 0, radius = 420 }) {
         sinceScan = 0;
         scan(cameraPosition);
       }
-      if (cameraPosition) place(cameraPosition);
+      if (cameraPosition) place(cameraPosition, people, 1 - Math.exp(-Math.max(step, 1 / 60) * 12));
     },
     getState: () => ({ halos: count, strength, visible: points.visible }),
     dispose() {

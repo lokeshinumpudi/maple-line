@@ -170,12 +170,12 @@ export function createVillageBus({
     position: lamp.position.clone().add(new THREE.Vector3(0, -0.3, 0)),
     ground: shelterY,
     color: '#ffd49a',
-    intensity: 10,
-    distance: 10,
+    intensity: 6,
+    distance: 9,
     pool: 2.6,
     level: 0,
-    // The stop's key light: it keeps faces readable, so it always wins a real light nearby.
-    priority: 4,
+    // Faces at the stop are lit by this lamp above them; a small preference, not a fill.
+    priority: 1.5,
   });
   const busSources = lightPool
     ? {
@@ -183,9 +183,10 @@ export function createVillageBus({
           lightPool.add(`aonuma-bus-headlight-${side}`, {
             kind: 'spot',
             color: '#fff1d6',
-            intensity: 70,
-            distance: 30,
-            angle: 0.46,
+            // Dipped beams: they light the road and legs ahead, not faces at eye level.
+            intensity: 32,
+            distance: 24,
+            angle: 0.36,
             pool: 3.2,
             level: 0,
           }),
@@ -201,12 +202,13 @@ export function createVillageBus({
         ),
         cabin: lightPool.add('aonuma-bus-cabin', {
           color: '#ffe6bf',
-          intensity: 6,
-          distance: 8,
-          pool: 3.4,
+          intensity: 3.5,
+          distance: 5,
+          pool: 2.4,
           streak: false,
           level: 0,
-          priority: 3,
+          lift: 0.25,
+          priority: 4,
         }),
       }
     : null;
@@ -234,7 +236,7 @@ export function createVillageBus({
     bus.updateWorldMatrix(true, false);
     const floor = bus.position.y;
     const half = layout.halfLength ?? 3.55;
-    busForward.set(0, -0.14, 1).transformDirection(bus.matrixWorld);
+    busForward.set(0, -0.32, 1).transformDirection(bus.matrixWorld);
     busSources.headlights.forEach((source, i) => {
       busPoint.set((i ? 1 : -1) * 0.78, 0.78, half + 0.05).applyMatrix4(bus.matrixWorld);
       source.set({ position: busPoint, direction: busForward, level, ground: floor });
@@ -243,7 +245,11 @@ export function createVillageBus({
       busPoint.set((i ? 1 : -1) * 0.85, 0.9, -half - 0.08).applyMatrix4(bus.matrixWorld);
       source.set({ position: busPoint, level, ground: floor });
     });
-    busPoint.set(0, 2.2, 1.6).applyMatrix4(bus.matrixWorld);
+    // The cabin lamp over the front door: whoever stands in the doorway is lit from inside,
+    // behind and above, and the step and kerb get the spill.
+    busPoint
+      .set(layout.doorX - 0.7, 2.35, (layout.door[0] + layout.door[1]) / 2)
+      .applyMatrix4(bus.matrixWorld);
     busSources.cabin.set({ position: busPoint, level: cabin, ground: floor });
   }
   const ready = loader.get(BUS_MODEL_PATH).then((gltf) => {

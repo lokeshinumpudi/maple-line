@@ -122,6 +122,49 @@ const decalFragment = /* glsl */ `
     #include <colorspace_fragment>
   }`;
 
+/** Shared ceiling for direct light on character (MToon) materials, in multiples of their colour. */
+export const CHARACTER_LIGHT = { value: 1000 };
+const MTOON_COLOUR = 'vec3 col = reflectedLight.directDiffuse + reflectedLight.indirectDiffuse;';
+
+/**
+ * Soft-knee cap on the direct light a character material receives. Below the ceiling light
+ * passes unchanged; above it the excess is compressed, so a lamp a metre from a face still
+ * lights it warmly from its side without burning it flat.
+ */
+export function capCharacterLight(material) {
+  if (!material?.isMToonMaterial || material.userData.mapleLightCap) return false;
+  material.userData.mapleLightCap = true;
+  const previous = material.onBeforeCompile;
+  const previousKey = material.customProgramCacheKey?.() ?? '';
+  material.onBeforeCompile = function (shader, renderer) {
+    previous?.call(this, shader, renderer);
+    if (!shader.fragmentShader.includes(MTOON_COLOUR)) return;
+    shader.uniforms.mapleCharacterLight = CHARACTER_LIGHT;
+    shader.fragmentShader =
+      'uniform float mapleCharacterLight;\n' +
+      shader.fragmentShader.replace(
+        MTOON_COLOUR,
+        `vec3 mapleDirect = reflectedLight.directDiffuse;
+        float mapleBase = max(max(diffuseColor.r, diffuseColor.g), max(diffuseColor.b, 0.04));
+        float mapleCeiling = mapleCharacterLight * mapleBase;
+        float maplePeak = max(max(mapleDirect.r, mapleDirect.g), mapleDirect.b);
+        if (maplePeak > mapleCeiling)
+          mapleDirect *= (mapleCeiling + (maplePeak - mapleCeiling) * 0.25) / maplePeak;
+        vec3 col = mapleDirect + reflectedLight.indirectDiffuse;`,
+      );
+  };
+  material.customProgramCacheKey = () => `${previousKey}|maple-character-light-v1`;
+  material.needsUpdate = true;
+  return true;
+}
+function capCharacters(scene) {
+  scene.traverse((object) => {
+    if (!object.isMesh) return;
+    const list = Array.isArray(object.material) ? object.material : [object.material];
+    for (const material of list) capCharacterLight(material);
+  });
+}
+
 export function createLightPool({ THREE, scene, tier = 'high', maxSources = 64 }) {
   const sources = new Map();
   const ordered = [];
@@ -160,6 +203,7 @@ export function createLightPool({ THREE, scene, tier = 'high', maxSources = 64 }
     scene.add(mesh);
     return mesh;
   };
+  let frame = 0;
   const pools = makeBatch('Lamp light pools on the ground', false);
   const streaks = makeBatch('Wet-ground lamp reflections', true);
   const dummy = new THREE.Object3D(),
@@ -176,8 +220,7 @@ export function createLightPool({ THREE, scene, tier = 'high', maxSources = 64 }
     }
     lights = {
       point: Array.from({ length: counts.points }, (_, i) => {
-        // A slightly softer falloff than physical, so lamps also fill nearby faces.
-        const light = new THREE.PointLight('#ffd49a', 0, 14, 1.7);
+        const light = new THREE.PointLight('#ffd49a', 0, 14, 2);
         light.name = `Lamp light pool / point ${i + 1}`;
         scene.add(light);
         return light;
@@ -218,6 +261,9 @@ export function createLightPool({ THREE, scene, tier = 'high', maxSources = 64 }
         streak: spec.streak ?? true,
         level: spec.level ?? 1,
         priority: spec.priority ?? 1,
+        // The real light sits a little above the lamp: a lamp is a shade, not a point, and
+        // the lift keeps a head right under it from catching a hot spot.
+        lift: spec.lift ?? (spec.kind === 'spot' ? 0 : 0.5),
       };
       sources.set(id, source);
       ordered.push(source);
@@ -245,6 +291,10 @@ export function createLightPool({ THREE, scene, tier = 'high', maxSources = 64 }
     /** night 0..1 scales everything; wet 0..1 brings out the reflections. */
     update(dt, { cameraPosition, night = 0, wet = 0 } = {}) {
       if (!cameraPosition) return;
+      // Characters: at night lamp light on skin is compressed above a ceiling, so a face near
+      // a lamp reads lit by it instead of glowing. Daylight is untouched.
+      CHARACTER_LIGHT.value = night > 0.02 ? 2.6 + (1 - night) * 20 : 1000;
+      if (frame++ % 90 === 0) capCharacters(scene);
       pools.material.uniforms.poolTime.value += Math.max(0, dt);
       streaks.material.uniforms.poolTime.value = pools.material.uniforms.poolTime.value;
       const weights = new Map();
@@ -262,6 +312,7 @@ export function createLightPool({ THREE, scene, tier = 'high', maxSources = 64 }
           }
           weights.set(source.id, slot.weight);
           light.position.copy(source.position);
+          light.position.y += source.lift;
           light.color.copy(source.color);
           light.distance = source.distance;
           light.intensity = source.intensity * source.level * slot.weight * night;
