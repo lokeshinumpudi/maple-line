@@ -51,11 +51,12 @@ export const FILM_GRADES = Object.freeze({
     contrast: 1.03,
   },
   rainNight: {
-    lift: [0.004, 0.008, 0.016],
-    gamma: [1.02, 1, 0.97],
-    gain: [0.9, 0.95, 1.02],
-    saturation: 0.7,
-    contrast: 1.08,
+    // Lifted blue shadows and a gentle gain: blue-hour rain that still shows shapes.
+    lift: [0.012, 0.018, 0.03],
+    gamma: [1.05, 1.03, 0.99],
+    gain: [1.04, 1.01, 1.03],
+    saturation: 0.84,
+    contrast: 1.02,
   },
   dusk: {
     lift: [0.01, 0.007, 0.018],

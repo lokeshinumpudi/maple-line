@@ -124,14 +124,27 @@ const decalFragment = /* glsl */ `
 
 /** Shared ceiling for direct light on character (MToon) materials, in multiples of their colour. */
 export const CHARACTER_LIGHT = { value: 1000 };
+/** 0..1 night strength for the character key and rim. */
+export const CHARACTER_NIGHT = { value: 0 };
 const MTOON_COLOUR = 'vec3 col = reflectedLight.directDiffuse + reflectedLight.indirectDiffuse;';
+const MTOON_PROJECT = '#include <project_vertex>';
+
+/** Per-character key light: the nearest lamp's world position and its colour times strength. */
+export function createCharacterKey(THREE) {
+  return {
+    mapleKeyPosition: { value: new THREE.Vector3(0, -1000, 0) },
+    mapleKeyColor: { value: new THREE.Color(0, 0, 0) },
+  };
+}
 
 /**
- * Soft-knee cap on the direct light a character material receives. Below the ceiling light
- * passes unchanged; above it the excess is compressed, so a lamp a metre from a face still
- * lights it warmly from its side without burning it flat.
+ * Character (MToon) light at night. Direct light above a soft ceiling is compressed, so a
+ * lamp a metre from a face does not burn it flat. Then each character gets a soft, wrapped
+ * warm key from the nearest lamp (its real position, with distance falloff, never from the
+ * camera) and a cool rim from the blue sky, so faces read in blue-hour rain.
+ * key: uniforms from createCharacterKey, shared by every material of one character.
  */
-export function capCharacterLight(material) {
+export function capCharacterLight(material, key = null) {
   if (!material?.isMToonMaterial || material.userData.mapleLightCap) return false;
   material.userData.mapleLightCap = true;
   const previous = material.onBeforeCompile;
@@ -140,8 +153,27 @@ export function capCharacterLight(material) {
     previous?.call(this, shader, renderer);
     if (!shader.fragmentShader.includes(MTOON_COLOUR)) return;
     shader.uniforms.mapleCharacterLight = CHARACTER_LIGHT;
+    shader.uniforms.mapleCharacterNight = CHARACTER_NIGHT;
+    const keyed = Boolean(key) && shader.vertexShader.includes(MTOON_PROJECT);
+    if (keyed) {
+      Object.assign(shader.uniforms, key);
+      shader.vertexShader =
+        'varying vec3 vMapleWorld;\n' +
+        shader.vertexShader.replace(
+          MTOON_PROJECT,
+          `${MTOON_PROJECT}
+          {
+            vec4 mapleWorld = vec4(transformed, 1.0);
+            #ifdef USE_INSTANCING
+              mapleWorld = instanceMatrix * mapleWorld;
+            #endif
+            vMapleWorld = (modelMatrix * mapleWorld).xyz;
+          }`,
+        );
+    }
     shader.fragmentShader =
-      'uniform float mapleCharacterLight;\n' +
+      `uniform float mapleCharacterLight; uniform float mapleCharacterNight;
+      ${keyed ? 'uniform vec3 mapleKeyPosition; uniform vec3 mapleKeyColor; varying vec3 vMapleWorld;' : ''}\n` +
       shader.fragmentShader.replace(
         MTOON_COLOUR,
         `vec3 mapleDirect = reflectedLight.directDiffuse;
@@ -149,20 +181,32 @@ export function capCharacterLight(material) {
         float mapleCeiling = mapleCharacterLight * mapleBase;
         float maplePeak = max(max(mapleDirect.r, mapleDirect.g), mapleDirect.b);
         if (maplePeak > mapleCeiling)
-          mapleDirect *= (mapleCeiling + (maplePeak - mapleCeiling) * 0.25) / maplePeak;
-        vec3 col = mapleDirect + reflectedLight.indirectDiffuse;`,
+          mapleDirect *= (mapleCeiling + (maplePeak - mapleCeiling) * 0.3) / maplePeak;
+        vec3 col = mapleDirect + reflectedLight.indirectDiffuse;
+        if (mapleCharacterNight > 0.001) {
+          vec3 mapleN = normalize(normal);
+          vec3 mapleV = normalize(vViewPosition);
+          ${
+            keyed
+              ? `vec3 mapleToKey = mapleKeyPosition - vMapleWorld;
+          float mapleKeyDistance = length(mapleToKey);
+          vec3 mapleL = normalize((viewMatrix * vec4(mapleToKey, 0.0)).xyz);
+          // Wrapped diffuse: soft, and the shadow side keeps a little of the lamp's warmth.
+          float mapleWrap = clamp(dot(mapleN, mapleL) * 0.55 + 0.45, 0.0, 1.0);
+          float mapleFalloff = 1.0 / (1.0 + mapleKeyDistance * mapleKeyDistance * 0.09);
+          col += diffuseColor.rgb * mapleKeyColor * mapleWrap * mapleFalloff * mapleCharacterNight;`
+              : ''
+          }
+          // Cool rim from the rain-lit sky on the silhouette edge.
+          float mapleRim = pow(1.0 - clamp(dot(mapleN, mapleV), 0.0, 1.0), 3.0);
+          col += vec3(0.16, 0.24, 0.42) * mapleRim * mapleCharacterNight * (0.35 + mapleBase);
+        }`,
       );
   };
-  material.customProgramCacheKey = () => `${previousKey}|maple-character-light-v1`;
+  material.customProgramCacheKey = () =>
+    `${previousKey}|maple-character-light-v2${key ? '-keyed' : ''}`;
   material.needsUpdate = true;
   return true;
-}
-function capCharacters(scene) {
-  scene.traverse((object) => {
-    if (!object.isMesh) return;
-    const list = Array.isArray(object.material) ? object.material : [object.material];
-    for (const material of list) capCharacterLight(material);
-  });
 }
 
 export function createLightPool({ THREE, scene, tier = 'high', maxSources = 64 }) {
@@ -204,6 +248,54 @@ export function createLightPool({ THREE, scene, tier = 'high', maxSources = 64 }
     return mesh;
   };
   let frame = 0;
+  // Characters found in the scene: their root, a shared key-light uniform set, and a
+  // world point at chest height for choosing the nearest lamp.
+  const characters = new Map();
+  const chest = new THREE.Vector3();
+  function findCharacters() {
+    scene.traverse((object) => {
+      if (!object.isMesh) return;
+      const list = Array.isArray(object.material) ? object.material : [object.material];
+      if (!list.some((material) => material?.isMToonMaterial)) return;
+      // The character's root: the child of the scene that holds this mesh.
+      let rootObject = object;
+      while (rootObject.parent && rootObject.parent !== scene) rootObject = rootObject.parent;
+      let entry = characters.get(rootObject);
+      if (!entry) {
+        entry = { root: rootObject, key: createCharacterKey(THREE) };
+        characters.set(rootObject, entry);
+      }
+      for (const material of list) capCharacterLight(material, entry.key);
+    });
+    for (const [rootObject] of characters) if (!rootObject.parent) characters.delete(rootObject);
+  }
+  /** Point each character's key at its nearest lit lamp, with that lamp's colour. */
+  function keyCharacters(night) {
+    for (const { root: rootObject, key } of characters.values()) {
+      if (!rootObject.visible) continue;
+      rootObject.getWorldPosition(chest);
+      chest.y += 1.3;
+      let best = null,
+        bestScore = 0;
+      for (const source of ordered) {
+        if (source.level < 0.05 || source.kind === 'spot') continue;
+        const d2 = source.position.distanceToSquared(chest);
+        if (d2 > 18 * 18) continue;
+        const score = (source.level * Math.min(source.intensity, 14)) / (1 + d2);
+        if (score > bestScore) {
+          bestScore = score;
+          best = source;
+        }
+      }
+      if (!best) {
+        key.mapleKeyColor.value.setRGB(0, 0, 0);
+        continue;
+      }
+      key.mapleKeyPosition.value.copy(best.position);
+      // A soft key: the same warm colour, strength independent of how the lamp is tuned.
+      key.mapleKeyColor.value.copy(best.color).multiplyScalar(1.85 * best.level * night);
+    }
+  }
   const pools = makeBatch('Lamp light pools on the ground', false);
   const streaks = makeBatch('Wet-ground lamp reflections', true);
   const dummy = new THREE.Object3D(),
@@ -293,8 +385,10 @@ export function createLightPool({ THREE, scene, tier = 'high', maxSources = 64 }
       if (!cameraPosition) return;
       // Characters: at night lamp light on skin is compressed above a ceiling, so a face near
       // a lamp reads lit by it instead of glowing. Daylight is untouched.
-      CHARACTER_LIGHT.value = night > 0.02 ? 2.6 + (1 - night) * 20 : 1000;
-      if (frame++ % 90 === 0) capCharacters(scene);
+      CHARACTER_LIGHT.value = night > 0.02 ? 3.6 + (1 - night) * 20 : 1000;
+      CHARACTER_NIGHT.value = night;
+      if (frame++ % 90 === 0) findCharacters();
+      if (night > 0.02) keyCharacters(night);
       pools.material.uniforms.poolTime.value += Math.max(0, dt);
       streaks.material.uniforms.poolTime.value = pools.material.uniforms.poolTime.value;
       const weights = new Map();
