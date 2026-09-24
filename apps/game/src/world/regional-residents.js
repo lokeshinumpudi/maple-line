@@ -283,6 +283,32 @@ export function createRegionalResidents({ THREE, parent, stop, local, yaw = 0, p
     lastTime = -Infinity,
     disposed = false;
   const shown = new Map();
+  // Residents the crowd kit draws (characters/crowd/) and palette tints for the rest.
+  const hidden = new Set();
+  const tints = new Map();
+  const records = new Map(
+    residents.map((resident) => [
+      resident.id,
+      {
+        id: resident.id,
+        source: 'regional',
+        role: resident.role,
+        age: resident.age,
+        position: { x: 0, y: 0, z: 0 },
+        heading: 0,
+        walking: false,
+        pose: 'standing',
+        state: '',
+        activity: null,
+        intent: null,
+        seatHeight: 0.5,
+        visible: true,
+        region: stop.theme ?? 'forest',
+      },
+    ]),
+  );
+  const groupQuaternion = new THREE.Quaternion();
+  const headingVector = new THREE.Vector3();
   // Smoothed body turn per resident for optional NPC mind cues.
   const lookTurn = new Float32Array(residents.length);
   const contextFor = (weather) => ({ theme: stop.theme, weather: weather ?? 'clear' });
@@ -386,24 +412,45 @@ export function createRegionalResidents({ THREE, parent, stop, local, yaw = 0, p
             armCue = expression.intent;
         }
       }
+      const record = records.get(resident.id);
+      // The simple figure's feet are at the body origin, so the kit body stands there too.
+      record.position.x = worldPoint.x;
+      record.position.y = worldPoint.y;
+      record.position.z = worldPoint.z;
+      group.getWorldQuaternion(groupQuaternion);
+      headingVector.set(Math.sin(body.rotation.y), 0, Math.cos(body.rotation.y));
+      headingVector.applyQuaternion(groupQuaternion);
+      record.heading = Math.atan2(headingVector.x, headingVector.z);
+      record.walking = pose.walking;
+      record.pose = pose.seated ? 'seated' : 'standing';
+      record.state = pose.activity;
+      record.activity = pose.seated ? 'reading' : null;
+      record.intent = resident.role === 'conversation' && resident.index === 3 ? 'chat' : null;
+      if (hidden.has(resident.id)) continue;
+      const tint = tints.get(resident.id);
+      const coat = tint?.top ?? resident.coat;
+      const skin = tint?.skin ?? resident.skin;
+      const hairColor = tint?.hair ?? resident.hair;
+      const trousers = tint?.lower ?? '#414951';
+      const shoes = tint?.shoes ?? '#302e2d';
       body.scale.set(resident.width, resident.height / 1.7, 1);
       body.updateMatrix();
       const hip = pose.seated ? 0.58 : 0.95;
       const gait = pose.walking ? Math.sin((elapsed + resident.offset) * 5.8) * 0.36 : 0;
-      cube(0, hip + 0.05, 0, 0.43, 0.59, 0.28, resident.coat);
-      round(0, hip + 0.61 + headY, headZ, 0.165, 0.22, 0.17, resident.skin);
-      round(0, hip + 0.71 + headY, -0.035 + headZ + hairZ, 0.175, 0.145, 0.165, resident.hair);
+      cube(0, hip + 0.05, 0, 0.43, 0.59, 0.28, coat);
+      round(0, hip + 0.61 + headY, headZ, 0.165, 0.22, 0.17, skin);
+      round(0, hip + 0.71 + headY, -0.035 + headZ + hairZ, 0.175, 0.145, 0.165, hairColor);
       if (resident.hat) {
-        cube(0, hip + 0.84 + headY, headZ, 0.39, 0.05, 0.37, resident.coat);
-        cube(0, hip + 0.9 + headY, -0.015 + headZ, 0.29, 0.12, 0.27, resident.coat);
+        cube(0, hip + 0.84 + headY, headZ, 0.39, 0.05, 0.37, coat);
+        cube(0, hip + 0.9 + headY, -0.015 + headZ, 0.29, 0.12, 0.27, coat);
       }
       if (resident.scarf) cube(0, hip + 0.31, 0.145, 0.33, 0.11, 0.1, '#d5a55f');
       for (const side of [-1, 1]) {
         if (pose.seated) {
-          cube(side * 0.12, 0.5, 0.18, 0.15, 0.15, 0.42, '#414951');
-          cube(side * 0.12, 0.25, 0.36, 0.14, 0.47, 0.15, '#414951');
+          cube(side * 0.12, 0.5, 0.18, 0.15, 0.15, 0.42, trousers);
+          cube(side * 0.12, 0.25, 0.36, 0.14, 0.47, 0.15, trousers);
         } else {
-          cube(side * 0.12, 0.42, 0, 0.15, 0.78, 0.17, '#414951', gait * side);
+          cube(side * 0.12, 0.42, 0, 0.15, 0.78, 0.17, trousers, gait * side);
         }
         cube(
           side * 0.12,
@@ -412,31 +459,23 @@ export function createRegionalResidents({ THREE, parent, stop, local, yaw = 0, p
           0.18,
           0.13,
           0.29,
-          '#302e2d',
+          shoes,
         );
         // Arm boxes pitch about their centres, so raised cues also move the box and hand.
         if (side === 1 && armCue === 'wave') {
           const wave = Math.sin(elapsed * 7 + resident.offset) * 0.15;
-          cube(0.29, hip + 0.45, 0.08, 0.13, 0.56, 0.15, resident.coat, -2.8 + wave);
-          round(0.29, hip + 0.74, 0.17, 0.065, 0.09, 0.065, resident.skin);
+          cube(0.29, hip + 0.45, 0.08, 0.13, 0.56, 0.15, coat, -2.8 + wave);
+          round(0.29, hip + 0.74, 0.17, 0.065, 0.09, 0.065, skin);
           continue;
         }
         if (side === 1 && armCue === 'check-phone') {
-          cube(0.22, hip - 0.02, 0.2, 0.13, 0.56, 0.15, resident.coat, -1.2);
-          round(0.2, hip + 0.02, 0.44, 0.065, 0.09, 0.065, resident.skin);
+          cube(0.22, hip - 0.02, 0.2, 0.13, 0.56, 0.15, coat, -1.2);
+          round(0.2, hip + 0.02, 0.44, 0.065, 0.09, 0.065, skin);
           continue;
         }
         const armAngle = pose.seated ? -0.9 : -gait * side - gesture;
-        cube(side * 0.29, hip - 0.06, 0.03, 0.13, 0.56, 0.15, resident.coat, armAngle);
-        round(
-          side * 0.29,
-          hip - 0.3,
-          pose.seated ? 0.27 : gesture * 0.3,
-          0.065,
-          0.09,
-          0.065,
-          resident.skin,
-        );
+        cube(side * 0.29, hip - 0.06, 0.03, 0.13, 0.56, 0.15, coat, armAngle);
+        round(side * 0.29, hip - 0.3, pose.seated ? 0.27 : gesture * 0.3, 0.065, 0.09, 0.065, skin);
       }
       if (pose.seated) {
         cube(0, 0.79, 0.4, 0.59, 0.02, 0.38, '#e6dfcc', -0.25);
@@ -467,6 +506,25 @@ export function createRegionalResidents({ THREE, parent, stop, local, yaw = 0, p
   update(0);
   return {
     update,
+    /** Residents for the crowd kit: world feet, heading, pose and role (characters/crowd/). */
+    crowdPeople(push) {
+      if (disposed || lastTime === -Infinity) return;
+      for (const record of records.values()) push(record);
+    },
+    /** Hide a resident's simple figure while the crowd kit draws them. */
+    setHidden(id, value) {
+      if (!records.has(id)) return false;
+      if (value) hidden.add(id);
+      else hidden.delete(id);
+      return true;
+    },
+    /** Recolour a resident's simple figure to a crowd look (far tier). */
+    tint(id, look) {
+      if (!records.has(id)) return false;
+      if (look) tints.set(id, look.colors);
+      else tints.delete(id);
+      return true;
+    },
     getState: () => ({
       station: stop.id,
       residents: residents.map((resident) => ({

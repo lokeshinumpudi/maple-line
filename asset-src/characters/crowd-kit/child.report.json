@@ -1,0 +1,81 @@
+{
+  "blender": "5.2.2 LTS",
+  "body": "child",
+  "facing": "-Y in Blender, +Z in three.js (VRM 1.0)",
+  "heightMetres": 1.2,
+  "parts": {
+    "acc:backpack": 14,
+    "acc:cap": 8,
+    "acc:glasses": 10,
+    "acc:scarf": 13,
+    "acc:shoulder-bag": 11,
+    "acc:straw-hat": 9,
+    "acc:umbrella": 12,
+    "hair:bob": 1,
+    "hair:buzz": 3,
+    "hair:short": 4,
+    "hair:twin-tails": 2,
+    "outfit:kid-casual": 5,
+    "outfit:kid-coat": 7,
+    "outfit:kid-school": 6
+  },
+  "shapeKeys": {
+    "lod0": [
+      "blinkL",
+      "blinkR",
+      "happy",
+      "relaxed",
+      "surprised",
+      "aa",
+      "ih",
+      "ou",
+      "ee",
+      "oh",
+      "lookUp",
+      "lookDown",
+      "lookLeft",
+      "lookRight"
+    ],
+    "lod1": [
+      "blink"
+    ]
+  },
+  "triangles": {
+    "lod0": 19997,
+    "lod1": 4116
+  },
+  "trianglesPerPart": {
+    "lod0": {
+      "acc:backpack": 120,
+      "acc:cap": 220,
+      "acc:glasses": 86,
+      "acc:scarf": 240,
+      "acc:shoulder-bag": 232,
+      "acc:straw-hat": 288,
+      "acc:umbrella": 116,
+      "base": 6905,
+      "hair:bob": 3634,
+      "hair:buzz": 852,
+      "hair:short": 2412,
+      "hair:twin-tails": 3960,
+      "outfit:kid-coat": 896,
+      "outfit:kid-school": 36
+    },
+    "lod1": {
+      "acc:backpack": 24,
+      "acc:cap": 110,
+      "acc:glasses": 86,
+      "acc:scarf": 88,
+      "acc:shoulder-bag": 72,
+      "acc:straw-hat": 120,
+      "acc:umbrella": 28,
+      "base": 1536,
+      "hair:bob": 650,
+      "hair:buzz": 158,
+      "hair:short": 414,
+      "hair:twin-tails": 650,
+      "outfit:kid-coat": 144,
+      "outfit:kid-school": 36
+    }
+  }
+}

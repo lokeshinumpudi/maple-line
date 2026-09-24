@@ -1,0 +1,85 @@
+{
+  "blender": "5.2.2 LTS",
+  "body": "teen",
+  "facing": "-Y in Blender, +Z in three.js (VRM 1.0)",
+  "heightMetres": 1.58,
+  "parts": {
+    "acc:backpack": 16,
+    "acc:cap": 10,
+    "acc:glasses": 12,
+    "acc:scarf": 15,
+    "acc:shoulder-bag": 13,
+    "acc:straw-hat": 11,
+    "acc:umbrella": 14,
+    "hair:bob": 1,
+    "hair:long": 3,
+    "hair:ponytail": 2,
+    "hair:short": 4,
+    "hair:side-part": 5,
+    "outfit:cardigan-school": 8,
+    "outfit:casual": 9,
+    "outfit:gakuran": 7,
+    "outfit:sailor": 6
+  },
+  "shapeKeys": {
+    "lod0": [
+      "blinkL",
+      "blinkR",
+      "happy",
+      "relaxed",
+      "surprised",
+      "aa",
+      "ih",
+      "ou",
+      "ee",
+      "oh",
+      "lookUp",
+      "lookDown",
+      "lookLeft",
+      "lookRight"
+    ],
+    "lod1": [
+      "blink"
+    ]
+  },
+  "triangles": {
+    "lod0": 27139,
+    "lod1": 6058
+  },
+  "trianglesPerPart": {
+    "lod0": {
+      "acc:backpack": 120,
+      "acc:cap": 220,
+      "acc:glasses": 86,
+      "acc:scarf": 240,
+      "acc:shoulder-bag": 232,
+      "acc:straw-hat": 288,
+      "acc:umbrella": 116,
+      "base": 6713,
+      "hair:bob": 3634,
+      "hair:long": 3804,
+      "hair:ponytail": 3964,
+      "hair:short": 2412,
+      "hair:side-part": 2566,
+      "outfit:cardigan-school": 1372,
+      "outfit:sailor": 1372
+    },
+    "lod1": {
+      "acc:backpack": 24,
+      "acc:cap": 110,
+      "acc:glasses": 86,
+      "acc:scarf": 88,
+      "acc:shoulder-bag": 72,
+      "acc:straw-hat": 120,
+      "acc:umbrella": 28,
+      "base": 1488,
+      "hair:bob": 650,
+      "hair:long": 650,
+      "hair:ponytail": 662,
+      "hair:short": 414,
+      "hair:side-part": 426,
+      "outfit:cardigan-school": 620,
+      "outfit:sailor": 620
+    }
+  }
+}
