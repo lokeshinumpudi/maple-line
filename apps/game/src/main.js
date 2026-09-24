@@ -76,6 +76,7 @@ import {
 import { shareLink } from './share/share-link.js';
 import { createEpisodeVoice } from './drama/episode-voice.js';
 import { createManifestVoice } from './drama/voice-manifest.js';
+import { createLiveMouth } from './drama/live-mouth.js';
 import { NARRATION_LANGUAGES } from '@maple-line/voice-score';
 import { createModelLoader, createGltfLoader } from './rendering/model-loader.js';
 import { createHeroCast, MOMIJI_CAST } from './world/hero-cast.js';
@@ -1770,6 +1771,8 @@ document.body.append(episodeAudio);
 let renderVoice = null;
 const episodeVoice = createEpisodeVoice({
   audio: episodeAudio,
+  // Lip sync: the speaker's mouth follows the playing clip through an AnalyserNode.
+  mouth: renderMode ? null : createLiveMouth({ audio: episodeAudio }),
   fetchImpl: fetchDirector,
   hosted: ['signal', 'static'].includes(document.documentElement.dataset.hosting),
   onPlaying: (playing) =>
@@ -1828,8 +1831,10 @@ const episodeRunner = createEpisodeRunner(
       if (id === null && !site && episodeRunner.playing) ensureAutoDrive();
     },
     cut: (shot) => filmDirector.cut(shot),
-    say(line) {
-      if (line.entity) heroCasts.find((hero) => hero.personId === line.entity)?.talk(line.seconds);
+    say({ mouth, ...line }) {
+      // The speaker's mouth follows the line's audio when it has any (lip sync).
+      const hero = line.entity ? heroCasts.find((member) => member.personId === line.entity) : null;
+      hero?.talk(line.seconds, { mouth });
       if (line.entity) crowd?.talk(line.entity, line.seconds);
       filmCaptions.show({ kind: 'dialogue', ...line });
     },

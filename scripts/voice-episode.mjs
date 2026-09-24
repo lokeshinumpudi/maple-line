@@ -3,6 +3,7 @@
 //   pnpm voice:episode --episode the-1742-1 --lang te-IN
 //   pnpm voice:episode --episode the-1742-e1-two-minutes --lang en-IN --list   (no requests)
 //   pnpm render:episode --episode the-1742-1 --aspect 9:16 --audio <printed manifest path>
+//   pnpm voice:episode --episode the-1742-1 --lang hi-IN --mouth-only   (no requests)
 //
 // --episode takes an id, a short alias (the-1742-1) or a number; --file takes a draft.
 // Clips and manifest.json go to artifacts/voice/<episode>/<lang>/ (gitignored) unless
@@ -10,7 +11,11 @@
 // Requests run in this process through the director's narration engine and share its
 // disk cache (.cache/narration/), so clips the game already played cost nothing, and
 // re-running only fills gaps. SARVAM_API_KEY comes from the root .env.
-import { mkdir, writeFile } from 'node:fs/promises';
+//
+// Every manifest line also carries a lip-sync curve read from its WAV (60 frames a second:
+// mouth opening 0-15 and a vowel class, apps/game/src/drama/mouth-curve.js). --mouth-only
+// reads the clips and manifest already in the output folder and rewrites only those curves.
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -24,6 +29,7 @@ import {
   voicedLines,
 } from '../apps/game/src/drama/voice-manifest.js';
 import { wavDurationMs } from '../apps/game/src/drama/episode-voice.js';
+import { decodeWav, mouthCurves } from '../apps/game/src/drama/mouth-curve.js';
 import { additionalStops } from '../apps/game/src/world/extended-route.js';
 import { LEVEL_CROSSINGS } from '../apps/game/src/world/level-crossings.js';
 
@@ -39,6 +45,7 @@ const episodeId = option('episode');
 const language = option('lang') ?? option('language') ?? 'en-IN';
 const file = option('file');
 const listOnly = args.includes('--list');
+const mouthOnly = args.includes('--mouth-only');
 if (!NARRATION_LANGUAGES.some((item) => item.code === language))
   throw new Error(
     `Unsupported language ${language}. Use one of: ${NARRATION_LANGUAGES.map((item) => item.code).join(', ')}.`,
@@ -67,6 +74,47 @@ if (listOnly) {
     console.log(
       `  ${clipFileName(line)}  ${line.voice}/${line.emotion}${line.authored?.[language] ? ' (authored)' : ''}  ${line.sourceText}`,
     );
+  process.exit(0);
+}
+
+/**
+ * Lip-sync curves for manifest lines ({ file, speaker | voice }), from the WAVs in `dir`.
+ * Openings are normalised per speaker across every clip of this episode and language.
+ */
+async function withMouthCurves(entries, dir) {
+  const clips = [];
+  for (const entry of entries) {
+    const decoded = decodeWav(await readFile(join(dir, entry.file)));
+    clips.push({ ...decoded, speaker: entry.speaker ?? entry.voice ?? entry.cast });
+  }
+  const curves = mouthCurves(clips);
+  return entries.map((entry, index) => ({ ...entry, mouth: curves[index] }));
+}
+/** Pretty JSON with each curve's `open` numbers on one line, so a manifest stays readable. */
+function manifestJson(manifest) {
+  const marker = '\u0000';
+  const text = JSON.stringify(
+    manifest,
+    (key, value) =>
+      key === 'open' && Array.isArray(value) ? `${marker}${JSON.stringify(value)}` : value,
+    2,
+  );
+  return `${text.replace(/"\\u0000(\[[^\]]*\])"/g, '$1')}\n`;
+}
+const summary = (entries) => {
+  const frames = entries.reduce((sum, entry) => sum + entry.mouth.open.length, 0);
+  const shut = entries.reduce((sum, entry) => sum + entry.mouth.open.filter((v) => !v).length, 0);
+  return `${entries.length} mouth curves, ${frames} frames, ${Math.round((shut / Math.max(1, frames)) * 100)}% closed`;
+};
+
+if (mouthOnly) {
+  const manifestPath = join(out, 'manifest.json');
+  const manifest = JSON.parse(await readFile(manifestPath, 'utf8'));
+  if (manifest.kind !== 'maple-line-episode-voice' || !Array.isArray(manifest.lines))
+    throw new Error(`${manifestPath} is not a voice manifest.`);
+  manifest.lines = await withMouthCurves(manifest.lines, out);
+  await writeFile(manifestPath, manifestJson(manifest));
+  console.log(`Wrote ${summary(manifest.lines)} to ${manifestPath}. No clips were requested.`);
   process.exit(0);
 }
 const narration = createNarration({
@@ -144,9 +192,16 @@ if (language !== 'en-IN') {
       authored?.[language] ??
       (await withRetry(id, () => narration.translate({ text, language }))).text;
 }
-const manifest = buildVoiceManifest({ episode, language, model, generated, captions });
+const manifest = buildVoiceManifest({
+  episode,
+  language,
+  model,
+  generated: await withMouthCurves(generated, out),
+  captions,
+});
 const manifestPath = join(out, 'manifest.json');
-await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
+await writeFile(manifestPath, manifestJson(manifest));
+console.log(`Added ${summary(manifest.lines)}.`);
 const status = narration.status();
 console.log(
   `Wrote ${generated.length} clips and ${manifestPath}. Generated ${status.cache.generated}, reused ${status.cache.hits}; translated ${status.translations.translated}, reused ${status.translations.hits}.`,

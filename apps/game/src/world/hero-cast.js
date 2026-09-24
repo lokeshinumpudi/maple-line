@@ -8,6 +8,8 @@ import {
   strideTimeScale,
 } from './character-motion.js';
 import { createCharacterRig, createClipBlender } from './character-rig.js';
+import { createMouthDriver } from '../characters/vrm-expressions.js';
+import { curveSeconds, sampleMouthCurve } from '../drama/mouth-curve.js';
 
 /**
  * A skinned character standing in for one simulated person. The person's movement,
@@ -22,7 +24,9 @@ import { createCharacterRig, createClipBlender } from './character-rig.js';
  * or the camera in a portrait), props held in hand sockets with a closed grip and second-hand
  * IK, and planted feet. It works through canonical bones (characters/humanoid-bones.js), so
  * the layers do not depend on one skeleton. Blinks run on their own clock, the smile follows
- * mood, and the mouth moves while an episode line attributed to this person is on screen.
+ * mood, and the mouth moves while an episode line attributed to this person is on screen:
+ * from the line's audio when it has a mouth curve (a voice manifest) or a live analyser
+ * (drama/live-mouth.js), otherwise on a fixed syllable rhythm.
  */
 export const HERO_WALK_SPEED = 1.15;
 export const HERO_HURRY_SPEED = 1.75;
@@ -79,6 +83,8 @@ export const VRM_CLIPS = 'models/characters/vrm/cast-clips.vrma';
 
 /** Syllables per second in the talking rhythm below (the jaw's main 24 rad/s wave). */
 const SYLLABLE_RATE = 24 / (2 * Math.PI);
+/** Seconds after a mouth curve ends before the face drops back to the syllable fallback. */
+const CURVE_TAIL = 0.4;
 
 /** Intents whose clip has the same name. Others (continue, linger, hurry, sit) stand idle. */
 const INTENT_CLIPS = new Set([
@@ -238,6 +244,9 @@ export function createHeroCast({
   let blinkT = -1;
   let talkFor = 0;
   let talkT = 0;
+  // The spoken line's mouth: { curve, t } from a manifest, or { live } sampling the audio.
+  let mouth = null;
+  const mouthDriver = createMouthDriver();
   let smile = 0;
   let gait = {
     walkSpeed: HERO_WALK_SPEED,
@@ -353,6 +362,24 @@ export function createHeroCast({
 
   function morph(name, value) {
     actor.face.set(name, value);
+  }
+
+  /** This frame's audio mouth sample, or null (closed); ends the curve once it has run out. */
+  function sampleMouth(step) {
+    let value;
+    if (mouth.live) value = mouth.live.sample(step);
+    else {
+      value = sampleMouthCurve(mouth.curve, mouth.t) ?? null;
+      mouth.t += step;
+      if (mouth.t > curveSeconds(mouth.curve) + CURVE_TAIL) value = undefined;
+    }
+    // The clip is over: the mouth has closed, and the syllable rhythm must not start again.
+    if (value === undefined) {
+      mouth = null;
+      talkFor = 0;
+      mouthDriver.reset();
+    }
+    return value ?? null;
   }
 
   /** Someone else talking nearby, the person this one is talking to, the camera or the train. */
@@ -597,8 +624,9 @@ export function createHeroCast({
           ? Math.max(0, Math.sin(talkT * 24) * 0.55 + Math.sin(talkT * 9.3) * 0.35) *
             Math.min(1, talkFor * 4)
           : 0;
-      morph('jaw-open', jaw);
+      morph('jaw-open', mouth ? 0 : jaw);
       actor.face.setSyllable(Math.floor(talkT * SYLLABLE_RATE));
+      actor.face.setVisemes?.(mouth ? mouthDriver.update(step, sampleMouth(step)) : null);
       // Clips, posture, then these layers on the normalized bones, then vrm.update().
       actor.update(step, { afterPose: layers });
     },
@@ -606,9 +634,22 @@ export function createHeroCast({
     setPocketed(list = []) {
       pocketed = [...list];
     },
-    /** Move the jaw for a line on screen; `seconds` is the subtitle's reading time. */
-    talk(seconds) {
+    /**
+     * Move the mouth for a line on screen; `seconds` is how long the line holds. `mouth` is
+     * the line's audio: a manifest curve ({ rate, open, vowel }, see drama/mouth-curve.js)
+     * or a live source ({ sample(dt) } returning { open, vowel }, null for silence, or
+     * undefined once the clip has ended). `startedAt` is how many seconds of the clip have
+     * already played. Without a mouth the jaw keeps the syllable rhythm.
+     */
+    talk(seconds, { mouth: source = null, startedAt = 0 } = {}) {
       talkFor = Math.max(talkFor, seconds * 0.85);
+      if (source?.sample) mouth = { live: source };
+      else if (source?.open?.length) mouth = { curve: source, t: Math.max(0, startedAt) };
+      else if (mouth) {
+        // A line without audio takes over from a curve still playing.
+        mouth = null;
+        mouthDriver.reset();
+      }
     },
     get personId() {
       return personId;
@@ -636,6 +677,8 @@ export function createHeroCast({
       shownIntent = null;
       shownFor = Infinity;
       talkFor = 0;
+      mouth = null;
+      mouthDriver.reset();
       lookingAt = null;
       if (root) {
         root.visible = false;
@@ -691,6 +734,13 @@ export function createHeroCast({
         seat,
         speed: Number(body.speed.toFixed(2)),
         talking: talkFor > 0,
+        mouth: mouth
+          ? {
+              source: mouth.live ? 'live' : 'curve',
+              open: Number(mouthDriver.open.toFixed(3)),
+              vowel: mouthDriver.vowel,
+            }
+          : null,
         clips: [...actions.keys()],
         gait: { ...gait },
         kind,
