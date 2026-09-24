@@ -26,7 +26,12 @@ import {
   createVrmFace,
 } from '../src/characters/vrm-expressions.js';
 import { toneValues, CHARACTER_TONE } from '../src/characters/mtoon-tone.js';
-import { createVrmActor, vrmGait, postureOffsets } from '../src/characters/vrm-actor.js';
+import {
+  createVrmActor,
+  vrmGait,
+  postureOffsets,
+  stanceOffsets,
+} from '../src/characters/vrm-actor.js';
 import { MOMIJI_CAST, VRM_CLIPS } from '../src/world/hero-cast.js';
 
 const root = new URL('../../../', import.meta.url);
@@ -193,6 +198,12 @@ test('gait scales with leg length and the stoop leans the upper back forward', (
   assert.equal(vrmGait(extras, 0.5).walkSpeed, 0.6);
   assert.ok(vrmGait({}, 0.9).walkSpeed > 0.9);
   assert.deepEqual(postureOffsets({}), []);
+  // A stance turns both upper legs in (left negative about +Z) and the feet back flat.
+  assert.deepEqual(stanceOffsets({}), []);
+  const stance = Object.fromEntries(stanceOffsets({ stance: 4 }));
+  assert.equal(stance.leftUpperLeg, -4);
+  assert.equal(stance.rightUpperLeg, 4);
+  assert.equal(stance.leftFoot + stance.leftUpperLeg, 0);
   const stoop = Object.fromEntries(postureOffsets({ stoop: 10 }));
   assert.ok(stoop.upperChest > 0 && stoop.head < 0);
 });

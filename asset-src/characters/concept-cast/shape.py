@@ -110,7 +110,9 @@ def slices(grid, front, side, marks, legs_depth=0.9):
                 for a, b in fr:
                     c = (a + b) / 2
                     # Only runs where a leg can be: pleat tips of the hem are not legs.
-                    if abs(abs(c) - leg_cx) < 1.3 * leg_ax and b - a < 3 * leg_ax:
+                    # Shoes and slippers are wider than the leg above them.
+                    wide = 2.6 if z < marks["z_ankle"] + 0.02 else 1.0
+                    if abs(abs(c) - leg_cx) < 1.3 * leg_ax * wide and b - a < 3 * leg_ax * wide:
                         row["legL" if c > 0 else "legR"] = (c, (b - a) / 2, cy, ay, p)
         out.append(row)
     return smooth_parts(out)

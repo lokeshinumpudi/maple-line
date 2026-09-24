@@ -101,7 +101,11 @@ class Views:
         self.mask = {}
         self.alpha = {}
         for k, img in self.img.items():
-            self.mask[k], self.alpha[k] = mt.matte(img)
+            self.mask[k], self.alpha[k] = mt.matte(img, ground_shadow=cfg.get("groundShadow", False))
+        # Paper the matte closed over (between feet set close together) is cut back out.
+        for k, polys in cfg.get("maskCuts", {}).items():
+            for poly in polys:
+                self.mask[k] &= ~mt.polygon_mask(self.mask[k].shape, poly)
         shape = self.mask["side"].shape
         self.side_cut = np.zeros(shape, dtype=bool)
         for poly in cfg.get("sideCuts", []):
@@ -109,7 +113,11 @@ class Views:
         self.side_clip = mt.polygon_mask(shape, cfg["sideClip"]) if cfg.get("sideClip") else np.zeros(shape, bool)
         self.front_clip = mt.polygon_mask(shape, cfg["frontClip"]) if cfg.get("frontClip") else np.zeros(shape, bool)
         self.mask["side"] = mt.largest_component(self.mask["side"] & ~self.side_cut)
-        self.side_depth = strip_front_red(self.img["side"], self.mask["side"], cfg["rows"])
+        # A neckerchief hanging in front of the chest is not body depth.
+        if cfg.get("neckerchief"):
+            self.side_depth = strip_front_red(self.img["side"], self.mask["side"], cfg["rows"])
+        else:
+            self.side_depth = self.mask["side"]
         # Axis rows: the lower legs (knee to shin), clear of the bag and the hair.
         rows = (0.72, 0.76, 0.8, 0.84)
         self.frame = {k: mt.frame_for(self.mask[k], H, rows) for k in self.mask}
@@ -183,9 +191,12 @@ def measure(views, grid, F, S):
     runs = [sh.runs_m(F[:, k], grid.xs) for k in range(len(grid.zs))]
     zs = grid.zs
     # The hem: the lowest row with a run over the centre line (legs leave a gap at x = 0).
-    hem = min(z for k, z in enumerate(zs) if sh.containing(runs[k], 0.0) and z > 0.3)
+    if "hem" in cfg["rows"]:  # a long dress over feet set close together: given by hand
+        hem = views.z_of_row("front", cfg["rows"]["hem"])
+    else:
+        hem = min(z for k, z in enumerate(zs) if sh.containing(runs[k], 0.0) and z > cfg.get("hemMin", 0.3))
     z_shoulder = fz(cfg["rows"]["shoulder"])
-    armpit = mt.find_armpit(runs, zs, zmin=0.9, zmax=z_shoulder)
+    armpit = mt.find_armpit(runs, zs, zmin=cfg.get("armpitMin", 0.58) * H, zmax=z_shoulder)
     m = {"z_hem": hem, "z_armpit": armpit}
     m["z_waist"] = fz(cfg["rows"]["waist"])
     m["z_skirt_top"] = fz(cfg["rows"]["skirtTop"])
@@ -194,20 +205,30 @@ def measure(views, grid, F, S):
     hc = cfg["head"]
     m["z_chin"] = 0.5 * (fz(hc["front"]["chin"][1]) + sz(hc["side"]["chin"][1]))
     m["z_neck_top"] = m["z_chin"] + 0.01
+    # Where a baggy sleeve lies against the body all the way down (a cardigan), the side
+    # line between them is drawn by hand: `torsoLine` rows and half widths in front pixels.
+    line = cfg.get("torsoLine")
+    if line:
+        lz = np.array([fz(r) for r, _h in line])
+        lh = np.array([h * views.frame["front"].scale for _r, h in line])
+        order_l = np.argsort(lz)
+        m["torso_line"] = lambda z: float(np.interp(z, lz[order_l], lh[order_l]))  # noqa: E731
     # Torso half width just under the armpit: arms beyond it are swept separately.
     k_arm = int(np.searchsorted(zs, armpit - 0.012))
     t = sh.containing(runs[k_arm], 0.0)
-    m["torso_half_armpit"] = max(abs(t[0]), abs(t[1]))
+    m["torso_half_armpit"] = m["torso_line"](armpit) if line else max(abs(t[0]), abs(t[1]))
 
     def torso_x_limit(z):
         if z > z_shoulder - 0.035:
             return 1.0  # the shoulder line: the whole centre run
         if z > armpit - 0.012:
             # Leave a gap between the blouse side and the sleeve so the arm can lift.
-            return m["torso_half_armpit"] - ARM_GAP
+            return (m["torso_line"](z) if line else m["torso_half_armpit"]) - ARM_GAP
         k = int(np.clip(np.searchsorted(zs, z), 0, len(zs) - 1))
         c = sh.containing(runs[k], 0.0)
-        return max(abs(c[0]), abs(c[1])) if c else 0.3
+        half = max(abs(c[0]), abs(c[1])) if c else 0.3
+        # Hands touching a baggy hem merge into the body run; the drawn line keeps them out.
+        return min(half, m["torso_line"](z)) if line else half
 
     m["torso_x_limit"] = torso_x_limit
     # Neck: front width and side depth a little under the hair line.
@@ -215,7 +236,7 @@ def measure(views, grid, F, S):
     n = sh.containing(runs[k_neck], 0.0)
     ny0 = views.h_of_col("side", hc["side"]["neckFront"])
     ny1 = views.h_of_col("side", hc["side"]["neckBack"])
-    m["neck"] = (0.0, (n[1] - n[0]) / 2 * 0.68, (ny0 + ny1) / 2, (ny1 - ny0) / 2 * 0.85)
+    m["neck"] = (0.0, (n[1] - n[0]) / 2 * cfg.get("neckWidth", 0.68), (ny0 + ny1) / 2, (ny1 - ny0) / 2 * 0.85)
     # Legs just under the hem.
     k_leg = int(np.searchsorted(zs, hem - 0.02))
     legs = [r for r in runs[k_leg] if (r[0] + r[1]) / 2 > 0]
@@ -269,7 +290,7 @@ def arm_path(views, grid, F, m):
         if not (m["z_armpit"] - 0.004 <= z <= m["z_shoulder"] + 0.02):
             continue
         run = sh.containing(sh.runs_m(F[:, k], grid.xs), 0.0)
-        inner = lim + ARM_GAP
+        inner = (m["torso_line"](z) if "torso_line" in m else lim) + ARM_GAP
         if run and run[1] - inner > 0.024:
             upper.append((z, (inner + run[1]) / 2, (run[1] - inner) / 2))
     if upper:
@@ -438,15 +459,17 @@ def paint(views, objs, occluders, hair_masks, size=1024):
     hair clip is masked out of every view; it is its own mesh."""
     bake.unwrap(objs)
     pos, nrm, vis, covered, ids = bake.bake_maps(objs, occluders, size=size)
+    hair_id = len(objs) - 1  # the hair is the last object
     clip = {"front": views.front_clip, "back": np.zeros_like(views.front_clip), "side": views.side_clip}
     hair = {v: hair_masks[v] | mt.dilate(clip[v], 2) for v in ("front", "side", "back")}
     hair_only = {v: hair_masks["raw"][v] & ~mt.dilate(clip[v], 3) for v in hair}
-    body_rgb, body_ok = bake.project(views, pos, nrm, vis, covered & (ids != 2), exclude=hair)
-    hair_rgb, hair_ok = bake.project(views, pos, nrm, vis, covered & (ids == 2), only=hair_only)
-    is_hair = ids == 2
+    body_rgb, body_ok = bake.project(views, pos, nrm, vis, covered & (ids != hair_id), exclude=hair)
+    hair_rgb, hair_ok = bake.project(views, pos, nrm, vis, covered & (ids == hair_id), only=hair_only)
+    is_hair = ids == hair_id
     # The neck is plain skin: the painted views hide it behind hair and chin shadow.
     skin = hex_rgb(views.cfg["colors"]["skin"])
-    z_collar = views.z_of_row("front", views.cfg["rows"]["shoulder"]) + 0.012
+    rows = views.cfg["rows"]
+    z_collar = views.z_of_row("front", rows.get("collar", rows["shoulder"])) + 0.012
     neck = (ids == 0) & (pos[..., 2] > z_collar)
     # Shade under the chin, lighter toward the collar, as the painted views have it.
     shade = hex_rgb(views.cfg["colors"]["skinShade"])
@@ -470,7 +493,8 @@ def paint(views, objs, occluders, hair_masks, size=1024):
     # game light the painted browns alone came out too warm and light.
     base = hex_rgb(views.cfg["colors"]["hair"])
     soft = bake.masked_blur(rgb, is_hair & have, 3)
-    rgb[is_hair] = (soft * 0.55 + base * 0.45)[is_hair]
+    share = views.cfg.get("hair", {}).get("paint", 0.55)  # how much of the painted strokes stays
+    rgb[is_hair] = (soft * share + base * (1 - share))[is_hair]
     rgb, _ = bake.dilate_fill(rgb, (have & is_hair) | (have2 & ~is_hair), steps=16)
     os.makedirs(BUILD, exist_ok=True)
     return bake.texture_image("atlas", rgb, os.path.join(BUILD, f"{ARGS.cast}-atlas.png"))
@@ -513,6 +537,8 @@ def face_materials(c):
         "mouth": flat_material("mouth", c["mouth"], "flat", True),
         "blush": flat_material("blush", c["blush"], "blush", True),
         "nose": flat_material("nose", c["skinShade"], "nose", True),
+        "lines": flat_material("lines", c.get("lines", c["skinShade"]), "lines", True),
+        "bindi": flat_material("bindi", c.get("bindi", "#a8252a"), "flat", True),
     }
 
 
@@ -523,6 +549,8 @@ def set_texture_materials(atlas, body, skirt, hair):
     hair_mat = textured_material("hair", atlas, "painted-hair")
     hair_mat.use_backface_culling = False
     for obj, mat in ((body, cloth), (skirt, skirt_mat), (hair, hair_mat)):
+        if obj is None:
+            continue
         obj.data.materials.clear()
         obj.data.materials.append(mat)
 
@@ -541,9 +569,16 @@ def join(objs, name):
     return objs[0]
 
 
-def skin(views, grid, m, hp, body, skirt, hair, head, face):
+def skin(views, grid, m, hp, body, skirt, hair, head, face, extras=(), bun=None, jewellery=None):
+    cfg = views.cfg
     joints = rig.fit_joints(m, m["rows"], grid, hp, views)
-    chains = rig.hair_chains(hp, hair)
+    chains = rig.hair_chains(hp, hair, n_chains=cfg.get("hair", {}).get("chains", 6))
+    hanging = list(chains)
+    if bun is not None:
+        # The bun swings on a short chain from the back of the head through its centre.
+        centre, radii = bun
+        attach = Vector((0.0, centre.y - radii[1] * 0.9, centre.z + radii[2] * 0.2))
+        chains["bun"] = [attach, centre, centre + Vector((0, radii[1] * 0.9, -radii[2] * 0.2))]
     arm = rig.create_armature(joints, chains)
     names = list(joints)
     log("joints", len(names), "symmetry error m", round(rig.check_symmetry(joints), 5))
@@ -559,14 +594,35 @@ def skin(views, grid, m, hp, body, skirt, hair, head, face):
         W[empty] = Wf[empty]
     W = rig.clean_body(body, joints, m, gnames, W)
     rig.set_weights(body, gnames, W)
-    rig.set_weights(skirt, names, rig.skirt_weights(skirt, m, names))
+    if skirt is not None:
+        share = (cfg.get("skirt") or {}).get("legShare", 0.92)  # a long dress follows the thighs less
+        blend = (cfg.get("skirt") or {}).get("legBlend", 0.0)
+        rig.set_weights(skirt, names, rig.skirt_weights(skirt, m, names, share, blend))
     hair_names = ["head"] + [f"{p}_{i}" for p, pts in chains.items() for i in range(len(pts) - 1)]
-    rig.set_weights(hair, hair_names, rig.hair_weights(hair, chains, hair_names, hp))
+    W = rig.hair_weights(hair, {k: chains[k] for k in hanging}, hair_names, hp)
+    if bun is not None:
+        centre, radii = bun
+        co = np.array([v.co[:] for v in hair.data.vertices])
+        d = ((co - np.array(centre[:])) / (np.array(radii) * 1.2)) ** 2
+        inside = d.sum(axis=1) <= 1.0
+        W[inside] = 0
+        W[inside, hair_names.index("bun_0")] = 1
+    rig.set_weights(hair, hair_names, W)
     rig.rigid(head, "head")
     rig.rigid(face, "head")
-    for obj in (body, skirt, hair, head, face):
+    for obj in extras:
+        rig.rigid(obj, "head")
+    if jewellery is not None:
+        obj, bones = jewellery
+        for g in list(obj.vertex_groups):
+            obj.vertex_groups.remove(g)
+        for name in sorted(set(bones)):
+            obj.vertex_groups.new(name=name).add([i for i, b in enumerate(bones) if b == name], 1.0, "REPLACE")
+        extras = [*extras, obj]
+    meshes = [o for o in (body, skirt, hair, head, face, *extras) if o is not None]
+    for obj in meshes:
         rig.attach(obj, arm)
-    rig.to_t_pose(arm, [body, skirt, hair, head, face])
+    rig.to_t_pose(arm, meshes)
     # Joint positions after the T-pose, for the sidecar.
     rest = {b.name: (b.head_local.copy(), b.tail_local.copy()) for b in arm.data.bones}
     return arm, rest, chains
@@ -583,9 +639,11 @@ MTOON_ROLES = {
     "skin": {"shadeTint": [0.95, 0.76, 0.74], "toony": 0.92, "shift": -0.1, "outline": 0.0014, "rim": 0.3, "outlineColor": [0.42, 0.25, 0.22]},
     "scalp": {"shadeTint": [0.7, 0.66, 0.76], "toony": 0.9, "shift": 0.0, "outline": 0.0, "rim": 0.2},
     "cloth": {"shadeTint": [0.62, 0.6, 0.72], "toony": 0.9, "shift": -0.02, "outline": 0.0012, "rim": 0.3},
+    "wire": {"shadeTint": [0.75, 0.7, 0.72], "toony": 0.9, "shift": -0.2, "outline": 0.0, "rim": 0.2},
     "flat": {"shadeTint": [0.92, 0.9, 0.94], "toony": 1.0, "shift": -0.4, "outline": 0.0, "rim": 0.0},
     "glint": {"shadeTint": [1, 1, 1], "toony": 1.0, "shift": -1.0, "outline": 0.0, "rim": 0.0, "emissive": 0.6},
     "blush": {"shadeTint": [0.95, 0.9, 0.9], "toony": 1.0, "shift": -0.4, "outline": 0.0, "rim": 0.0, "alpha": 0.4},
+    "lines": {"shadeTint": [0.9, 0.8, 0.8], "toony": 1.0, "shift": -0.4, "outline": 0.0, "rim": 0.0, "alpha": 0.8},
     "nose": {"shadeTint": [0.9, 0.8, 0.8], "toony": 1.0, "shift": -0.4, "outline": 0.0, "rim": 0.0, "alpha": 0.5},
 }
 
@@ -624,10 +682,9 @@ def export(cfg, arm, meshes, joints, chains, hp, m):
         role = mat.get("mtoon")
         if role and mat.users:
             materials[mat.name] = {"role": role, **MTOON_ROLES[role]}
-    springs = [
-        {"name": p, "joints": [f"{p}_{i}" for i in range(len(pts))], "stiffness": 1.4, "gravity": 0.3, "drag": 0.5, "hitRadius": 0.012}
-        for p, pts in chains.items()
-    ]
+    feel = {"bun": {"stiffness": 2.6, "gravity": 0.1, "drag": 0.7, "hitRadius": 0.02}}
+    default = {"stiffness": 1.4, "gravity": 0.3, "drag": 0.5, "hitRadius": 0.012}
+    springs = [{"name": p, "joints": [f"{p}_{i}" for i in range(len(pts))], **feel.get(p, default)} for p, pts in chains.items()]
     human = [n for n in joints if not n.startswith("hair")]
     spec = {
         "cast": cast,
@@ -647,7 +704,7 @@ def export(cfg, arm, meshes, joints, chains, hp, m):
         "springs": springs,
         "colliders": colliders,
         "materials": materials,
-        "posture": {},
+        "posture": cfg.get("posture", {}),
         "meshes": [o.name for o in meshes],
     }
     tris = {o.name: ma.triangle_count(o) for o in meshes}
@@ -788,24 +845,55 @@ def main():
     grey = bpy.data.materials.new("grey")
     hp = parts.head_params(views, m)
     head = parts.build_head(hp, grey)
-    hair, hair_masks = parts.build_hair(views, hp, grey)
-    skirt = parts.build_skirt(views, m, grey)
-    log("faces", {o.name: len(o.data.polygons) for o in (body, head, hair, skirt)})
+    hair_cfg = cfg.get("hair", {})
+    hair, hair_masks = parts.build_hair(
+        views, hp, grey, thickness=hair_cfg.get("thickness", 0.012), locks=hair_cfg.get("locks", 30), shift=hair_cfg.get("ringShift", 0.0)
+    )
+    bun = None
+    if cfg.get("bun"):
+        # The bun is shaded in the flat hair colour: no painted view shows all of it.
+        painted = parts.bun_colour(views, parts.hair_masks(views), cfg["bun"])
+        bun_hex = "#%02x%02x%02x" % tuple(int(round(float(c) * 255)) for c in painted) if painted is not None else cfg["colors"]["hair"]
+        bun_mat = flat_material("hair-bun", bun_hex, "painted-hair")
+        bun_obj, bun_centre, bun_radii = parts.build_bun(views, hp, bun_mat, cfg["bun"])
+        bun = (bun_centre, bun_radii)
+    else:
+        bun_obj = None
+    skirt_cfg = cfg.get("skirt", {})
+    skirt = parts.build_skirt(views, m, grey, depth=skirt_cfg.get("pleatDepth", 0.02)) if skirt_cfg is not None else None
+    painted = [o for o in (body, skirt, hair) if o is not None]
+    log("faces", {o.name: len(o.data.polygons) for o in (*painted, head)})
     # 3. Paint: bake the views into the atlas.
-    atlas = paint(views, [body, skirt, hair], [head], hair_masks)
-    clip = parts.build_clip(views, hp, hair, flat_material("clip", cfg["colors"]["clip"], "cloth"))
+    atlas = paint(views, painted, [head], hair_masks)
     set_texture_materials(atlas, body, skirt, hair)
+    parts.classify_scalp(head, views, hair_masks, hp)
+    if bun_obj is not None:
+        hair = join([hair, bun_obj], "Hair")
     head.data.materials.clear()
     head.data.materials.append(flat_material("skin", cfg["colors"]["skin"], "skin"))
     head.data.materials.append(flat_material("scalp", cfg["colors"]["hair"], "scalp"))
+    # Soft anime shading on the face: normals from an ellipsoid round the head.
+    C = hp["centre"]
+    parts.smooth_normals(head, (hp["rx"] * 1.05, hp["ry_front"] * 1.02, 0.5 * (hp["rz_top"] + hp["rz_bottom"])), C)
     # 4. Face decals and expressions.
     face = fc.build_face(head, hp, face_materials(cfg["colors"]))
-    head = join([head, clip], "Head")
+    if cfg.get("sideClip"):
+        clip = parts.build_clip(views, hp, hair, flat_material("clip", cfg["colors"]["clip"], "cloth"))
+        head = join([head, clip], "Head")
+    extras = []
+    if cfg.get("glasses"):
+        extras.append(parts.build_glasses(hp, head, flat_material("glasses", cfg["colors"]["glasses"], "wire", True), cfg["glasses"], views))
+    jewellery = None
+    if cfg.get("jewellery"):
+        jewellery = parts.build_jewellery(hp, m, flat_material("gold", cfg["colors"].get("gold", "#d9a24a"), "wire"), cfg["jewellery"])
     if ARGS.render:
         review(views, hp, face, hair_masks, ARGS.render)
     # 5. Rig, weights and T-pose; 6. export for make-vrm.mjs.
-    arm, joints, chains = skin(views, grid, m, hp, body, skirt, hair, head, face)
-    export(cfg, arm, [body, skirt, hair, head, face], joints, chains, hp, m)
+    arm, joints, chains = skin(views, grid, m, hp, body, skirt, hair, head, face, extras, bun, jewellery)
+    if jewellery is not None:
+        extras = [*extras, jewellery[0]]
+    meshes = [o for o in (body, skirt, hair, head, face, *extras) if o is not None]
+    export(cfg, arm, meshes, joints, chains, hp, m)
 
 
 def review(views, hp, face, hair_masks, folder):

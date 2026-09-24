@@ -30,15 +30,27 @@ FACE_KEYS = [
 def dims(hp):
     """Face measurements in metres, relative to the head centre, from the head params."""
     c = hp["centre"]
+    f = hp.get("face", {})
+    # Eye and mouth sizes as shares of the half eye spacing; the defaults are Riko's.
     return {
         "eye_u": hp["eye_x"],
         "eye_v": hp["z_eye"] - c.z,
-        "eye_w": hp["eye_x"] * 0.44,  # half width of one eye
-        "eye_top": hp["eye_x"] * 0.5,
-        "eye_bottom": hp["eye_x"] * 0.36,
+        "eye_w": hp["eye_x"] * f.get("eyeWidth", 0.44),  # half width of one eye
+        "eye_top": hp["eye_x"] * f.get("eyeTop", 0.5),
+        "eye_bottom": hp["eye_x"] * f.get("eyeBottom", 0.36),
+        "iris": f.get("iris", 1.0),
+        "glint": f.get("glint", 1.0),
         "brow_v": hp["z_brow"] - c.z - 0.007,
+        "brow_w": f.get("browWidth", 1.0),
         "mouth_v": hp["z_mouth"] - c.z,
-        "mouth_w": hp["eye_x"] * 0.2,
+        "mouth_w": hp["eye_x"] * f.get("mouthWidth", 0.2),
+        "smile": f.get("smile", 0.5),
+        "blush": f.get("blush", True),
+        # Age lines (smile folds, crow's feet) drawn in the soft nose colour.
+        "lines": f.get("lines", False),
+        "line_w": f.get("lineWidth", 1.0),
+        "bindi_v": (hp["z_bindi"] - c.z) if hp.get("z_bindi") is not None else None,
+        "nose_v": (hp["z_nose"] - c.z) if hp.get("z_nose") is not None else None,
         "k": hp["eye_x"] / 0.042,
     }
 
@@ -98,6 +110,20 @@ def vertical_map(u, v, up0, low0, up1, low1):
     return (u, a1 + s * (b1 - a1))
 
 
+def stroke(pts, half):
+    """A thin band along a polyline, as one polygon (there and back)."""
+    top, bottom = [], []
+    for i, (u, v) in enumerate(pts):
+        a = pts[max(0, i - 1)]
+        b = pts[min(len(pts) - 1, i + 1)]
+        du, dv = b[0] - a[0], b[1] - a[1]
+        n = math.hypot(du, dv) or 1.0
+        nu, nv = -dv / n * half, du / n * half
+        top.append((u + nu, v + nv))
+        bottom.append((u - nu, v - nv))
+    return top + list(reversed(bottom))
+
+
 def ellipse(cu, cv, ru, rv, n):
     return [(cu + ru * math.cos(2 * math.pi * i / n), cv + rv * math.sin(2 * math.pi * i / n)) for i in range(n)]
 
@@ -113,7 +139,7 @@ def layout(p, d):
         polys.append(("eye-white", 1, up1 + list(reversed(low1))))
         cu = side * d["eye_u"] + look_u - side * 0.001 * k
         cv = d["eye_v"] - 0.001 * k + look_v
-        iris = (d["eye_w"] * 0.72, (d["eye_top"] + d["eye_bottom"]) * 0.47)
+        iris = (d["eye_w"] * 0.72 * d["iris"], (d["eye_top"] + d["eye_bottom"]) * 0.47 * d["iris"])
 
         def inside(pts):
             return [vertical_map(u, v, up0, low0, up1, low1) for u, v in pts]
@@ -121,8 +147,10 @@ def layout(p, d):
         polys.append(("iris", 2, inside(ellipse(cu, cv, *iris, 20))))
         polys.append(("iris-light", 3, inside(ellipse(cu, cv - iris[1] * 0.42, iris[0] * 0.7, iris[1] * 0.42, 14))))
         polys.append(("pupil", 4, inside(ellipse(cu, cv + 0.001 * k, iris[0] * 0.42, iris[1] * 0.5, 12))))
-        polys.append(("eye-highlight", 5, inside(ellipse(cu - side * iris[0] * 0.3, cv + iris[1] * 0.42, 0.0038 * k, 0.0044 * k, 10))))
-        polys.append(("eye-highlight", 5, inside(ellipse(cu + side * iris[0] * 0.35, cv - iris[1] * 0.45, 0.0017 * k, 0.0017 * k, 8))))
+        # Highlights: one light for the whole face, so both glints sit to the same side.
+        g = d["glint"]
+        polys.append(("eye-highlight", 5, inside(ellipse(cu + iris[0] * 0.3, cv + iris[1] * 0.42, 0.0038 * k * g, 0.0044 * k * g, 10))))
+        polys.append(("eye-highlight", 5, inside(ellipse(cu - iris[0] * 0.35, cv - iris[1] * 0.45, 0.0017 * k * g, 0.0017 * k * g, 8))))
         # Upper lash: a band over the upper lid, thicker toward the outer corner, a flick.
         n = len(up1)
         band_top, band_bottom = [], []
@@ -141,11 +169,27 @@ def layout(p, d):
         brow = []
         for i in range(8):
             t = i / 7
-            u = side * lerp(0.35, 1.45, t) * d["eye_u"]
+            u = side * lerp(1 - 0.65 * d["brow_w"], 1 + 0.45 * d["brow_w"], t) * d["eye_u"]
             v = d["brow_v"] + 0.003 * k * math.sin(math.pi * t) - 0.003 * k * t + lift
             brow.append((u, v, 0.0016 * k * (1 - 0.55 * abs(t - 0.35))))
         polys.append(("brow", 6, [(u, v + t) for u, v, t in brow] + [(u, v - t) for u, v, t in reversed(brow)]))
-        polys.append(("blush", 1, ellipse(side * d["eye_u"] * 1.02, d["eye_v"] - 0.027 * k, 0.0095 * k, 0.0048 * k, 14)))
+        if d["blush"]:
+            polys.append(("blush", 1, ellipse(side * d["eye_u"] * 1.02, d["eye_v"] - 0.027 * k, 0.0095 * k, 0.0048 * k, 14)))
+        if d["lines"]:
+            # Crow's feet: two short strokes fanning from the outer eye corner.
+            ou = side * (d["eye_u"] + d["eye_w"] * 1.25)
+            for dv, du in ((0.003, 0.006), (-0.004, 0.0055)):
+                a = (ou, d["eye_v"] + dv * 0.3 * k)
+                b = (ou + side * du * k, d["eye_v"] + dv * k)
+                polys.append(("lines", 2, stroke([a, b], 0.0006 * k * d["line_w"])))
+            # Smile folds: an arc from beside the nose round the mouth corner.
+            nv = d["nose_v"] if d["nose_v"] is not None else d["eye_v"] - 0.026 * k
+            pts = []
+            for i in range(6):
+                t = i / 5
+                u = side * d["mouth_w"] * lerp(0.9, 1.35, math.sin(math.pi * t * 0.6))
+                pts.append((u, lerp(nv - 0.002 * k, d["mouth_v"] - 0.004 * k, t)))
+            polys.append(("lines", 2, stroke(pts, 0.0007 * k * d["line_w"])))
     # Mouth: a small curved line that opens with the visemes and curls up in a smile.
     open_ = wide = round_ = 0.0
     for name, (o, w, r) in {"aa": (1.0, 0.1, 0), "ih": (0.35, 0.55, 0), "ou": (0.5, 0, 1.0), "ee": (0.42, 0.75, 0), "oh": (0.78, 0, 0.6)}.items():
@@ -153,7 +197,7 @@ def layout(p, d):
         open_ += o * weight
         wide += w * weight
         round_ += r * weight
-    smile = 0.5 + p.get("happy", 0) * 0.8 + p.get("relaxed", 0) * 0.3
+    smile = d["smile"] + p.get("happy", 0) * 0.8 + p.get("relaxed", 0) * 0.3
     open_ += 0.35 * p.get("happy", 0) + 0.5 * p.get("surprised", 0)
     round_ += 0.6 * p.get("surprised", 0)
     mw = d["mouth_w"] * (1 + 0.5 * wide - 0.3 * round_ + 0.2 * smile + 0.25 * open_)
@@ -170,7 +214,19 @@ def layout(p, d):
         top.append((u, mv + curve + (0.0005 + 0.0018 * open_) * k * shape))
         bottom.append((u, mv + curve - (0.0005 + 0.012 * open_) * k * shape * (1 - 0.2 * min(smile, 1))))
     polys.append(("mouth", 3, top + list(reversed(bottom))))
-    polys.append(("nose", 2, [(0.0, d["eye_v"] - 0.022 * k), (0.0022 * k, d["eye_v"] - 0.028 * k), (-0.001 * k, d["eye_v"] - 0.0278 * k)]))
+    if d["lines"]:
+        # A drawn nose: the shadowed side of the bridge and the base with two nostrils.
+        nv = d["nose_v"] if d["nose_v"] is not None else d["eye_v"] - 0.028 * k
+        w = d["line_w"]
+        polys.append(("lines", 2, stroke([(-0.0035 * k, nv + 0.012 * k), (-0.0042 * k, nv + 0.004 * k), (-0.0036 * k, nv)], 0.0005 * k * w)))
+        polys.append(("lines", 2, stroke([(-0.0055 * k, nv - 0.0004 * k), (-0.002 * k, nv - 0.0018 * k), (0.002 * k, nv - 0.0018 * k), (0.0055 * k, nv - 0.0004 * k)], 0.0005 * k * w)))
+        for side in (1, -1):
+            polys.append(("lines", 2, ellipse(side * 0.0028 * k, nv - 0.0006 * k, 0.0011 * k, 0.0007 * k, 8)))
+    else:
+        nv = d["nose_v"] + 0.006 * k if d["nose_v"] is not None else d["eye_v"] - 0.022 * k
+        polys.append(("nose", 2, [(0.0, nv), (0.0022 * k, nv - 0.006 * k), (-0.001 * k, nv - 0.0058 * k)]))
+    if d["bindi_v"] is not None:
+        polys.append(("bindi", 2, ellipse(0.0, d["bindi_v"], 0.0034 * k, 0.0036 * k, 12)))
     return polys
 
 

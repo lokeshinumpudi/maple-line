@@ -50,6 +50,21 @@ export function postureOffsets(posture = {}) {
   ];
 }
 
+/**
+ * Stance offsets (degrees about the forward axis) that bring the feet together, for a long
+ * wrap skirt or an elder's short steps: the upper legs turn in and the feet turn back flat.
+ */
+export function stanceOffsets(posture = {}) {
+  const stance = posture.stance ?? 0;
+  if (!stance) return [];
+  return [
+    ['leftUpperLeg', -stance],
+    ['rightUpperLeg', stance],
+    ['leftFoot', stance],
+    ['rightFoot', -stance],
+  ];
+}
+
 export function createVrmActor({ THREE, vrm, m, clipSet, mobile = false, extraClips = null }) {
   const hipsHeight = vrm.humanoid.normalizedRestPose.hips?.position?.[1] ?? 0.86;
   const height = hipsHeight / 0.545;
@@ -82,13 +97,16 @@ export function createVrmActor({ THREE, vrm, m, clipSet, mobile = false, extraCl
   }
   const gait = vrmGait(clipSet?.extras, hipsHeight);
   const scenePosture = vrm.scene.userData?.posture ?? {};
-  const posture = postureOffsets(scenePosture).map(([bone, degrees]) => ({
-    node: vrm.humanoid.getNormalizedBoneNode(bone),
-    q: new THREE.Quaternion().setFromAxisAngle(
-      new THREE.Vector3(1, 0, 0),
-      THREE.MathUtils.degToRad(degrees),
-    ),
-  }));
+  const turn =
+    (axis) =>
+    ([bone, degrees]) => ({
+      node: vrm.humanoid.getNormalizedBoneNode(bone),
+      q: new THREE.Quaternion().setFromAxisAngle(axis, THREE.MathUtils.degToRad(degrees)),
+    });
+  const posture = [
+    ...postureOffsets(scenePosture).map(turn(new THREE.Vector3(1, 0, 0))),
+    ...stanceOffsets(scenePosture).map(turn(new THREE.Vector3(0, 0, 1))),
+  ];
   for (const entry of posture) entry.undo = entry.q.clone().invert();
   const face = createVrmFace(vrm.expressionManager);
   const rig = vrmHumanoidRig(vrm);

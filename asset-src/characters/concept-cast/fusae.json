@@ -1,0 +1,204 @@
+{
+  "cast": "fusae",
+  "person": "fusae",
+  "title": "Ammamma",
+  "height": 1.45,
+  "views": {
+    "front": "ref/ammamma-front.jpg",
+    "side": "ref/ammamma-side.jpg",
+    "back": "ref/ammamma-back.jpg"
+  },
+  "notes": [
+    "Ammamma, the Telugu grandmother. The cast id stays `fusae`, the id the drama roles use.",
+    "Pixel coordinates are in the 1024 x 1024 view crops, x right and y down.",
+    "`hairCuts` take the bun out of the outline the hair shell follows; `bun` builds it as its own piece on a spring chain.",
+    "The side view shows her left side facing image left, stooped: the head sits forward of the chest.",
+    "The saree hangs from both thighs evenly (`skirt.legBlend`) and `posture.stance` brings the feet together."
+  ],
+  "groundShadow": true,
+  "maskCuts": {
+    "front": [
+      [
+        [546, 944],
+        [574, 944],
+        [574, 995],
+        [546, 995]
+      ]
+    ],
+    "back": [
+      [
+        [442, 944],
+        [470, 944],
+        [470, 995],
+        [442, 995]
+      ]
+    ]
+  },
+  "keepHalf": {
+    "front": "left",
+    "back": "left"
+  },
+  "bagRow": null,
+  "neckWidth": 0.5,
+  "rows": {
+    "shoulder": 250,
+    "collar": 246,
+    "waist": 612,
+    "skirtTop": 616,
+    "neck": 232,
+    "hem": 938
+  },
+  "armpitMin": 0.4,
+  "torsoLine": [
+    [250, 100],
+    [320, 102],
+    [420, 108],
+    [520, 112],
+    [600, 126],
+    [614, 128]
+  ],
+  "armDepthPx": 540,
+  "toePx": 405,
+  "skirt": {
+    "pleatDepth": 0.006,
+    "legShare": 0.8,
+    "legBlend": 0.85
+  },
+  "hair": {
+    "locks": 0,
+    "chains": 0,
+    "paint": 0.5,
+    "thickness": 0.008,
+    "ringShift": 0.022
+  },
+  "hairMask": {
+    "minMean": 0.25,
+    "maxMean": 0.85,
+    "maxSat": 0.3,
+    "minBlueRed": 0.68
+  },
+  "hairHalf": {
+    "front": "right",
+    "back": "left"
+  },
+  "hairCuts": {
+    "side": [
+      [
+        [652, 190],
+        [649, 208],
+        [640, 223],
+        [626, 232],
+        [610, 236],
+        [594, 232],
+        [580, 223],
+        [571, 208],
+        [568, 190],
+        [571, 172],
+        [580, 157],
+        [594, 148],
+        [610, 144],
+        [626, 148],
+        [640, 157],
+        [649, 172]
+      ]
+    ],
+    "back": [
+      [
+        [497, 202],
+        [494, 215],
+        [485, 227],
+        [471, 234],
+        [455, 237],
+        [439, 234],
+        [425, 227],
+        [416, 215],
+        [413, 202],
+        [416, 189],
+        [425, 177],
+        [439, 170],
+        [455, 167],
+        [471, 170],
+        [485, 177],
+        [494, 189]
+      ]
+    ]
+  },
+  "bun": {
+    "side": [608, 190],
+    "radius": [42, 44],
+    "width": 1.05
+  },
+  "headShape": {
+    "back": 0.8,
+    "hairDepth": 0.03
+  },
+  "head": {
+    "front": {
+      "chin": [560, 222],
+      "eyeRow": 151,
+      "eyeSpacing": 60,
+      "mouth": [560, 198],
+      "nose": [560, 178],
+      "bindi": [560, 114],
+      "brow": 128,
+      "hairline": 80,
+      "fringe": 80,
+      "faceHalfWidth": 56,
+      "cheekRow": 190,
+      "earRow": 180
+    },
+    "side": {
+      "chin": [430, 222],
+      "nose": [408, 176],
+      "eye": [440, 150],
+      "ear": [515, 172],
+      "forehead": [423, 108],
+      "neckFront": 485,
+      "neckBack": 545
+    }
+  },
+  "glasses": {
+    "radius": 22,
+    "offset": 30,
+    "row": 154,
+    "standoff": 0.008,
+    "wire": 0.0015
+  },
+  "jewellery": {
+    "earrings": true,
+    "earringRadius": 0.0042,
+    "bangles": 2,
+    "bangleUp": 3
+  },
+  "face": {
+    "eyeWidth": 0.4,
+    "eyeTop": 0.46,
+    "eyeBottom": 0.34,
+    "iris": 1.0,
+    "glint": 0.9,
+    "mouthWidth": 0.62,
+    "smile": 1.0,
+    "blush": false,
+    "lines": true,
+    "lineWidth": 1.5
+  },
+  "posture": {
+    "stoop": 6,
+    "stance": 7
+  },
+  "colors": {
+    "skin": "#cf8c5b",
+    "skinShade": "#a7653f",
+    "lines": "#7a4428",
+    "hair": "#716862",
+    "iris": "#2a1c18",
+    "irisLight": "#5a3e30",
+    "lash": "#2a1c18",
+    "brow": "#6f655e",
+    "mouth": "#6e2e24",
+    "blush": "#d98a6a",
+    "glasses": "#5a3a24",
+    "bindi": "#a8252a",
+    "gold": "#d9a24a"
+  }
+}

@@ -116,14 +116,28 @@ def paper_colors(img, pad_tol=0.02):
     return pad, paper
 
 
-def matte(img, tol=0.075, clean=2, pad_tol=0.02):
+def shadow_like(img, paper, low=0.62, high=0.99, tint=0.05):
+    """Pixels that look like the paper in shade: every channel the paper's times one
+    common factor (a painted ground shadow), not a coloured shoe or sock."""
+    ratio = img / np.maximum(paper, 1e-3)
+    mean = ratio.mean(axis=2)
+    return (mean > low) & (mean < high) & (np.abs(ratio - mean[..., None]).max(axis=2) < tint)
+
+
+def matte(img, tol=0.075, clean=2, pad_tol=0.02, ground_shadow=False):
     """Character mask: pixels not reachable from the image border through paper-coloured
     pixels. Line art closes each shape, so light skin and white socks stay in the figure
-    even though their colours sit near the paper. Returns (mask, alpha)."""
+    even though their colours sit near the paper. With `ground_shadow`, a painted shadow
+    under the feet (the paper darkened, in the lowest tenth of the image, below the socks)
+    counts as paper. Returns (mask, alpha)."""
     pad, paper = paper_colors(img, pad_tol)
     smooth = box_blur(img, 1)
     dist = np.minimum(np.linalg.norm(smooth - pad, axis=2), np.linalg.norm(smooth - paper, axis=2))
-    background = flood(dist < tol, border(dist.shape))
+    allowed = dist < tol
+    if ground_shadow:
+        rows = np.arange(img.shape[0])[:, None] > img.shape[0] * 0.9
+        allowed |= shadow_like(smooth, paper) & rows
+    background = flood(allowed, border(dist.shape))
     mask = fill_holes(~background)
     mask = opening(mask, clean)
     mask = largest_component(mask)

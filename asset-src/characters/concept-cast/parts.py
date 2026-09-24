@@ -50,12 +50,20 @@ def head_params(views, m):
     y_ear = sy(hc["side"]["ear"][0])
     zc = z_eye + 0.012
     ry = (y_ear + 0.004) - y_face
+    shape = views.cfg.get("headShape", {})
     return {
         "centre": Vector((0.0, y_ear + 0.004, zc)),
         "rx": hc["front"]["faceHalfWidth"] * s * 1.1,
         "ry_front": ry,
-        "ry_back": ry * 1.02,
-        "rz_top": views.cfg["height"] - 0.042 - zc,
+        # How far the skull reaches behind the ears, as a share of the face depth: less
+        # for hair pulled tight into a bun than under a thick bob.
+        "ry_back": ry * shape.get("back", 1.02),
+        # The skull top sits this far under the top of the hair.
+        "rz_top": views.cfg["height"] - shape.get("hairDepth", 0.042) - zc,
+        "z_hairline": fz(hc["front"]["hairline"]) if "hairline" in hc["front"] else None,
+        "z_nose": fz(hc["front"]["nose"][1]) if "nose" in hc["front"] else None,
+        "z_bindi": fz(hc["front"]["bindi"][1]) if "bindi" in hc["front"] else None,
+        "face": views.cfg.get("face", {}),
         "rz_bottom": zc - z_chin,
         "z_eye": z_eye,
         "z_mouth": fz(hc["front"]["mouth"][1]),
@@ -97,7 +105,8 @@ def build_head(hp, material):
     for f in bm.faces:
         c = f.calc_center_median()
         behind = c.y > hp["y_ear"] + 0.006 and c.z > hp["z_ear"] - 0.03
-        above = c.z > hp["z_brow"] + 0.004 or (c.z > hp["z_eye"] and abs(c.x) > hp["rx"] * 0.72)
+        hairline = hp["z_hairline"] if hp["z_hairline"] is not None else hp["z_brow"] + 0.004
+        above = c.z > hairline or (c.z > hp["z_eye"] and abs(c.x) > hp["rx"] * 0.72)
         f.material_index = 1 if (behind or above) else 0
     for sx in (1, -1):
         ear = bmesh.ops.create_uvsphere(bm, u_segments=10, v_segments=8, radius=1.0)
@@ -120,9 +129,22 @@ def hair_masks(views):
     raw = {}
     for view in ("front", "side", "back"):
         img, mask = views.img[view], views.mask[view]
-        dark = mask & (img.mean(axis=2) < 0.33) & (np.abs(img[..., 2] - img[..., 0]) < 0.12)
+        rule = cfg.get("hairMask")
+        if rule:
+            # Light hair (grey, white): less saturated and bluer than the warm skin, in a
+            # brightness band. The paper is outside the figure mask already.
+            top = img.max(axis=2)
+            sat = (top - img.min(axis=2)) / np.maximum(top, 1e-3)
+            mean = img.mean(axis=2)
+            blue = img[..., 2] / np.maximum(img[..., 0], 1e-3)
+            dark = mask & (mean > rule["minMean"]) & (mean < rule["maxMean"]) & (sat < rule["maxSat"]) & (blue > rule["minBlueRed"])
+        else:
+            dark = mask & (img.mean(axis=2) < 0.33) & (np.abs(img[..., 2] - img[..., 0]) < 0.12)
         dark[cfg["rows"]["neck"] - 4 :, :] = False
         raw[view] = dark.copy()
+        # A bun is its own mesh: cut it out of the outline the shell follows.
+        for poly in cfg.get("hairCuts", {}).get(view, []):
+            dark &= ~mt.polygon_mask(dark.shape, poly)
         if view == "front":
             ax = int(views.frame["front"].axis)
             w = hc["front"]["faceHalfWidth"]
@@ -132,21 +154,46 @@ def hair_masks(views):
             dark[hc["front"]["brow"] + 8 : hc["side"]["chin"][1] + 2, : ex] = False
         # Close the gaps between painted strands (the bangs show forehead between them).
         dark = mt.closing(dark, 4 if view == "front" else 2)
-        dark = mt.largest_component(dark)
+        dark = mt.largest_component(dark) if view != "front" else keep_large(dark, 150)
         dark = mt.fill_holes(dark)
         # A solid fringe: above the brow line every row is hair from edge to edge, so the
         # forehead showing between painted strands does not cut holes in the shell.
-        for row in range(0, hc["front"]["brow"] + 3):
+        for row in range(0, hc["front"].get("fringe", hc["front"]["brow"] + 3)):
             cols = np.nonzero(dark[row])[0]
             if len(cols) > 1:
                 dark[row, cols[0] : cols[-1] + 1] = True
         out[view] = dark
-    # Symmetric front and back: the parting and the clip are painted, not modelled.
-    out["front"] = mt.symmetric_from_half(out["front"], views.frame["front"].axis, "right")
-    out["back"] = mt.symmetric_from_half(out["back"], views.frame["back"].axis, "left")
+    # Symmetric front and back: the parting and the clip are painted, not modelled. The
+    # settings say which half is copied (Riko: the clip side).
+    keep = cfg.get("hairHalf", {"front": "right", "back": "left"})
+    out["front"] = mt.symmetric_from_half(out["front"], views.frame["front"].axis, keep["front"])
+    out["back"] = mt.symmetric_from_half(out["back"], views.frame["back"].axis, keep["back"])
     # Painted hair pixels as drawn (strands only, no filling), for colour lookups.
     out["raw"] = {v: raw[v] & mt.dilate(out[v], 2) for v in raw}
     return out
+
+
+def keep_large(mask, min_pixels):
+    """Every connected piece of at least `min_pixels` (side locks the glasses or the face
+    cut split from the top of the hair)."""
+    ys, xs = np.nonzero(mask)
+    if not len(ys):
+        return mask.copy()
+    y0, y1, x0, x1 = ys.min(), ys.max() + 1, xs.min(), xs.max() + 1
+    full = np.zeros_like(mask)
+    mask = mask[y0:y1, x0:x1]
+    remaining = mask.copy()
+    out = np.zeros_like(mask)
+    while remaining.any():
+        ys, xs = np.nonzero(remaining)
+        seed = np.zeros_like(mask)
+        seed[ys[0], xs[0]] = True
+        piece = mt.flood(remaining, seed)
+        if piece.sum() >= min_pixels:
+            out |= piece
+        remaining &= ~piece
+    full[y0:y1, x0:x1] = out
+    return full
 
 
 def hair_extents(views, masks, z):
@@ -189,7 +236,7 @@ def in_hair(views, masks, p, pad=1):
     return facing and hit("side", y)
 
 
-def build_hair(views, hp, material, rows=20, cols=48, thickness=0.012, locks=30):
+def build_hair(views, hp, material, rows=20, cols=48, thickness=0.012, locks=30, shift=0.0):
     masks = hair_masks(views)
     top = views.cfg["height"]
     # Lowest hair row in any view.
@@ -199,7 +246,9 @@ def build_hair(views, hp, material, rows=20, cols=48, thickness=0.012, locks=30)
         lows.append(views.z_of_row(v, r1 + 1))
     z_low = min(lows) - 0.004
     zs = np.linspace(top - 0.003, z_low, rows + 1)
-    C = hp["centre"]
+    # `shift` moves the widest part of each ring behind the head centre: hair pulled back
+    # into a bun passes behind the ears, so its sides are drawn behind them.
+    C = hp["centre"] + Vector((0, shift, 0))
     masks["cy"] = C.y
     rings = []
     for z in zs:
@@ -286,8 +335,19 @@ def build_hair(views, hp, material, rows=20, cols=48, thickness=0.012, locks=30)
     sol.use_rim = True
     for mod in ("smooth", "thick"):
         bpy.ops.object.modifier_apply(modifier=mod)
+    # Even-thickness offsets can throw a vertex far out at a sharp fold of the outline;
+    # nothing of the shell belongs below its lowest ring.
+    bm = bmesh.new()
+    bm.from_mesh(obj.data)
+    stray = [v for v in bm.verts if v.co.z < z_low - 0.01]
+    if stray:
+        bmesh.ops.delete(bm, geom=stray, context="VERTS")
+    bm.to_mesh(obj.data)
+    bm.free()
     for poly in obj.data.polygons:
         poly.use_smooth = True
+    if not locks:
+        return obj, masks
     lock_obj = build_locks(views, masks, grid, keep, rings, C, material, locks)
     bpy.ops.object.select_all(action="DESELECT")
     lock_obj.select_set(True)
@@ -391,7 +451,7 @@ def build_locks(views, masks, grid, keep, rings, C, material, n_locks):
 # Skirt: rings through the front and side skirt silhouette, with pleats toward the hem.
 
 
-def build_skirt(views, m, material, rows=10, cols=48, pleats=24):
+def build_skirt(views, m, material, rows=10, cols=48, pleats=24, depth=0.02):
     front, side = views.sym["front"], views.mask["side"]
     z_top = m["z_skirt_top"]
     # Hem height: where the skirt's centre run ends in the front view (legs part at x = 0).
@@ -405,7 +465,9 @@ def build_skirt(views, m, material, rows=10, cols=48, pleats=24):
         zq = max(zq, z_hem + 0.016)  # the painted hem is ragged with pleat tips
         prow = int(np.floor(ff.to_pixel(0, zq)[1]))
         cols_f = np.nonzero(front[prow])[0]
-        runs = mt.row_runs(front[prow])
+        # The mirrored mask can leave a one-pixel seam on the axis; close it, or the axis
+        # falls in no run and the ring takes the hands' width.
+        runs = mt.row_runs(mt.closing(front[prow : prow + 1], 1)[0] | front[prow])
         ax_px = next(((a, b) for a, b in runs if a <= ff.axis <= b), (cols_f[0], cols_f[-1] + 1))
         ax = (ax_px[1] - ax_px[0]) / 2 * ff.scale
         srow = int(np.floor(fs.to_pixel(0, zq)[1]))
@@ -415,7 +477,7 @@ def build_skirt(views, m, material, rows=10, cols=48, pleats=24):
         t = i / rows
         flare = 1 + 0.035 * max(0.0, (z_hem + 0.03 - z) / 0.03)
         ax, ay = ax * flare, ay * flare
-        amp = 0.004 + 0.02 * t ** 1.2  # pleat depth grows toward the hem
+        amp = 0.004 + depth * t ** 1.2  # pleat depth grows toward the hem
         ring = []
         for j in range(cols):
             a = 2 * math.pi * j / cols
@@ -458,3 +520,191 @@ def build_clip(views, hp, hair, material, length=0.036, width=0.009, depth=0.004
         v.co = hit + normal * (depth * 0.5 + 0.001) + along * a * length + across * b * width + normal * c * depth
     bmesh.ops.bevel(bm, geom=list(bm.edges), offset=0.0018, segments=2, affect="EDGES")
     return to_object(bm, "HairClip", material)
+
+
+# ---------------------------------------------------------------------------------------
+# Accessories: a hair bun, round glasses, and smooth face normals.
+
+
+def build_bun(views, hp, material, spec):
+    """A knot of hair at the back of the head, where the side view paints it: a squashed
+    sphere with shallow twisted grooves. `spec`: side-view centre and radii in pixels."""
+    s = views.frame["side"].scale
+    cx, cy = spec["side"]
+    ry_px, rz_px = spec["radius"]
+    centre = Vector((0.0, views.h_of_col("side", cx), views.z_of_row("side", cy)))
+    ry, rz = ry_px * s, rz_px * s
+    rx = rz * spec.get("width", 1.1)
+    bm = bmesh.new()
+    bmesh.ops.create_uvsphere(bm, u_segments=20, v_segments=12, radius=1.0)
+    for v in bm.verts:
+        x, y, z = v.co
+        a = math.atan2(z, x)
+        groove = 1 + 0.07 * math.sin(3 * a + 4 * y)
+        v.co = centre + Vector((x * rx * groove, y * ry, z * rz * groove))
+    obj = to_object(bm, "HairBun", material)
+    return obj, centre, (rx, ry, rz)
+
+
+def build_glasses(hp, head, material, spec, views):
+    """Round wire glasses as one mesh: two rings in front of the eyes, a bridge and the
+    temple arms back to the ears. `spec`: ring radius and centres in front-view pixels."""
+    from mathutils.bvhtree import BVHTree
+
+    s = views.frame["front"].scale
+    bvh = BVHTree.FromObject(head, bpy.context.evaluated_depsgraph_get())
+    r = spec["radius"] * s
+    wire = spec.get("wire", 0.0014)
+    rings = []
+    for side in (1, -1):
+        cx = side * spec["offset"] * s
+        cz = views.z_of_row("front", spec["row"])
+        hit, _n, _i, _d = bvh.ray_cast(Vector((cx, -2.0, cz)), Vector((0, 1, 0)), 4.0)
+        cy = (hit.y if hit else hp["centre"].y - hp["ry_front"]) - spec.get("standoff", 0.01)
+        rings.append(Vector((cx, cy, cz)))
+
+    def tube(bm, pts, radius, closed=False, sides=6):
+        """A round tube along points (a ring when closed)."""
+        n = len(pts)
+        loops = []
+        for i, p in enumerate(pts):
+            a = pts[(i - 1) % n] if closed or i > 0 else p
+            b = pts[(i + 1) % n] if closed or i < n - 1 else p
+            t = (b - a).normalized()
+            u = t.cross(Vector((0, 1, 0)) if abs(t.y) < 0.9 else Vector((1, 0, 0))).normalized()
+            w = t.cross(u).normalized()
+            loops.append([bm.verts.new(p + (u * math.cos(2 * math.pi * k / sides) + w * math.sin(2 * math.pi * k / sides)) * radius) for k in range(sides)])
+        for i in range(n if closed else n - 1):
+            a, b = loops[i], loops[(i + 1) % n]
+            for k in range(sides):
+                bm.faces.new((a[k], a[(k + 1) % sides], b[(k + 1) % sides], b[k]))
+
+    bm = bmesh.new()
+    for c in rings:
+        pts = [c + Vector((r * math.cos(2 * math.pi * k / 28), 0.0, r * math.sin(2 * math.pi * k / 28))) for k in range(28)]
+        tube(bm, pts, wire, closed=True)
+    left, right = rings
+    # Bridge: a small arch over the nose between the inner edges of the rings.
+    a, b = left - Vector((r, 0, 0)), right + Vector((r, 0, 0))
+    mid = (a + b) / 2 + Vector((0, -0.002, 0.004))
+    tube(bm, [a, (a + mid) / 2 + Vector((0, 0, 0.002)), mid, (b + mid) / 2 + Vector((0, 0, 0.002)), b], wire)
+    # Temples: from the outer edge of each ring back to the top of the ear.
+    for c, side in ((left, 1), (right, -1)):
+        start = c + Vector((side * r, 0, 0.002))
+        ear = Vector((side * hp["rx"] * 0.98, hp["y_ear"] - 0.004, hp["z_ear"] + 0.016))
+        bend = Vector((side * hp["rx"] * 1.02, (start.y + ear.y) / 2, (start.z + ear.z) / 2 + 0.002))
+        tube(bm, [start, bend, ear, ear + Vector((0, 0.012, -0.012))], wire * 0.9)
+    return to_object(bm, "Glasses", material)
+
+
+def smooth_normals(obj, radii, centre):
+    """Anime faces are shaded flat on purpose: copy the normals of an ellipsoid onto the
+    head (a Data Transfer of custom normals, then applied), so toon shadows fall in one
+    soft sweep with no patches around the nose, lips or chin."""
+    bm = bmesh.new()
+    bmesh.ops.create_uvsphere(bm, u_segments=48, v_segments=32, radius=1.0)
+    for v in bm.verts:
+        v.co = Vector((v.co.x * radii[0], v.co.y * radii[1], v.co.z * radii[2])) + centre
+    src = to_object(bm, "normal-source")
+    bpy.ops.object.select_all(action="DESELECT")
+    bpy.context.view_layer.objects.active = obj
+    obj.select_set(True)
+    mod = obj.modifiers.new("normals", "DATA_TRANSFER")
+    mod.object = src
+    mod.use_loop_data = True
+    mod.data_types_loops = {"CUSTOM_NORMAL"}
+    mod.loop_mapping = "POLYINTERP_NEAREST"
+    bpy.ops.object.modifier_apply(modifier="normals")
+    bpy.data.objects.remove(src, do_unlink=True)
+
+
+def classify_scalp(head, views, masks, hp):
+    """Hair-coloured scalp only where the painted views show hair: each head face looks
+    itself up in the view it faces (side, front or back hair outline). A bare temple or
+    forehead stays skin, and the scalp under the hair shell never shows as a bald cap."""
+    ears = [Vector((sx * hp["rx"] * 0.84, hp["y_ear"], hp["z_ear"])) for sx in (1, -1)]
+    grown = {v: mt.dilate(masks[v], 3) for v in ("front", "side", "back")}
+
+    def hit(view, h, z):
+        px, py = views.frame[view].to_pixel(h, z)
+        xi, yi = int(np.floor(px)), int(np.floor(py))
+        mk = grown[view]
+        return 0 <= yi < mk.shape[0] and 0 <= xi < mk.shape[1] and bool(mk[yi, xi])
+
+    for poly in head.data.polygons:
+        c, n = poly.center, poly.normal
+        if min((c - e).length for e in ears) < 0.026:
+            poly.material_index = 0
+            continue
+        if n.y > 0.3 or c.y > hp["y_ear"] + 0.01:
+            hair = True  # the back of the head and behind the ears: always under hair
+        elif abs(n.x) > 0.55:
+            hair = hit("side", c.y, c.z)
+        else:
+            hair = hit("front", c.x, c.z)
+        poly.material_index = 1 if hair else 0
+
+
+def bun_colour(views, masks, spec):
+    """Median painted colour of the bun in the side view (sRGB 0..1)."""
+    s = views.frame["side"].scale
+    cx, cy = spec["side"]
+    ry, rz = spec["radius"]
+    img = views.img["side"]
+    ys, xs = np.mgrid[0 : img.shape[0], 0 : img.shape[1]]
+    inside = ((xs - cx) / ry) ** 2 + ((ys - cy) / rz) ** 2 < 0.8
+    pick = inside & masks["raw"]["side"]
+    del s
+    return np.median(img[pick], axis=0) if pick.sum() > 20 else None
+
+
+def build_jewellery(hp, m, material, spec):
+    """Gold stud earrings at the ear lobes and bangles round both wrists. Returns the mesh
+    and, per vertex, the bone it rides on (head, leftLowerArm, rightLowerArm)."""
+    bm = bmesh.new()
+    bones = []
+    if spec.get("earrings"):
+        r = spec.get("earringRadius", 0.0045)
+        for sx in (1, -1):
+            centre = Vector((sx * (hp["rx"] * 0.86 + 0.004), hp["y_ear"] - 0.002, hp["z_ear"] - 0.018))
+            geo = bmesh.ops.create_uvsphere(bm, u_segments=8, v_segments=6, radius=r)
+            for v in geo["verts"]:
+                v.co += centre
+                bones.append("head")
+    arm = m["arm"]
+    count = spec.get("bangles", 0)
+    for sx, side in ((1, "left"), (-1, "right")):
+        pts, rad = arm["points"], arm["radius"]
+        i = max(0, arm["wrist_i"] - spec.get("bangleUp", 3))
+        for b in range(count):
+            j = max(0, i - b * 2)
+            p = Vector(pts[j]) * 1.0
+            p.x *= sx
+            q = Vector(pts[min(j + 2, len(pts) - 1)])
+            q.x *= sx
+            axis = (q - p).normalized()
+            ring_r = float(rad[j]) + 0.004
+            # A thin torus: sweep a small circle round the wrist. (No temporary geometry:
+            # freed vertices would be reused out of order, and `bones` follows creation order.)
+            u = axis.cross(Vector((0, 1, 0))).normalized()
+            w = axis.cross(u).normalized()
+            loops = []
+            for k in range(16):
+                a = 2 * math.pi * k / 16
+                centre = p + (u * math.cos(a) + w * math.sin(a)) * ring_r
+                out = (centre - p).normalized()
+                loops.append([bm.verts.new(centre + (out * math.cos(2 * math.pi * t / 4) + axis * math.sin(2 * math.pi * t / 4)) * 0.0016) for t in range(4)])
+                bones.extend([f"{side}LowerArm"] * 4)
+            for k in range(16):
+                a_, b_ = loops[k], loops[(k + 1) % 16]
+                for t in range(4):
+                    bm.faces.new((a_[t], b_[t], b_[(t + 1) % 4], a_[(t + 1) % 4]))
+    obj = to_object(bm, "Jewellery", material)
+    # Bones by place, not by creation order (a mesh does not promise to keep it): studs
+    # sit by the head, bangles on the wrist of their side.
+    head_top = hp["centre"].z - hp["rz_bottom"] - 0.04
+    bones = [
+        "head" if (v.co.z > head_top and abs(v.co.x) < hp["rx"] * 1.3) else ("leftLowerArm" if v.co.x > 0 else "rightLowerArm")
+        for v in obj.data.vertices
+    ]
+    return obj, bones
