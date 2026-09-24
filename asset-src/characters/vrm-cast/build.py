@@ -139,11 +139,12 @@ PROFILES = {
             "glasses": "#8a6a3a",
         },
     },
-    # Aoi, 24, drives the Aonuma bus in The 17:42 (drama-roles.js `aoi`): ponytail, teal
-    # uniform jacket over a cream shirt, a peaked cap.
+    # Divya (cast id `aoi`), Arjun's older sister, drives the Aonuma bus in The 17:42
+    # (drama-roles.js `aoi`): warm brown skin, ponytail, teal uniform jacket over a cream
+    # shirt, a peaked cap worn high so her face shows under the brim.
     "aoi": {
         "person": "aoi",
-        "title": "Aoi (test)",
+        "title": "Divya",
         "height": 1.6,
         "shoulders": 1.04,
         "hips": 1.0,
@@ -153,10 +154,12 @@ PROFILES = {
         "hair": "ponytail",
         "outfit": "suit",
         "cap": True,
+        "capLift": 0.022,
+        "capTilt": 0.7,
         "brows": 0.3,
         "eyes": {"height": 0.95, "iris": "#4a3024", "irisLight": "#9a6a44", "lash": "#261a1a"},
         "colors": {
-            "skin": "#f2d4bc",
+            "skin": "#c68656",
             "hair": "#2e2220",
             "hairTie": "#1f8a86",
             "top": "#1f7d79",
@@ -165,8 +168,8 @@ PROFILES = {
             "lower": "#2c3a48",
             "socks": "#22242a",
             "shoes": "#1c1a1a",
-            "mouth": "#b8505a",
-            "blush": "#f08a8a",
+            "mouth": "#8e3a36",
+            "blush": "#c9705a",
             "brow": "#3a2828",
             "cap": "#1f7d79",
             "capBand": "#efe6cf",
@@ -652,12 +655,15 @@ def build_glasses(head_bvh):
 
 
 def build_cap(head_bvh):
-    """A peaked uniform cap: crown, a cream band and a dark brim over the forehead."""
+    """A peaked uniform cap: crown, a cream band and a dark brim over the forehead.
+    `capLift` (metres at 1.58 m) sits it higher on the head and `capTilt` (0 to 1) turns the
+    brim up toward level, so the eyes show under it."""
     C, R = head_center(), head_radii()
     k = S * P["head"]
     colors = P["colors"]
     n = 28
-    base = C.z + 0.018 * k
+    base = C.z + (0.018 + P.get("capLift", 0.0)) * k
+    drop = 0.024 * (1 - P.get("capTilt", 0.0))
     rings = []
     # Band, then a crown that flares a little toward its flat top, like a uniform cap.
     for z, grow in ((base, 1.08), (base + 0.02 * k, 1.09), (C.z + 0.09 * k, 1.13), (C.z + 0.116 * k, 1.15)):
@@ -676,7 +682,7 @@ def build_cap(head_bvh):
     for i in range(13):
         a = math.radians(lerp(-80, 80, i / 12))
         inner = Vector((math.sin(a) * R.x * 1.08, C.y - math.cos(a) * R.y * 1.08, base))
-        outer = Vector((math.sin(a) * R.x * 1.14, C.y - math.cos(a) * (R.y * 1.08 + 0.06 * k), base - 0.024 * k))
+        outer = Vector((math.sin(a) * R.x * 1.14, C.y - math.cos(a) * (R.y * 1.08 + 0.06 * k), base - drop * k))
         arc_pts.append((brim.verts.new(inner), brim.verts.new(outer)))
     for (a0, b0), (a1, b1) in zip(arc_pts, arc_pts[1:]):
         brim.faces.new((a0, a1, b1, b0))
