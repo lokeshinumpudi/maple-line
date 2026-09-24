@@ -98,9 +98,16 @@ export function createSceneryEffects({
       paused = false,
       night = 0,
       pixelHeight = 900,
+      people = null,
     } = {}) {
       updateWaterSurface(paused ? 0 : dt, { rain });
-      halos.update(realDt, { cameraPosition, night, wet: Math.min(1, rain), pixelHeight });
+      halos.update(realDt, {
+        cameraPosition,
+        night,
+        wet: Math.min(1, rain),
+        pixelHeight,
+        people,
+      });
       lights.update(realDt, { cameraPosition, night, wet: Math.min(1, rain) });
       canopy.update(cameraPosition);
       if (sunColor && skyColor) light.copy(sunColor).multiplyScalar(0.35).add(skyColor);
