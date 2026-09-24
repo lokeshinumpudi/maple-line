@@ -23,10 +23,11 @@ export const FILM_GRADES = Object.freeze({
     contrast: 1.06,
   },
   golden: {
-    lift: [0.018, 0.01, 0.002],
-    gamma: [0.98, 1, 1.04],
-    gain: [1.09, 0.99, 0.84],
-    saturation: 0.94,
+    // Golden hour without turning skin orange: warm, but a gentler blue cut and saturation.
+    lift: [0.016, 0.01, 0.006],
+    gamma: [0.99, 1, 1.02],
+    gain: [1.06, 1.0, 0.91],
+    saturation: 0.88,
     contrast: 1.08,
   },
   rain: {
@@ -52,9 +53,9 @@ export const FILM_GRADES = Object.freeze({
   },
   rainNight: {
     // Lifted blue shadows and a gentle gain: blue-hour rain that still shows shapes.
-    lift: [0.012, 0.018, 0.03],
-    gamma: [1.05, 1.03, 0.99],
-    gain: [1.04, 1.01, 1.03],
+    lift: [0.014, 0.017, 0.024],
+    gamma: [1.05, 1.03, 1.0],
+    gain: [1.06, 1.02, 0.99],
     saturation: 0.84,
     contrast: 1.02,
   },

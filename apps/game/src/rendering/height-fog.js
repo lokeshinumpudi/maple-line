@@ -73,6 +73,18 @@ const fragment = /* glsl */ `
 #endif
 `;
 
+/**
+ * The fog fragment for close subjects (characters): fog and haze start a few metres out, so
+ * a face in a close-up is not greyed by the valley mist behind it.
+ */
+export function nearClearFog(start = 3, full = 28) {
+  return fragment.replace(
+    '  vec3 mapleFogTint = fogColor;',
+    `  fogFactor *= smoothstep( ${start.toFixed(1)}, ${full.toFixed(1)}, mapleFogDistance );
+  vec3 mapleFogTint = fogColor;`,
+  );
+}
+
 let installed = false;
 
 /** Replace the fog chunks and register the shared uniforms. Call before the first render. */

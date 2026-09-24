@@ -1,3 +1,4 @@
+import { nearClearFog } from './height-fog.js';
 /**
  * Local lamp light: a few real lights near the camera, and cheap light pools and wet
  * reflections for every lamp.
@@ -126,6 +127,14 @@ const decalFragment = /* glsl */ `
 export const CHARACTER_LIGHT = { value: 1000 };
 /** 0..1 night strength for the character key and rim. */
 export const CHARACTER_NIGHT = { value: 0 };
+/**
+ * How much of a light's colour reaches a character's skin (0 = white light, 1 = all of it).
+ * Sunsets, sodium lamps and a blue night sky would otherwise turn the same face orange,
+ * amber or mauve from shot to shot; this keeps some warmth and the same brown everywhere.
+ */
+export const CHARACTER_LIGHT_CHROMA = { value: 0.42 };
+/** Final colour saturation of character surfaces, before the film grade. */
+export const CHARACTER_SATURATION = { value: 0.8 };
 const MTOON_COLOUR = 'vec3 col = reflectedLight.directDiffuse + reflectedLight.indirectDiffuse;';
 const MTOON_PROJECT = '#include <project_vertex>';
 
@@ -138,10 +147,15 @@ export function createCharacterKey(THREE) {
 }
 
 /**
- * Character (MToon) light at night. Direct light above a soft ceiling is compressed, so a
- * lamp a metre from a face does not burn it flat. Then each character gets a soft, wrapped
- * warm key from the nearest lamp (its real position, with distance falloff, never from the
- * camera) and a cool rim from the blue sky, so faces read in blue-hour rain.
+ * Character (MToon) light, for natural skin under every light:
+ * - white balance: the light reaching a character keeps only part of its colour;
+ * - direct light above a soft ceiling is compressed, so a lamp a metre from a face does not
+ *   burn it flat;
+ * - by day the sun side of a face is lifted a little warmer and the side away from it goes
+ *   slightly cool, with a thin rim, so faces model in window light and on a hazy platform;
+ * - at night each character gets a soft wrapped warm key from the nearest lamp (its real
+ *   position, with distance falloff, never from the camera) and a faint cool rim;
+ * - close to the camera characters are exempt from most of the fog and haze.
  * key: uniforms from createCharacterKey, shared by every material of one character.
  */
 export function capCharacterLight(material, key = null) {
@@ -154,6 +168,8 @@ export function capCharacterLight(material, key = null) {
     if (!shader.fragmentShader.includes(MTOON_COLOUR)) return;
     shader.uniforms.mapleCharacterLight = CHARACTER_LIGHT;
     shader.uniforms.mapleCharacterNight = CHARACTER_NIGHT;
+    shader.uniforms.mapleLightChroma = CHARACTER_LIGHT_CHROMA;
+    shader.uniforms.mapleCharacterSaturation = CHARACTER_SATURATION;
     const keyed = Boolean(key) && shader.vertexShader.includes(MTOON_PROJECT);
     if (keyed) {
       Object.assign(shader.uniforms, key);
@@ -173,19 +189,43 @@ export function capCharacterLight(material, key = null) {
     }
     shader.fragmentShader =
       `uniform float mapleCharacterLight; uniform float mapleCharacterNight;
+      uniform float mapleLightChroma; uniform float mapleCharacterSaturation;
       ${keyed ? 'uniform vec3 mapleKeyPosition; uniform vec3 mapleKeyColor; varying vec3 vMapleWorld;' : ''}\n` +
       shader.fragmentShader.replace(
         MTOON_COLOUR,
-        `vec3 mapleDirect = reflectedLight.directDiffuse;
+        `vec3 mapleAlbedo = max(diffuseColor.rgb, vec3(0.02));
+        const vec3 mapleLuma = vec3(0.2126, 0.7152, 0.0722);
+        vec3 mapleDirectTint = reflectedLight.directDiffuse / mapleAlbedo;
+        vec3 mapleIndirectTint = reflectedLight.indirectDiffuse / mapleAlbedo;
+        vec3 mapleDirect = mapleAlbedo
+          * mix(vec3(dot(mapleDirectTint, mapleLuma)), mapleDirectTint, mapleLightChroma);
+        vec3 mapleIndirect = mapleAlbedo
+          * mix(vec3(dot(mapleIndirectTint, mapleLuma)), mapleIndirectTint, mapleLightChroma);
         float mapleBase = max(max(diffuseColor.r, diffuseColor.g), max(diffuseColor.b, 0.04));
         float mapleCeiling = mapleCharacterLight * mapleBase;
         float maplePeak = max(max(mapleDirect.r, mapleDirect.g), mapleDirect.b);
         if (maplePeak > mapleCeiling)
           mapleDirect *= (mapleCeiling + (maplePeak - mapleCeiling) * 0.3) / maplePeak;
-        vec3 col = mapleDirect + reflectedLight.indirectDiffuse;
+        vec3 col = mapleDirect + mapleIndirect;
+        vec3 mapleN = normalize(normal);
+        vec3 mapleV = normalize(vViewPosition);
+        float mapleEdge = pow(1.0 - clamp(dot(mapleN, mapleV), 0.0, 1.0), 3.0);
+        #if NUM_DIR_LIGHTS > 0
+        {
+          // Daylight modelling from the sun's side (through the windows, too): a clear key,
+          // a cool shade and a thin warm rim where the sun catches the edge.
+          float mapleDay = 1.0 - mapleCharacterNight;
+          float mapleKey = smoothstep(-0.25, 0.75, dot(mapleN, directionalLights[0].direction));
+          vec3 mapleModel = mix(vec3(0.95, 0.98, 1.06), vec3(1.26, 1.19, 1.1), mapleKey);
+          col *= mix(vec3(1.0), mapleModel, mapleDay * 0.9);
+          // Backlit by a low sun, the edge catches it: a clear rim separates the figure from haze.
+          float mapleBehind = smoothstep(0.0, 0.8, dot(-mapleV, directionalLights[0].direction));
+          col += mapleAlbedo * vec3(1.0, 0.93, 0.84) * mapleEdge * (mapleKey * 0.35 + mapleBehind * 0.6)
+            * mapleDay;
+        }
+        #endif
+        col = mix(vec3(dot(col, mapleLuma)), col, mapleCharacterSaturation);
         if (mapleCharacterNight > 0.001) {
-          vec3 mapleN = normalize(normal);
-          vec3 mapleV = normalize(vViewPosition);
           ${
             keyed
               ? `vec3 mapleToKey = mapleKeyPosition - vMapleWorld;
@@ -199,12 +239,17 @@ export function capCharacterLight(material, key = null) {
           }
           // Cool rim from the rain-lit sky on the silhouette edge.
           float mapleRim = pow(1.0 - clamp(dot(mapleN, mapleV), 0.0, 1.0), 3.0);
-          col += vec3(0.16, 0.24, 0.42) * mapleRim * mapleCharacterNight * (0.35 + mapleBase);
+          col += vec3(0.12, 0.17, 0.28) * mapleRim * mapleCharacterNight * (0.3 + mapleBase);
         }`,
       );
+    // Near subjects keep their own colour: fog and haze fade in only beyond a few metres.
+    shader.fragmentShader = shader.fragmentShader.replace(
+      '#include <fog_fragment>',
+      nearClearFog(),
+    );
   };
   material.customProgramCacheKey = () =>
-    `${previousKey}|maple-character-light-v2${key ? '-keyed' : ''}`;
+    `${previousKey}|maple-character-light-v3${key ? '-keyed' : ''}`;
   material.needsUpdate = true;
   return true;
 }

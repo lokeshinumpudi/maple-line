@@ -36,6 +36,17 @@ test('character light is capped only on MToon materials and only once', () => {
   toon.onBeforeCompile(shader);
   assert.ok(shader.uniforms.mapleCharacterLight);
   assert.match(shader.fragmentShader, /mapleCeiling/);
+  // Skin keeps only part of the light's colour and has its own saturation.
+  assert.ok(
+    shader.uniforms.mapleLightChroma.value > 0 && shader.uniforms.mapleLightChroma.value < 1,
+  );
+  assert.match(shader.fragmentShader, /mapleCharacterSaturation/);
+});
+
+test('close subjects are exempt from fog near the camera', async () => {
+  const { nearClearFog } = await import('../src/rendering/height-fog.js');
+  const chunk = nearClearFog();
+  assert.match(chunk, /fogFactor \*= smoothstep\( 3\.0, 28\.0, mapleFogDistance \)/);
 });
 
 const at = (x, y, z) => new THREE.Vector3(x, y, z);
