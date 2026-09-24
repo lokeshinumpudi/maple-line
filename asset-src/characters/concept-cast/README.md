@@ -3,7 +3,7 @@
 Builds a game character from three painted views of approved concept art. Each character has a settings file, `<cast>.json`, and the build writes `apps/game/public/models/characters/vrm/<cast>.vrm`. Built so far:
 
 - Riko (`riko.json`), the Momiji student. Her older test figure is retired.
-- Grandma Fusae (`fusae.json`), the staged drama role in `apps/game/src/drama/drama-roles.js`. Her VRM replaces the test figure from `vrm-cast/build.py`; do not rebuild `fusae` with that script.
+- Ammamma, the Telugu grandmother (`fusae.json`, built from the `ammamma-*` views). The cast id stays `fusae`, the id of the staged drama role in `apps/game/src/drama/drama-roles.js`. Her VRM replaces the test figure from `vrm-cast/build.py`; do not rebuild `fusae` with that script.
 
 Everything runs in Blender (5.2, `blender -b`) except the last step, which is the shared `make-vrm.mjs`:
 
@@ -20,29 +20,33 @@ The build takes about three minutes. `--render` writes orthographic renders over
 ## Inputs
 
 - `ref/riko-front.jpg`, `ref/riko-side.jpg`, `ref/riko-back.jpg`: the three views, each 1024 × 1024 on the paper colour. `ref/radio-sheet.jpg` paints the radio. Provenance and prompts are in [THIRD_PARTY.md](../../THIRD_PARTY.md).
-- `ref/fusae-*.jpg`, `ref/aoi-*.jpg`, `ref/ishida-*.jpg`, `ref/sato-*.jpg` and the `*-sheet.jpg` turnarounds: the other cast members' views (Aoi's come from `c-mika.png`). Only Fusae is built from them so far.
+- `ref/ammamma-*.jpg`, `ref/aoi-*.jpg`, `ref/ishida-*.jpg`, `ref/sato-*.jpg` and the `*-sheet.jpg` turnarounds: the other cast members' views (Aoi's come from `c-mika.png`). Only Ammamma is built from them so far; `fusae-*.jpg` are the earlier Japanese grandmother's views, kept for reference.
 - `riko.json`: what the pixels cannot say on their own. The height (1.55 m); which half of the front and back views is free of her shoulder bag (that half is mirrored); polygons around the bag and strap in the side view and around the hair clip; a few rows (shoulder line, waist, skirt top, neck); face landmarks (chin, eye row and spacing, mouth, brow, ear); the arm's depth and the toe in the side view; and the colours for the drawn face.
 
 ### Settings for other characters
 
-`fusae.json` shows the options Riko does not need:
+`fusae.json` (Ammamma) shows the options Riko does not need:
 
-| Setting                            | What it does                                                                                             |
-| ---------------------------------- | -------------------------------------------------------------------------------------------------------- |
-| `groundShadow`                     | A painted shadow under the feet counts as paper in the matte.                                            |
-| `maskCuts`                         | Polygons cut out of a view's matte, such as the paper between feet set close together.                   |
-| `bagRow: null`, `mirrorRegions`    | No bag to mirror away; a hand the sheet cut off is painted from the other hand.                          |
-| `neckerchief`                      | Riko only: strip the neckerchief from the side silhouette.                                               |
-| `torsoLine`, `armpitMin`           | Where baggy sleeves lie against the body all the way down, the line between arm and body, drawn by hand. |
-| `rows.hem`                         | The hem row, when a long dress over close feet hides the gap between the legs.                           |
-| `hairMask`, `hairHalf`, `hairCuts` | Grey hair picked by saturation and hue; which half is mirrored; the bun cut out of the shell's outline.  |
-| `hair`                             | Lock count, spring chains, shell thickness and how much of the painted strokes stays.                    |
-| `bun`                              | A hair bun as its own mesh on a stiff three-joint spring chain.                                          |
-| `headShape`, `head.front.hairline` | Skull depth behind the ears and under the hair; a bare forehead up to the hairline.                      |
-| `glasses`                          | Round wire glasses as a separate mesh, rigid on the head.                                                |
-| `face`                             | Eye size, iris, mouth width, the resting smile, blush and age lines.                                     |
-| `skirt`                            | Pleat depth and how much the hem follows the thighs (less for a long dress).                             |
-| `posture.stoop`                    | Degrees of stoop, read by the game's posture layer.                                                      |
+| Setting                            | What it does                                                                                                                        |
+| ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| `groundShadow`                     | A painted shadow under the feet counts as paper in the matte.                                                                       |
+| `maskCuts`                         | Polygons cut out of a view's matte, such as the paper between feet set close together.                                              |
+| `bagRow: null`, `mirrorRegions`    | No bag to mirror away; a hand the sheet cut off is painted from the other hand.                                                     |
+| `neckerchief`                      | Riko only: strip the neckerchief from the side silhouette.                                                                          |
+| `torsoLine`, `armpitMin`           | Where baggy sleeves lie against the body all the way down, the line between arm and body, drawn by hand.                            |
+| `rows.hem`                         | The hem row, when a long dress over close feet hides the gap between the legs.                                                      |
+| `hairMask`, `hairHalf`, `hairCuts` | Grey hair picked by saturation and hue; which half is mirrored; the bun cut out of the shell's outline.                             |
+| `hair`                             | Lock count, spring chains, shell thickness and how much of the painted strokes stays.                                               |
+| `bun`                              | A hair bun as its own mesh on a stiff three-joint spring chain, shaded in its painted grey.                                         |
+| `hair.ringShift`                   | Moves the hair shell's widest part behind the ears, for hair pulled back into a bun.                                                |
+| `jewellery`                        | Gold stud earrings and bangles; the studs ride on the head, the bangles on the lower arms.                                          |
+| `head.front.bindi`                 | A small red bindi between the brows.                                                                                                |
+| `rows.collar`                      | Where the painted neck ends above the neckline.                                                                                     |
+| `headShape`, `head.front.hairline` | Skull depth behind the ears and under the hair; a bare forehead up to the hairline.                                                 |
+| `glasses`                          | Round wire glasses as a separate mesh, rigid on the head.                                                                           |
+| `face`                             | Eye size, iris, mouth width, the resting smile, blush, and age lines (a drawn nose, smile folds and crow's feet in `colors.lines`). |
+| `skirt`                            | Pleat depth, how much the hem follows the thighs, and `legBlend`: an even split of both thighs so a saree hangs.                    |
+| `posture.stoop`, `posture.stance`  | Degrees of stoop, and of the upper legs turning in to bring the feet together (`vrm-actor.js`).                                     |
 
 ## Steps
 
@@ -58,15 +62,15 @@ The build takes about three minutes. `--render` writes orthographic renders over
 
 Riko: about 13,600 triangles (body 6,000, hair 4,700, head 1,600, skirt 960, face 300) and a 0.5 MB VRM. The radio and phone (`props.py`) add 236 triangles and 50 KB.
 
-Fusae: see `fusae.report.json` for the triangles per mesh; about 12,000 triangles and a 0.5 MB VRM, 1.45 m tall with a 6 degree stoop.
+Ammamma: see `fusae.report.json` for the triangles per mesh; about 12,600 triangles and a 0.46 MB VRM, 1.45 m tall with a 6 degree stoop and a 7 degree stance.
 
 ## Known gaps
 
-Fusae:
+Ammamma:
 
-- Her hair is a painted shell with a bun; there are no separate strands at the temples, and seen from the side the skull shows scalp colour in front of the ears.
-- The face has no nose shape; the nose and age lines are faint decals.
-- The long dress follows the hips more than the thighs, so a long stride pushes the knees against it.
+- Her hair is a painted shell with a bun; from the front it still reads a little like a cap, with no loose strands at the temples.
+- The nose is drawn, not modelled; the side profile is flat.
+- Seated, the saree hem forms a ring round the shins.
 
 Riko:
 

@@ -275,7 +275,7 @@ def fallback_weights(obj, joints, names):
     return W
 
 
-def skirt_weights(obj, m, names, share=0.92):
+def skirt_weights(obj, m, names, share=0.92, blend=0.0):
     idx = {n: i for i, n in enumerate(names)}
     W = np.zeros((len(obj.data.vertices), len(names)), dtype=np.float32)
     top, hem = m["z_skirt_top"], m["z_hem"]
@@ -283,7 +283,9 @@ def skirt_weights(obj, m, names, share=0.92):
     for v in obj.data.vertices:
         x, y, z = v.co
         t = float(smoothstep(top - 0.02, hem, z))
-        side = float(np.clip(0.5 + x / 0.12, 0, 1))
+        # `blend` moves each side toward an even split of both thighs, so a long wrap hangs
+        # from the middle of the legs instead of stretching with each one.
+        side = float(np.clip(0.5 + x / 0.12, 0, 1)) * (1 - blend) + 0.5 * blend
         # The front panel rides on the thighs (sitting lifts it); the back stays with the
         # hips, which it is sat on.
         front = float(np.clip((cy - y) / 0.08, 0, 1))

@@ -226,7 +226,9 @@ def measure(views, grid, F, S):
             return (m["torso_line"](z) if line else m["torso_half_armpit"]) - ARM_GAP
         k = int(np.clip(np.searchsorted(zs, z), 0, len(zs) - 1))
         c = sh.containing(runs[k], 0.0)
-        return max(abs(c[0]), abs(c[1])) if c else 0.3
+        half = max(abs(c[0]), abs(c[1])) if c else 0.3
+        # Hands touching a baggy hem merge into the body run; the drawn line keeps them out.
+        return min(half, m["torso_line"](z)) if line else half
 
     m["torso_x_limit"] = torso_x_limit
     # Neck: front width and side depth a little under the hair line.
@@ -466,7 +468,8 @@ def paint(views, objs, occluders, hair_masks, size=1024):
     is_hair = ids == hair_id
     # The neck is plain skin: the painted views hide it behind hair and chin shadow.
     skin = hex_rgb(views.cfg["colors"]["skin"])
-    z_collar = views.z_of_row("front", views.cfg["rows"]["shoulder"]) + 0.012
+    rows = views.cfg["rows"]
+    z_collar = views.z_of_row("front", rows.get("collar", rows["shoulder"])) + 0.012
     neck = (ids == 0) & (pos[..., 2] > z_collar)
     # Shade under the chin, lighter toward the collar, as the painted views have it.
     shade = hex_rgb(views.cfg["colors"]["skinShade"])
@@ -534,6 +537,8 @@ def face_materials(c):
         "mouth": flat_material("mouth", c["mouth"], "flat", True),
         "blush": flat_material("blush", c["blush"], "blush", True),
         "nose": flat_material("nose", c["skinShade"], "nose", True),
+        "lines": flat_material("lines", c.get("lines", c["skinShade"]), "lines", True),
+        "bindi": flat_material("bindi", c.get("bindi", "#a8252a"), "flat", True),
     }
 
 
@@ -564,7 +569,7 @@ def join(objs, name):
     return objs[0]
 
 
-def skin(views, grid, m, hp, body, skirt, hair, head, face, extras=(), bun=None):
+def skin(views, grid, m, hp, body, skirt, hair, head, face, extras=(), bun=None, jewellery=None):
     cfg = views.cfg
     joints = rig.fit_joints(m, m["rows"], grid, hp, views)
     chains = rig.hair_chains(hp, hair, n_chains=cfg.get("hair", {}).get("chains", 6))
@@ -591,7 +596,8 @@ def skin(views, grid, m, hp, body, skirt, hair, head, face, extras=(), bun=None)
     rig.set_weights(body, gnames, W)
     if skirt is not None:
         share = (cfg.get("skirt") or {}).get("legShare", 0.92)  # a long dress follows the thighs less
-        rig.set_weights(skirt, names, rig.skirt_weights(skirt, m, names, share))
+        blend = (cfg.get("skirt") or {}).get("legBlend", 0.0)
+        rig.set_weights(skirt, names, rig.skirt_weights(skirt, m, names, share, blend))
     hair_names = ["head"] + [f"{p}_{i}" for p, pts in chains.items() for i in range(len(pts) - 1)]
     W = rig.hair_weights(hair, {k: chains[k] for k in hanging}, hair_names, hp)
     if bun is not None:
@@ -606,6 +612,13 @@ def skin(views, grid, m, hp, body, skirt, hair, head, face, extras=(), bun=None)
     rig.rigid(face, "head")
     for obj in extras:
         rig.rigid(obj, "head")
+    if jewellery is not None:
+        obj, bones = jewellery
+        for g in list(obj.vertex_groups):
+            obj.vertex_groups.remove(g)
+        for name in sorted(set(bones)):
+            obj.vertex_groups.new(name=name).add([i for i, b in enumerate(bones) if b == name], 1.0, "REPLACE")
+        extras = [*extras, obj]
     meshes = [o for o in (body, skirt, hair, head, face, *extras) if o is not None]
     for obj in meshes:
         rig.attach(obj, arm)
@@ -630,6 +643,7 @@ MTOON_ROLES = {
     "flat": {"shadeTint": [0.92, 0.9, 0.94], "toony": 1.0, "shift": -0.4, "outline": 0.0, "rim": 0.0},
     "glint": {"shadeTint": [1, 1, 1], "toony": 1.0, "shift": -1.0, "outline": 0.0, "rim": 0.0, "emissive": 0.6},
     "blush": {"shadeTint": [0.95, 0.9, 0.9], "toony": 1.0, "shift": -0.4, "outline": 0.0, "rim": 0.0, "alpha": 0.4},
+    "lines": {"shadeTint": [0.9, 0.8, 0.8], "toony": 1.0, "shift": -0.4, "outline": 0.0, "rim": 0.0, "alpha": 0.8},
     "nose": {"shadeTint": [0.9, 0.8, 0.8], "toony": 1.0, "shift": -0.4, "outline": 0.0, "rim": 0.0, "alpha": 0.5},
 }
 
@@ -832,11 +846,15 @@ def main():
     hp = parts.head_params(views, m)
     head = parts.build_head(hp, grey)
     hair_cfg = cfg.get("hair", {})
-    hair, hair_masks = parts.build_hair(views, hp, grey, thickness=hair_cfg.get("thickness", 0.012), locks=hair_cfg.get("locks", 30))
+    hair, hair_masks = parts.build_hair(
+        views, hp, grey, thickness=hair_cfg.get("thickness", 0.012), locks=hair_cfg.get("locks", 30), shift=hair_cfg.get("ringShift", 0.0)
+    )
     bun = None
     if cfg.get("bun"):
         # The bun is shaded in the flat hair colour: no painted view shows all of it.
-        bun_mat = flat_material("hair-bun", cfg["colors"]["hair"], "painted-hair")
+        painted = parts.bun_colour(views, parts.hair_masks(views), cfg["bun"])
+        bun_hex = "#%02x%02x%02x" % tuple(int(round(float(c) * 255)) for c in painted) if painted is not None else cfg["colors"]["hair"]
+        bun_mat = flat_material("hair-bun", bun_hex, "painted-hair")
         bun_obj, bun_centre, bun_radii = parts.build_bun(views, hp, bun_mat, cfg["bun"])
         bun = (bun_centre, bun_radii)
     else:
@@ -848,6 +866,7 @@ def main():
     # 3. Paint: bake the views into the atlas.
     atlas = paint(views, painted, [head], hair_masks)
     set_texture_materials(atlas, body, skirt, hair)
+    parts.classify_scalp(head, views, hair_masks, hp)
     if bun_obj is not None:
         hair = join([hair, bun_obj], "Hair")
     head.data.materials.clear()
@@ -864,10 +883,15 @@ def main():
     extras = []
     if cfg.get("glasses"):
         extras.append(parts.build_glasses(hp, head, flat_material("glasses", cfg["colors"]["glasses"], "wire", True), cfg["glasses"], views))
+    jewellery = None
+    if cfg.get("jewellery"):
+        jewellery = parts.build_jewellery(hp, m, flat_material("gold", cfg["colors"].get("gold", "#d9a24a"), "wire"), cfg["jewellery"])
     if ARGS.render:
         review(views, hp, face, hair_masks, ARGS.render)
     # 5. Rig, weights and T-pose; 6. export for make-vrm.mjs.
-    arm, joints, chains = skin(views, grid, m, hp, body, skirt, hair, head, face, extras, bun)
+    arm, joints, chains = skin(views, grid, m, hp, body, skirt, hair, head, face, extras, bun, jewellery)
+    if jewellery is not None:
+        extras = [*extras, jewellery[0]]
     meshes = [o for o in (body, skirt, hair, head, face, *extras) if o is not None]
     export(cfg, arm, meshes, joints, chains, hp, m)
 

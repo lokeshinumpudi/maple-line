@@ -48,6 +48,8 @@ def dims(hp):
         "blush": f.get("blush", True),
         # Age lines (smile folds, crow's feet) drawn in the soft nose colour.
         "lines": f.get("lines", False),
+        "line_w": f.get("lineWidth", 1.0),
+        "bindi_v": (hp["z_bindi"] - c.z) if hp.get("z_bindi") is not None else None,
         "nose_v": (hp["z_nose"] - c.z) if hp.get("z_nose") is not None else None,
         "k": hp["eye_x"] / 0.042,
     }
@@ -179,7 +181,7 @@ def layout(p, d):
             for dv, du in ((0.003, 0.006), (-0.004, 0.0055)):
                 a = (ou, d["eye_v"] + dv * 0.3 * k)
                 b = (ou + side * du * k, d["eye_v"] + dv * k)
-                polys.append(("nose", 2, stroke([a, b], 0.0006 * k)))
+                polys.append(("lines", 2, stroke([a, b], 0.0006 * k * d["line_w"])))
             # Smile folds: an arc from beside the nose round the mouth corner.
             nv = d["nose_v"] if d["nose_v"] is not None else d["eye_v"] - 0.026 * k
             pts = []
@@ -187,7 +189,7 @@ def layout(p, d):
                 t = i / 5
                 u = side * d["mouth_w"] * lerp(0.9, 1.35, math.sin(math.pi * t * 0.6))
                 pts.append((u, lerp(nv - 0.002 * k, d["mouth_v"] - 0.004 * k, t)))
-            polys.append(("nose", 2, stroke(pts, 0.0007 * k)))
+            polys.append(("lines", 2, stroke(pts, 0.0007 * k * d["line_w"])))
     # Mouth: a small curved line that opens with the visemes and curls up in a smile.
     open_ = wide = round_ = 0.0
     for name, (o, w, r) in {"aa": (1.0, 0.1, 0), "ih": (0.35, 0.55, 0), "ou": (0.5, 0, 1.0), "ee": (0.42, 0.75, 0), "oh": (0.78, 0, 0.6)}.items():
@@ -212,8 +214,19 @@ def layout(p, d):
         top.append((u, mv + curve + (0.0005 + 0.0018 * open_) * k * shape))
         bottom.append((u, mv + curve - (0.0005 + 0.012 * open_) * k * shape * (1 - 0.2 * min(smile, 1))))
     polys.append(("mouth", 3, top + list(reversed(bottom))))
-    nv = d["nose_v"] + 0.006 * k if d["nose_v"] is not None else d["eye_v"] - 0.022 * k
-    polys.append(("nose", 2, [(0.0, nv), (0.0022 * k, nv - 0.006 * k), (-0.001 * k, nv - 0.0058 * k)]))
+    if d["lines"]:
+        # A drawn nose: the shadowed side of the bridge and the base with two nostrils.
+        nv = d["nose_v"] if d["nose_v"] is not None else d["eye_v"] - 0.028 * k
+        w = d["line_w"]
+        polys.append(("lines", 2, stroke([(-0.0035 * k, nv + 0.012 * k), (-0.0042 * k, nv + 0.004 * k), (-0.0036 * k, nv)], 0.0005 * k * w)))
+        polys.append(("lines", 2, stroke([(-0.0055 * k, nv - 0.0004 * k), (-0.002 * k, nv - 0.0018 * k), (0.002 * k, nv - 0.0018 * k), (0.0055 * k, nv - 0.0004 * k)], 0.0005 * k * w)))
+        for side in (1, -1):
+            polys.append(("lines", 2, ellipse(side * 0.0028 * k, nv - 0.0006 * k, 0.0011 * k, 0.0007 * k, 8)))
+    else:
+        nv = d["nose_v"] + 0.006 * k if d["nose_v"] is not None else d["eye_v"] - 0.022 * k
+        polys.append(("nose", 2, [(0.0, nv), (0.0022 * k, nv - 0.006 * k), (-0.001 * k, nv - 0.0058 * k)]))
+    if d["bindi_v"] is not None:
+        polys.append(("bindi", 2, ellipse(0.0, d["bindi_v"], 0.0034 * k, 0.0036 * k, 12)))
     return polys
 
 

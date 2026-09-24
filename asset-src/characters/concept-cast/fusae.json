@@ -1,47 +1,75 @@
 {
   "cast": "fusae",
   "person": "fusae",
-  "title": "Grandma Fusae",
+  "title": "Ammamma",
   "height": 1.45,
   "views": {
-    "front": "ref/fusae-front.jpg",
-    "side": "ref/fusae-side.jpg",
-    "back": "ref/fusae-back.jpg"
+    "front": "ref/ammamma-front.jpg",
+    "side": "ref/ammamma-side.jpg",
+    "back": "ref/ammamma-back.jpg"
   },
   "notes": [
+    "Ammamma, the Telugu grandmother. The cast id stays `fusae`, the id the drama roles use.",
     "Pixel coordinates are in the 1024 x 1024 view crops, x right and y down.",
-    "The sheet cut the front view at her left hand, so the front keeps the image-left half and `mirrorRegions` paints that hand from the other one.",
     "`hairCuts` take the bun out of the outline the hair shell follows; `bun` builds it as its own piece on a spring chain.",
-    "The side view shows her left side facing image left, stooped: the head sits forward of the chest."
+    "The side view shows her left side facing image left, stooped: the head sits forward of the chest.",
+    "The saree hangs from both thighs evenly (`skirt.legBlend`) and `posture.stance` brings the feet together."
   ],
   "groundShadow": true,
+  "maskCuts": {
+    "front": [
+      [
+        [546, 944],
+        [574, 944],
+        [574, 995],
+        [546, 995]
+      ]
+    ],
+    "back": [
+      [
+        [442, 944],
+        [470, 944],
+        [470, 995],
+        [442, 995]
+      ]
+    ]
+  },
   "keepHalf": {
     "front": "left",
     "back": "left"
   },
   "bagRow": null,
-  "mirrorRegions": {
-    "front": [[690, 470, 840, 660]]
-  },
-  "neckWidth": 0.62,
+  "neckWidth": 0.5,
   "rows": {
-    "shoulder": 268,
-    "waist": 615,
-    "skirtTop": 600,
-    "neck": 255,
-    "hem": 860
+    "shoulder": 250,
+    "collar": 246,
+    "waist": 612,
+    "skirtTop": 616,
+    "neck": 232,
+    "hem": 938
   },
-  "armDepthPx": 495,
-  "toePx": 425,
+  "armpitMin": 0.4,
+  "torsoLine": [
+    [250, 100],
+    [320, 102],
+    [420, 108],
+    [520, 112],
+    [600, 126],
+    [614, 128]
+  ],
+  "armDepthPx": 540,
+  "toePx": 405,
   "skirt": {
-    "pleatDepth": 0.008,
-    "legShare": 0.5
+    "pleatDepth": 0.006,
+    "legShare": 0.8,
+    "legBlend": 0.85
   },
   "hair": {
     "locks": 0,
     "chains": 0,
-    "paint": 0.3,
-    "thickness": 0.006
+    "paint": 0.5,
+    "thickness": 0.008,
+    "ringShift": 0.022
   },
   "hairMask": {
     "minMean": 0.25,
@@ -49,118 +77,128 @@
     "maxSat": 0.3,
     "minBlueRed": 0.68
   },
+  "hairHalf": {
+    "front": "right",
+    "back": "left"
+  },
   "hairCuts": {
     "side": [
       [
-        [568, 160],
-        [690, 160],
-        [690, 252],
-        [568, 252]
+        [652, 190],
+        [649, 208],
+        [640, 223],
+        [626, 232],
+        [610, 236],
+        [594, 232],
+        [580, 223],
+        [571, 208],
+        [568, 190],
+        [571, 172],
+        [580, 157],
+        [594, 148],
+        [610, 144],
+        [626, 148],
+        [640, 157],
+        [649, 172]
       ]
     ],
     "back": [
       [
-        [418, 166],
-        [500, 166],
-        [500, 246],
-        [418, 246]
+        [497, 202],
+        [494, 215],
+        [485, 227],
+        [471, 234],
+        [455, 237],
+        [439, 234],
+        [425, 227],
+        [416, 215],
+        [413, 202],
+        [416, 189],
+        [425, 177],
+        [439, 170],
+        [455, 167],
+        [471, 170],
+        [485, 177],
+        [494, 189]
       ]
     ]
   },
   "bun": {
-    "side": [605, 205],
-    "radius": [40, 34],
-    "width": 1.1
+    "side": [608, 190],
+    "radius": [42, 44],
+    "width": 1.05
   },
   "headShape": {
     "back": 0.8,
-    "hairDepth": 0.022
+    "hairDepth": 0.03
   },
   "head": {
     "front": {
-      "chin": [563, 240],
-      "eyeRow": 172,
-      "eyeSpacing": 66,
-      "mouth": [563, 212],
-      "nose": [563, 190],
-      "brow": 140,
-      "hairline": 98,
-      "fringe": 98,
-      "faceHalfWidth": 60,
-      "cheekRow": 200,
-      "earRow": 190
+      "chin": [560, 222],
+      "eyeRow": 151,
+      "eyeSpacing": 60,
+      "mouth": [560, 198],
+      "nose": [560, 178],
+      "bindi": [560, 114],
+      "brow": 128,
+      "hairline": 80,
+      "fringe": 80,
+      "faceHalfWidth": 56,
+      "cheekRow": 190,
+      "earRow": 180
     },
     "side": {
-      "chin": [384, 236],
-      "nose": [371, 182],
-      "eye": [405, 160],
-      "ear": [480, 195],
-      "forehead": [388, 122],
-      "neckFront": 440,
-      "neckBack": 490
+      "chin": [430, 222],
+      "nose": [408, 176],
+      "eye": [440, 150],
+      "ear": [515, 172],
+      "forehead": [423, 108],
+      "neckFront": 485,
+      "neckBack": 545
     }
   },
   "glasses": {
-    "radius": 26,
-    "offset": 37.5,
-    "row": 176,
+    "radius": 22,
+    "offset": 30,
+    "row": 154,
     "standoff": 0.008,
-    "wire": 0.0013
+    "wire": 0.0015
+  },
+  "jewellery": {
+    "earrings": true,
+    "earringRadius": 0.0042,
+    "bangles": 2,
+    "bangleUp": 3
   },
   "face": {
-    "eyeWidth": 0.36,
-    "eyeTop": 0.42,
-    "eyeBottom": 0.32,
-    "iris": 1.05,
-    "glint": 0.85,
-    "mouthWidth": 0.55,
+    "eyeWidth": 0.4,
+    "eyeTop": 0.46,
+    "eyeBottom": 0.34,
+    "iris": 1.0,
+    "glint": 0.9,
+    "mouthWidth": 0.62,
     "smile": 1.0,
-    "blush": true,
-    "lines": true
+    "blush": false,
+    "lines": true,
+    "lineWidth": 1.5
   },
   "posture": {
-    "stoop": 6
+    "stoop": 6,
+    "stance": 7
   },
   "colors": {
-    "skin": "#f1cfae",
-    "skinShade": "#d9a284",
-    "hair": "#b7b5b1",
-    "iris": "#3a2a24",
-    "irisLight": "#6b5242",
-    "lash": "#3a2a24",
-    "brow": "#8f8880",
-    "mouth": "#9c5a50",
-    "blush": "#eba892",
-    "glasses": "#6e4b2e"
-  },
-  "armpitMin": 0.4,
-  "torsoLine": [
-    [285, 100],
-    [330, 115],
-    [380, 126],
-    [440, 134],
-    [540, 138]
-  ],
-  "maskCuts": {
-    "front": [
-      [
-        [555, 862],
-        [571, 862],
-        [571, 990],
-        [555, 990]
-      ]
-    ],
-    "back": [
-      [
-        [450, 862],
-        [466, 862],
-        [466, 990],
-        [450, 990]
-      ]
-    ]
-  },
-  "hairHalf": {
-    "front": "right",
-    "back": "left"
+    "skin": "#cf8c5b",
+    "skinShade": "#a7653f",
+    "lines": "#7a4428",
+    "hair": "#716862",
+    "iris": "#2a1c18",
+    "irisLight": "#5a3e30",
+    "lash": "#2a1c18",
+    "brow": "#6f655e",
+    "mouth": "#6e2e24",
+    "blush": "#d98a6a",
+    "glasses": "#5a3a24",
+    "bindi": "#a8252a",
+    "gold": "#d9a24a"
   }
 }

@@ -2,20 +2,23 @@
   "blender": "5.2.2 LTS",
   "cast": "fusae",
   "facing": "-Y in Blender, +Z in three.js (VRM 1.0)",
-  "heightMetres": 1.447,
+  "heightMetres": 1.438,
   "hipsMetres": 0.79,
   "materials": [
+    "bindi",
     "blush",
     "body",
     "brow",
     "eye-highlight",
     "eye-white",
     "glasses",
+    "gold",
     "hair",
     "hair-bun",
     "iris",
     "iris-light",
     "lash",
+    "lines",
     "mouth",
     "nose",
     "pupil",
@@ -40,13 +43,14 @@
     "lookRight"
   ],
   "springs": ["bun"],
-  "triangles": 11937,
+  "triangles": 12558,
   "trianglesPerMesh": {
-    "Body": 5692,
-    "Face": 345,
+    "Body": 5368,
+    "Face": 356,
     "Glasses": 792,
-    "Hair": 2652,
+    "Hair": 2914,
     "Head": 1496,
+    "Jewellery": 672,
     "Skirt": 960
   }
 }
