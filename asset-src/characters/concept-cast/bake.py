@@ -221,11 +221,12 @@ def lookup_mask(mask, px, py):
     return out
 
 
-def project(views, pos, nrm, vis, covered, power=3.5, only=None, exclude=None):
+def project(views, pos, nrm, vis, covered, power=3.5, only=None, exclude=None, images=None):
     """Blend the painted views into texel colours. `only` / `exclude` map a view name to a
     pixel mask that texels may / may not take colour from (hair texels take hair pixels,
-    body texels never do). Returns (rgb, painted mask)."""
-    images = {v: painted_view(views, v) for v in ("front", "back", "side")}
+    body texels never do). `images` replaces the painted views (a mask to project).
+    Returns (rgb, painted mask)."""
+    images = images or {v: painted_view(views, v) for v in ("front", "back", "side")}
     valid = {
         "front": mt.erode(views.sym["front"], 2),
         "back": mt.erode(views.sym["back"], 2),
@@ -263,7 +264,9 @@ def dilate_fill(rgb, filled, steps=24, allowed=None):
     `allowed`, only into those texels."""
     rgb = rgb.copy()
     have = filled.copy()
-    for _ in range(steps):
+    for step in range(steps):
+        if step and step % 10 == 0:
+            print("[concept-cast] dilate step", step, "of", steps, flush=True)
         acc = np.zeros_like(rgb)
         cnt = np.zeros(have.shape, dtype=np.float32)
         for dy, dx in ((1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (-1, -1), (1, -1), (-1, 1)):

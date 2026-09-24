@@ -69,7 +69,9 @@
     "chains": 0,
     "paint": 0.5,
     "thickness": 0.008,
-    "ringShift": 0.022
+    "ringShift": 0.022,
+    "edgeSmooth": 3,
+    "fill": 8
   },
   "hairMask": {
     "minMean": 0.25,
@@ -161,8 +163,9 @@
     "radius": 22,
     "offset": 30,
     "row": 154,
-    "standoff": 0.008,
-    "wire": 0.0015
+    "standoff": 0.004,
+    "wire": 0.0015,
+    "conform": true
   },
   "jewellery": {
     "earrings": true,
@@ -178,27 +181,38 @@
     "glint": 0.9,
     "mouthWidth": 0.62,
     "smile": 1.0,
-    "blush": false,
+    "blush": true,
     "lines": true,
-    "lineWidth": 1.5
+    "lineWidth": 1.1
   },
   "posture": {
     "stoop": 6,
     "stance": 7
   },
   "colors": {
-    "skin": "#cf8c5b",
-    "skinShade": "#a7653f",
-    "lines": "#7a4428",
+    "skin": "#a8704c",
+    "skinShade": "#8a5640",
+    "lines": "#8a5540",
     "hair": "#716862",
     "iris": "#2a1c18",
     "irisLight": "#5a3e30",
     "lash": "#2a1c18",
     "brow": "#6f655e",
     "mouth": "#6e2e24",
-    "blush": "#d98a6a",
+    "blush": "#a8604a",
     "glasses": "#5a3a24",
     "bindi": "#a8252a",
     "gold": "#d9a24a"
+  },
+  "atlas": 2048,
+  "atlasQuality": 82,
+  "skinShadeTint": [0.7, 0.62, 0.85],
+  "flatSkin": {
+    "band": {
+      "hue": [12, 40],
+      "sat": [0.48, 0.8],
+      "val": [0.5, 0.98]
+    },
+    "neckShade": 0.3
   }
 }

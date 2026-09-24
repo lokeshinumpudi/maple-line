@@ -1,7 +1,7 @@
 {
   "cast": "riko",
   "person": "commuter-2",
-  "title": "Riko",
+  "title": "Meera",
   "height": 1.55,
   "views": {
     "front": "ref/riko-front.jpg",
@@ -72,15 +72,26 @@
     }
   },
   "colors": {
-    "skin": "#f7d9c1",
-    "skinShade": "#e8a99a",
+    "skin": "#a8704c",
+    "skinShade": "#8a5640",
     "hair": "#2b2224",
     "iris": "#3a2219",
     "irisLight": "#74492f",
     "lash": "#2a1a18",
     "brow": "#3a2622",
-    "mouth": "#b0524e",
-    "blush": "#f29a90",
+    "mouth": "#8e3a36",
+    "blush": "#c46a58",
     "clip": "#c8373a"
+  },
+  "atlas": 2048,
+  "atlasQuality": 82,
+  "skinShadeTint": [0.7, 0.62, 0.85],
+  "flatSkin": {
+    "band": {
+      "hue": [8, 40],
+      "sat": [0.19, 0.6],
+      "val": [0.62, 1.0]
+    },
+    "neckShade": 0.3
   }
 }

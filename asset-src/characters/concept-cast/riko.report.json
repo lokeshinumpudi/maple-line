@@ -5,6 +5,7 @@
   "heightMetres": 1.539,
   "hipsMetres": 0.845,
   "materials": [
+    "bindi",
     "blush",
     "body",
     "brow",
@@ -15,6 +16,7 @@
     "iris",
     "iris-light",
     "lash",
+    "lines",
     "mouth",
     "nose",
     "pupil",
