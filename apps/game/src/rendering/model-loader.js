@@ -4,8 +4,14 @@
  * onError and never throws into the render loop, so the procedural figure or building
  * stays in place when a file is missing.
  */
-export function modelUrl(path, base = import.meta.env?.BASE_URL ?? '/') {
-  return `${base.endsWith('/') ? base : `${base}/`}${path.replace(/^\//, '')}`;
+export function modelUrl(
+  path,
+  base = import.meta.env?.BASE_URL ?? '/',
+  glbSuffix = import.meta.env?.VITE_VRM_AS_GLB === '1',
+) {
+  // Signal Ship skips .vrm and .vrma uploads; Signal builds store them as <file>.glb.
+  const file = path.replace(/^\//, '');
+  return `${base.endsWith('/') ? base : `${base}/`}${glbSuffix && /\.vrma?$/.test(file) ? `${file}.glb` : file}`;
 }
 
 export function createModelLoader({ load, onError = () => {} }) {

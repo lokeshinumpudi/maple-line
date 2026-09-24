@@ -112,6 +112,11 @@ test('the model loader fetches each file once and reports failures without throw
   assert.deepEqual(loader.getState(), { 'models/a.glb': 'ready', 'models/missing.glb': 'failed' });
   assert.equal(modelUrl('models/a.glb', '/maple-line/'), '/maple-line/models/a.glb');
   assert.equal(modelUrl('/models/a.glb', './'), './models/a.glb');
+  // Signal builds store VRM and VRMA files as <file>.glb (Signal Ship skips .vrm uploads).
+  assert.equal(modelUrl('models/v/riko.vrm', './', true), './models/v/riko.vrm.glb');
+  assert.equal(modelUrl('models/v/clips.vrma', './', true), './models/v/clips.vrma.glb');
+  assert.equal(modelUrl('models/a.glb', './', true), './models/a.glb');
+  assert.equal(modelUrl('models/v/riko.vrm', './', false), './models/v/riko.vrm');
 });
 
 test('station modules place detail levels on the station and skip missing files', async () => {

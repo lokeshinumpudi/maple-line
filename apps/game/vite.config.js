@@ -1,3 +1,5 @@
+import { readdirSync, renameSync } from 'node:fs';
+import { join } from 'node:path';
 import { defineConfig } from 'vite';
 import { characterStudioServer } from './src/characters/studio/dev-server.js';
 
@@ -23,6 +25,19 @@ export default defineConfig(({ mode }) => ({
     ? [
         {
           name: 'maple-ship-preview',
+          // Signal Ship skips .vrm and .vrma uploads, so Signal builds rename them to
+          // <file>.glb; modelUrl adds the same suffix when VITE_VRM_AS_GLB is set.
+          writeBundle({ dir }) {
+            if (!mode.startsWith('ship')) return;
+            const walk = (folder) => {
+              for (const entry of readdirSync(folder, { withFileTypes: true })) {
+                const path = join(folder, entry.name);
+                if (entry.isDirectory()) walk(path);
+                else if (/\.vrma?$/.test(entry.name)) renameSync(path, `${path}.glb`);
+              }
+            };
+            walk(dir);
+          },
           generateBundle() {
             if (mode === 'ship')
               this.emitFile({
@@ -71,6 +86,7 @@ export default defineConfig(({ mode }) => ({
         },
       ]
     : [characterStudioServer()],
+  define: mode.startsWith('ship') ? { 'import.meta.env.VITE_VRM_AS_GLB': JSON.stringify('1') } : {},
   server: {
     host: '127.0.0.1',
     port: 4173,
