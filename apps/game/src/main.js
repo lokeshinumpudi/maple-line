@@ -972,6 +972,7 @@ const frameOfStop = (stopId) => {
   return stageFrames.get(stopId);
 };
 const stagePoint = new THREE.Vector3();
+const CAR_SEAT_HEIGHT = 0.5;
 const stageForward = new THREE.Vector3();
 const dramaStage = createDramaStage({
   resolve(mark) {
@@ -997,6 +998,8 @@ const dramaStage = createDramaStage({
         z: stagePoint.z,
         heading: carHeading + (mark.face ?? 0),
         seated: Boolean(mark.seated),
+        // Cushion top above the carriage floor (interior.js benches), so hips rest on it.
+        ...(mark.seated ? { seatHeight: CAR_SEAT_HEIGHT } : {}),
       };
     }
     // A platform-side door: just outside the doorway, on the platform deck.

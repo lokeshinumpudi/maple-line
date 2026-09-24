@@ -94,6 +94,7 @@ export function createDramaStage(host) {
     figure.position = { x: pose.x, y: pose.y, z: pose.z };
     if (Number.isFinite(pose.heading)) figure.heading = pose.heading;
     figure.seated = Boolean(pose.seated);
+    figure.seatHeight = Number.isFinite(pose.seatHeight) ? pose.seatHeight : undefined;
     return true;
   }
 
@@ -196,6 +197,9 @@ export function createDramaStage(host) {
         visible: !figure.hidden,
         walking: Boolean(figure.target),
         pose: figure.seated ? 'seated' : 'standing',
+        ...(figure.seated && figure.seatHeight !== undefined
+          ? { seatHeight: figure.seatHeight }
+          : {}),
         state: figure.target ? 'walking' : 'staged',
       };
     },
