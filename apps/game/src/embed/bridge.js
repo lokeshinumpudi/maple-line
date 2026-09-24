@@ -1,19 +1,36 @@
+import {
+  CAPTION_LANGUAGES,
+  CAST_CLIPS,
+  CAST_POSES,
+  CAST_SUBJECT_IDS,
+  EMBED_BEAT_IDS,
+} from './stage.js';
+
 /** A small same-origin embed API; it does not expose the development inspector. */
 export const EMBED_CHANNEL = 'maple-line-embed-v1';
 export function validateEmbedConfig(input) {
   if (!input || typeof input !== 'object' || Array.isArray(input))
     throw new TypeError('Expected a scene configuration.');
   const choices = {
-    focus: ['route', 'train', 'water', 'bridge', 'terrain', 'forest', 'station'],
+    focus: ['route', 'train', 'water', 'bridge', 'terrain', 'forest', 'station', 'cast'],
     surface: ['materials', 'clay', 'wireframe', 'normals'],
     isolation: ['all', 'subject', 'structure'],
     camera: ['scenic', 'follow', 'cab', 'passenger', 'vista'],
     weather: ['clear', 'rain', 'snow', 'storm'],
     timeOfDay: ['daylight', 'sunrise', 'sunset', 'dusk'],
     location: ['gorge', 'terraces', 'station', 'bridge', 'summit', 'tokyo'],
+    // A beat of The 17:42 (null ends it), and the language of its captions.
+    beat: [null, ...EMBED_BEAT_IDS],
+    captions: CAPTION_LANGUAGES,
+    // The hero cast member `focus: 'cast'` shows, the clip they play and their pose.
+    subject: CAST_SUBJECT_IDS,
+    clip: CAST_CLIPS,
+    pose: CAST_POSES,
   };
   for (const [key, value] of Object.entries(input)) {
-    if (['paused', 'wireframe', 'shadows', 'textureDetail'].includes(key)) {
+    if (
+      ['paused', 'wireframe', 'shadows', 'textureDetail', 'skeleton', 'motionLayers'].includes(key)
+    ) {
       if (typeof value !== 'boolean') throw new TypeError(`${key} must be boolean.`);
     } else if (
       [
@@ -45,11 +62,22 @@ export function validateEmbedConfig(input) {
       }[key];
       if (value !== null && (!Number.isFinite(value) || value < min || value > max))
         throw new TypeError(`${key} must be null or a number from ${min} to ${max}.`);
-    } else if (!choices[key]?.includes(value)) {
+    } else if (!Object.hasOwn(choices, key) || !choices[key].includes(value)) {
       throw new TypeError(`Unsupported scene setting: ${key}.`);
     }
   }
   return { ...input };
+}
+/**
+ * Tell the parent page about a change it did not ask for (a staged beat that now holds),
+ * so its controls show the real state. Same origin only, like every reply.
+ */
+export function postEmbedState(environment, state) {
+  if (!environment.parent || environment.parent === environment) return;
+  environment.parent.postMessage(
+    { channel: EMBED_CHANNEL, type: 'state', state },
+    environment.location.origin,
+  );
 }
 export function installEmbedBridge({
   environment = window,

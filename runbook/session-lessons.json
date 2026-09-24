@@ -203,23 +203,21 @@
     "sampleNote": "Teaching example · three.js and three-vrm objects",
     "title": "Character topology, retopology & base meshes",
     "stage": "Studio · 7. Bring characters to life",
-    "visual": "flow",
+    "visual": "topology",
     "statusNote": "schematic of the working method",
     "values": [
-      "Turnaround sheet",
-      "Blockout",
-      "Model or sculpt",
-      "Retopology loops",
-      "UVs + flat paint",
-      "Rig, weights, VRM"
+      "Tube limb",
+      "Tube bent 90°",
+      "Loops at the elbow",
+      "Looped arm bent 90°",
+      "Face loops"
     ],
     "steps": [
-      "Front, side, back and A-pose drawings of one character",
-      "Simple shapes placed against the drawings, seen straight on",
-      "Box-model or sculpt the real forms",
-      "Rebuild the surface with loops at eyes, mouth, shoulders, elbows and knees",
-      "Unwrap UVs, paint a flat texture, add anime shading tricks",
-      "Rig, paint skin weights, animate or retarget, export VRM or GLB"
+      "A primitive tube has rings of edges only at its ends, none where the elbow bends",
+      "Bent 90°, the tube pinches at the elbow like a pipe",
+      "Retopology adds edge loops around the elbow",
+      "Bent 90°, the looped arm keeps its volume",
+      "Loops around the eyes and mouth let the face blink and smile"
     ],
     "definition": "Topology is how a mesh’s vertices and edges connect. Edge loops are rings of edges that follow a shape, like the rings around an elbow. Retopology rebuilds a rough or detailed surface as a lighter mesh with loops where it bends. Primitives (boxes, cylinders) and skin-modifier tubes have no loops at the joints, so they bend like pipes.",
     "impact": "The earlier Blender-built cast was made from primitives and skin-modifier tubes and bent like pipes at elbows and knees. The VRM cast has joint loops and facial shape keys, so it bends at the joints and can blink and smile.",
@@ -258,21 +256,19 @@
     "sampleNote": "Shortened from the session request · credentials omitted",
     "title": "Concept turnarounds & story key frames",
     "stage": "Studio · 7. Bring characters to life",
-    "visual": "flow",
+    "visual": "turnaround",
     "statusNote": "schematic of the working method",
     "values": [
       "Write the brief",
-      "Turnaround sheet",
+      "Front, side, back",
       "Story key frames",
-      "Ortho references",
-      "Model to match"
+      "Line up the views"
     ],
     "steps": [
       "One paragraph: age, clothes, props, face and body shape",
-      "Front, side and back in an A-pose on a plain background",
-      "A few frames that tell the plot without words",
-      "Line the sheet up behind the modelling views, seen straight on",
-      "Block out, then project the sheet onto the model as a guide"
+      "Front, side and back in one A-pose, at one scale, on a plain background",
+      "A few frames that tell the plot with no words",
+      "The sheet sits behind an ortho modelling view so heights and joints line up; later it is projected as a paint guide"
     ],
     "definition": "A turnaround sheet draws one character from the front, side and back in the same pose and scale. An A-pose has the arms angled down, which rigs better than arms straight out. Key frames are single pictures of the main story moments. Orthographic (ortho) views have no perspective, so they line up with a 3D modelling view.",
     "impact": "Concept sheets fixed how Riko, Mr. Sato and the others look before any modelling. A few story key frames told the whole plot with no words, which showed gaps in the script early.",
@@ -360,7 +356,7 @@
     "sampleNote": "Teaching example · not the episode format",
     "title": "Story structure for short videos",
     "stage": "Studio · 8. Tell stories on screen",
-    "visual": "flow",
+    "visual": "storyBeats",
     "statusNote": "schematic of the story checklist",
     "values": [
       "A clear want",
@@ -415,21 +411,21 @@
     "sampleNote": "Simplified from current source · setup and helpers omitted",
     "title": "Deterministic video rendering",
     "stage": "Studio · 8. Tell stories on screen",
-    "visual": "flow",
+    "visual": "fixedClock",
     "statusNote": "schematic of the current render path",
     "values": [
-      "step(1/30 s)",
-      "Sim + captions",
-      "Page screenshot",
-      "H.264 yuv420p",
-      "Mix audio"
+      "Step 1/30 s",
+      "One clock for all",
+      "Screenshot each frame",
+      "H.264 MP4",
+      "Audio by line id"
     ],
     "steps": [
-      "The script advances one controllable clock by exactly 1/30 s",
-      "Train, people, weather, camera, captions and fades read that clock",
-      "Chrome DevTools captures the page, captions included",
-      "+faststart MP4 that plays in WhatsApp and iMessage",
-      "Clips placed by line id from the audio manifest"
+      "With ?render=1 the script advances one clock by exactly 1/30 s per frame; live play has uneven gaps",
+      "Train, people, weather, camera, captions and fades all read that clock",
+      "Chrome DevTools captures each frame as a page screenshot, captions included",
+      "ffmpeg writes an H.264 yuv420p MP4 with +faststart, which plays in WhatsApp and iMessage",
+      "Voice clips are placed by line id (scene/beat/line) from the audio manifest"
     ],
     "definition": "Deterministic rendering means the same input always gives the same frames. In render mode one controllable clock drives everything, random numbers come from a fixed seed, and adaptive resolution is off. H.264 is the video codec phones play everywhere; yuv420p is its usual colour format; +faststart puts the file’s index first so playback starts before the download ends.",
     "impact": "A screen recording stutters whenever the machine is slow. Stepping a fixed clock gives a smooth 30 fps video however long each frame takes. WebM from the browser’s MediaRecorder does not play on iPhones, so the output is MP4.",
@@ -468,7 +464,7 @@
     "sampleNote": "Simplified from current source · setup and helpers omitted",
     "title": "Multilingual voice & translation",
     "stage": "Studio · 8. Tell stories on screen",
-    "visual": "flow",
+    "visual": "voiceLine",
     "statusNote": "schematic of the current voice path",
     "values": [
       "English line",
@@ -518,7 +514,7 @@
     "sampleNote": "Simplified from current source · setup and helpers omitted",
     "title": "Shared links as untrusted input",
     "stage": "Studio · 8. Tell stories on screen",
-    "visual": "flow",
+    "visual": "linkGates",
     "statusNote": "schematic of the current decoder",
     "values": [
       "Size cap",
@@ -568,7 +564,7 @@
     "sampleNote": "Shell commands shown as comments · names are examples",
     "title": "Parallel agents, worktrees & integration",
     "stage": "Studio · 9. Work with many agents",
-    "visual": "flow",
+    "visual": "worktrees",
     "statusNote": "schematic of the working method",
     "values": [
       "Worktree + port",
@@ -623,7 +619,7 @@
     "sampleNote": "Simplified from current source · setup and helpers omitted",
     "title": "Before/after captures for visual review",
     "stage": "Studio · 9. Work with many agents",
-    "visual": "flow",
+    "visual": "beforeAfter",
     "statusNote": "schematic of the review method",
     "values": [
       "Fix the camera",
@@ -667,5 +663,442 @@
     "docLabel": "Three.js WebGLRenderer",
     "exercise": "Try next: save the start-screen camera pose, make one visual change, and capture before and after at the same size. If you cannot see the change at a glance, move it closer to the player.",
     "sourceCode": "const frameBudget = createFrameBudget({\n  renderer,\n  devicePixelRatio,\n  ...(mobilePlay ? { pixelBudget: 700000, maxPixelRatio: 1 } : {}),\n  // Renders draw one CSS pixel per output pixel at the requested size, every frame.\n  ...(renderMode\n    ? { devicePixelRatio: 1, pixelBudget: Infinity, maxPixelRatio: 1, adaptive: false }\n    : {}),\n});"
+  },
+  {
+    "kind": "studio",
+    "studio": true,
+    "initial": 0,
+    "label": "Explore the concept",
+    "ref": 0,
+    "inspected": "25 September 2026",
+    "sampleTitle": "Working pattern",
+    "sampleNote": "Simplified from current source · setup and helpers omitted",
+    "visual": "rigBuild",
+    "title": "Concept-to-VRM character pipeline & rigging",
+    "stage": "Studio · 10. Build and rig characters",
+    "statusNote": "schematic of the concept-cast build",
+    "values": [
+      "Matte each view",
+      "Carve in slices",
+      "Paint from the views",
+      "Draw the face",
+      "Bones on landmarks",
+      "Fix the weights"
+    ],
+    "steps": [
+      "Cut the character out of the front, side and back views; each view is scaled from head top to sole",
+      "Fill each horizontal slice with a rounded shape inside the front and side outlines",
+      "Project the painted views onto one texture, weighted by how directly each view faces the surface",
+      "Lay eyes, brows and mouth on the head as decals, with one shape key per VRM expression",
+      "Place the humanoid bones on measured landmarks: elbows at 47% of the arm, hips at 0.545 of the height",
+      "Region rules correct Blender’s heat weights; then the T-pose becomes the rest pose and a VRM 1.0 file is written"
+    ],
+    "definition": "Rigging gives a mesh a skeleton and says how much each bone moves each vertex (its skin weights). A VRM file is a glTF model with a standard humanoid skeleton, face expressions and spring bones, so any clip retargeted to that skeleton plays on it.",
+    "impact": "Meera and Ammamma were built this way from generated concept views. Meera is about 13,600 triangles in a 684 KB VRM with a 2048 px atlas; Ammamma is about 12,600 triangles, 1.45 m tall with a 6° stoop. Both play the same 18 clips as the rest of the cast.",
+    "present": "asset-src/characters/concept-cast/build.py runs matte, shape, parts, bake, face and rig in Blender headless (about three minutes), then vrm-cast/make-vrm.mjs writes the VRM. A per-character JSON file carries what the pixels cannot: height, face landmarks, masks, hair, jewellery, stoop and stance. vrm-cast/retint.mjs changes material colours in a built VRM without a rebuild.",
+    "next": "Build Arjun from his own concept views (he still uses the adult commuter model), and give Ammamma loose strands at the temples so her hair stops reading as a cap.",
+    "accept": "In the Character Studio, the front and side views line up with the painted views under the concept overlay; every clip in the library plays with no stretched sleeves or skirt; the build report stays near the 14,000-triangle budget.",
+    "tradeoff": "The body is decimated triangles, not quads (QuadriFlow shrank thin limbs by about 10%), hands are mittens with finger bones inside, and the side profile is flat. That holds at game distance and shows in close-ups.",
+    "sample": "# rig.py: region rules on top of Blender's heat weights (simplified).\nfor side, sx in ((\"left\", 1), (\"right\", -1)):\n    mine = sx * x > 0\n    # The torso and the far side never move with this side's arm.\n    W[np.ix_(in_torso & ~shoulder_zone, arm_cols[side])] = 0\n    W[np.ix_(~mine, arm_cols[side])] = 0\n    W[np.ix_(~mine, leg_cols[side])] = 0\n    # A sleeve follows only its own arm (and the shoulder at the top).\n    sleeve = mine & ~in_torso & (z > hem + 0.02)\n    W[np.ix_(sleeve & ~shoulder_zone, torso_cols + head_cols)] = 0\n# Hips sit at 0.545 of the height: the game reads a VRM's height back from its hips.",
+    "sampleLang": "python",
+    "file": "asset-src/characters/concept-cast/rig.py",
+    "source": "asset-src/characters/concept-cast/rig.py; asset-src/characters/concept-cast/README.md",
+    "start": 214,
+    "end": 240,
+    "asset": "studio",
+    "spots": [
+      {
+        "label": "Painted views behind the model"
+      },
+      {
+        "label": "Humanoid bone list"
+      }
+    ],
+    "observation": "The Character Studio shows the built model over its concept art from the front and side.",
+    "docUrl": "https://vrm.dev/en/vrm1/",
+    "docLabel": "VRM 1.0 specification",
+    "exercise": "Try next: build one character from three painted views, open it in the Character Studio with the concept overlay on, and list every place the outline disagrees with the art.",
+    "sourceCode": "def clean_body(obj, joints, m, names, W):\n    \"\"\"Region rules on top of the heat weights.\"\"\"\n    co = np.array([v.co[:] for v in obj.data.vertices])\n    x, y, z = co[:, 0], co[:, 1], co[:, 2]\n    idx = {n: i for i, n in enumerate(names)}\n\n    def cols(pred):\n        return [i for n, i in idx.items() if pred(n)]\n\n    arm_cols = {s: cols(lambda n, s=s: n.startswith(s) and any(k in n for k in ARM_BONES)) for s in (\"left\", \"right\")}\n    leg_cols = {s: cols(lambda n, s=s: n.startswith(s) and any(k in n for k in LEG_BONES)) for s in (\"left\", \"right\")}\n    torso_cols = cols(lambda n: n in (\"hips\", \"spine\", \"chest\", \"upperChest\"))\n    head_cols = cols(lambda n: n in (\"neck\", \"head\"))\n    lim = np.array([m[\"torso_x_limit\"](zz) if zz < m[\"z_shoulder\"] - 0.035 else m[\"torso_half_armpit\"] for zz in z])\n    in_torso = (np.abs(x) < lim + 0.004) & (z > m[\"z_hem\"])\n    shoulder_zone = z > m[\"z_shoulder\"] - 0.06\n    for s, sx in ((\"left\", 1), (\"right\", -1)):\n        mine = sx * x > 0\n        # Torso and far side never move with this side's arm (the shoulder blends).\n        W[np.ix_(in_torso & ~shoulder_zone, arm_cols[s])] = 0\n        W[np.ix_(~mine, arm_cols[s])] = 0\n        W[np.ix_(~mine, leg_cols[s])] = 0\n        # The sleeve beyond the gap follows only its arm (and the shoulder at the top).\n        sleeve = mine & ~in_torso & (z > m[\"z_hem\"] + 0.02)\n        W[np.ix_(sleeve & ~shoulder_zone, torso_cols + head_cols)] = 0\n        W[np.ix_(sleeve, leg_cols[\"left\"] + leg_cols[\"right\"])] = 0\n    legs = z < m[\"z_hem\"] - 0.01"
+  },
+  {
+    "kind": "studio",
+    "studio": true,
+    "initial": 0,
+    "label": "Explore the concept",
+    "ref": 0,
+    "inspected": "25 September 2026",
+    "sampleTitle": "Working pattern",
+    "sampleNote": "Simplified from current source · setup and helpers omitted",
+    "visual": "studioPanels",
+    "title": "A character studio for clips, layers and joints",
+    "stage": "Studio · 10. Build and rig characters",
+    "statusNote": "schematic of the Character Studio panels",
+    "values": [
+      "Four views + concept overlay",
+      "Clip library + timeline",
+      "Motion layer switches",
+      "Jitter and foot-slide numbers",
+      "Face, grip and prop sockets",
+      "Review and save"
+    ],
+    "steps": [
+      "Load one character with the game’s own loader and show it from perspective, top, front and side",
+      "Pick a clip, scrub or step frames, and trim a range",
+      "Switch each motion layer (breathing, look-at, arm IK, grip, foot IK, steering) on and off",
+      "Measure jitter on the studio’s own clock: Meera’s idle arms went from 751 to about 3 rad/s² after the fix",
+      "Set face expressions, grip curl and where a prop sits in the hand",
+      "Export a still, an MP4 or the settings as JSON; any state reopens from a URL"
+    ],
+    "definition": "A character studio is a separate page that loads one character with the game’s own code, shows it from several cameras and gives a switch or a number for each part of its motion.",
+    "impact": "Idle arms on Meera’s model jittered at 751 rad/s² and nobody could say why in the game. With each motion layer switchable in the studio, the layer fighting the clip was found in minutes; after the fix the figure is about 3.",
+    "present": "character-studio.html?character=vrm/riko&clip=idle&t=1.2 opens a paused frame. It lists 11 characters and 18 clips from cast-clips.vrma. Panels: joints, motion layers, ghosts, grounding, face, concept overlay, clip editing, prop sockets and retarget preview. The page exposes its controls on window, so an agent can call measureJitter and read the result.",
+    "next": "A Performance tab that plays a voiced line with its emotion, gesture and mouth curve together, so the face can be checked against the words.",
+    "accept": "A number in the studio matches the same measurement in the game (same modules, not copies), and any state can be reopened from a URL.",
+    "tradeoff": "It is a second app to keep working. Import the game’s modules instead of copying them, or the studio will show a character the game no longer draws.",
+    "sample": "// Open a paused frame from a link, then measure with the current layers on.\n// character-studio.html?character=vrm/riko&clip=idle&t=1.2\nconst result = S.measureJitter({ clip: 'idle', seconds: 5, fps: 60 });\n// result: RMS angular acceleration per joint (rad/s²) and foot slide.\n// Switch one layer off in the Motion layers panel and measure again:\n// the layer whose removal drops the number is the one fighting the clip.",
+    "file": "apps/game/src/characters/studio/studio.js",
+    "source": "apps/game/src/characters/studio/studio.js; docs/CHARACTER-STUDIO.md",
+    "start": 455,
+    "end": 470,
+    "asset": "studio",
+    "spots": [
+      {
+        "label": "Motion layer switches"
+      },
+      {
+        "label": "Clip timeline"
+      },
+      {
+        "label": "Clip library"
+      }
+    ],
+    "observation": "The Character Studio with Meera’s model on the idle clip at frame 36.",
+    "docUrl": "https://threejs.org/docs/pages/AnimationMixer.html",
+    "docLabel": "Three.js AnimationMixer",
+    "exercise": "Try next: add one switch to your own character viewer that turns a single motion layer off, and measure what it adds.",
+    "sourceCode": " * The CHARACTER-MOTION jitter figure for one clip: RMS angular acceleration of every\n * canonical rendered joint over `seconds` at `fps`, with the current layers, plus foot slide.\n * Runs on the studio's own clock (not wall time); the view stays on the last frame.\n */\nS.measureJitter = ({ clip = state.clip, seconds = 5, fps = 60 } = {}) => {\n  if (!S.setClip(clip)) throw new Error(`No clip ${clip} on this character`);\n  const L = S.loaded;\n  const raw = L.internals.humanoid.raw;\n  const names = Object.keys(raw);\n  const series = Object.fromEntries(names.map((name) => [name, []]));\n  const frames = [];\n  const wasPlaying = state.playing;\n  state.playing = true;\n  const dt = 1 / fps;\n  const trim = S.trim();\n  const gait = isGait(clip);"
+  },
+  {
+    "kind": "studio",
+    "studio": true,
+    "initial": 0,
+    "label": "Explore the concept",
+    "ref": 0,
+    "inspected": "25 September 2026",
+    "sampleTitle": "Working pattern",
+    "sampleNote": "Simplified from current source · setup and helpers omitted",
+    "visual": "seatContact",
+    "title": "Seated contact: hip height, seat reservations",
+    "stage": "Studio · 10. Build and rig characters",
+    "statusNote": "schematic of the seat fix",
+    "values": [
+      "Measure the cushion",
+      "Hips above it",
+      "Shins clear",
+      "Reserve the seat",
+      "Check from the side"
+    ],
+    "steps": [
+      "The cushion top is 0.5 m above the car floor; note where its front edge is",
+      "Hips at 0.62 m, not 0.50 m, so the thighs lie on the cushion",
+      "Seat point at x −1.02 m; at −1.17 m the shins go into the bench front",
+      "While a scene renews the seat, riders within 1.2 m hide; the hold lapses 0.5 s after renewals stop",
+      "Check every seated shot from a low side view, not only the dialogue camera"
+    ],
+    "definition": "A seated character is placed by the hips. If the hips rest at or below the cushion top, the thighs pass into the seat; if the seat point is too far back, the shins pass into the bench front.",
+    "impact": "Viewers reported Meera sinking into the train seat three times. Raising the hips from 0.50 to 0.62 m fixed the thighs; moving the seat back to x = −1.17 m put her shins into the bench, so it stays at −1.02 m. Crowd riders also sat in the cast’s seats until seats could be reserved.",
+    "present": "drama-stage.js marks front-car-seat as seated; main.js seats those marks at CAR_SEAT_HEIGHT (0.62 m) and renews trainModel.reserveSeat each frame. interior.js hides riders within RESERVE_RADIUS (1.2 m) of a renewed seat; a reservation lapses 0.5 s after the scene stops renewing it.",
+    "next": "Read the cushion height from the car model instead of a constant, and add a thigh and skirt check against the seat in the studio’s Grounding panel.",
+    "accept": "From a low side view in every seated shot of Episodes 1 and 2: no thigh below the cushion top, no shin inside the bench and no second rider in the same seat.",
+    "tradeoff": "A constant is exact for this train and wrong for any other car. Keep it next to the car model and test it when the car changes.",
+    "sample": "// Seat the cast above the cushion and keep crowd riders out of that seat.\nconst CAR_SEAT_HEIGHT = 0.62; // hips rest a little above the 0.5 m cushion top\nif (mark.seated) trainModel.reserveSeat(carIndex, mark.x, mark.z); // renewed every frame\nplace(figure, { ...mark, seatHeight: CAR_SEAT_HEIGHT });\n\n// interior.js: a rider is hidden while a renewed seat is within 1.2 m.\nconst nearReserved = (p) =>\n  reserved.some((seat) => seat.until > time && Math.hypot(p.side * 1.01 - seat.x, p.z - seat.z) < 1.2);",
+    "file": "apps/game/src/train/interior.js",
+    "source": "apps/game/src/train/interior.js; apps/game/src/main.js; apps/game/src/drama/drama-stage.js",
+    "start": 210,
+    "end": 218,
+    "asset": "seated",
+    "spots": [
+      {
+        "label": "Meera on the bench"
+      },
+      {
+        "label": "Arjun on the far bench"
+      }
+    ],
+    "observation": "Two seated shots from Episode 2 after the fix.",
+    "docUrl": "https://threejs.org/docs/pages/Box3.html",
+    "docLabel": "Three.js Box3",
+    "exercise": "Try next: seat a character on a bench, then look from knee height at the side. Raise the hips until no thigh is below the cushion, and note the value.",
+    "sourceCode": "  // Car-local seats a drama scene uses: riders within RESERVE_RADIUS stay out of the shot.\n  // A reservation lapses unless renewed, so it lasts exactly while someone sits there.\n  const reserved = [];\n  const RESERVE_RADIUS = 1.2;\n  const nearReserved = (p) =>\n    reserved.some(\n      (seat) =>\n        seat.until > time && Math.hypot(p.side * 1.01 - seat.x, p.z - seat.z) < RESERVE_RADIUS,\n    );"
+  },
+  {
+    "kind": "studio",
+    "studio": true,
+    "initial": 0,
+    "label": "Explore the concept",
+    "ref": 0,
+    "inspected": "25 September 2026",
+    "sampleTitle": "Working pattern",
+    "sampleNote": "Simplified from current source · setup and helpers omitted",
+    "visual": "lipSync",
+    "title": "Audio-driven lip sync for VRM faces",
+    "stage": "Studio · 10. Build and rig characters",
+    "statusNote": "schematic of the mouth curve",
+    "values": [
+      "Voice clip",
+      "Loudness at 60 Hz",
+      "Vowel from brightness",
+      "Open fast, close slower",
+      "Five mouth shapes"
+    ],
+    "steps": [
+      "Start from the spoken WAV for the line, pauses included (Meera’s line has one of 0.45–0.9 s)",
+      "Measure loudness (RMS) 60 times a second, levelled per speaker; below 0.05 the mouth stays shut",
+      "Pick a vowel class from how bright the sound is (its spectral centroid)",
+      "Smooth: 30 ms to open, 80 ms to close; a new vowel must hold 50 ms before the mouth changes",
+      "Drive the VRM aa, ih, ou, ee and oh expressions"
+    ],
+    "definition": "Lip sync moves a character’s mouth from the sound of their own line. Loudness sets how far the mouth opens; how bright the sound is picks one of five vowel shapes.",
+    "impact": "Mouths used to move on a fixed syllable rhythm, so they kept moving through pauses. Worse, most mouths could not be seen: the mouth colour was close to the new brown skin. Mouths were darkened with retint.mjs, and they now open on loud syllables and shut in pauses such as Meera’s 0.45–0.9 s gap.",
+    "present": "scripts/voice-episode.mjs stores a 60 Hz mouth curve per clip in the voice manifest; --mouth-only rebuilds the curves from existing WAVs with no new voice calls. Renders read the curve from the manifest; live play measures the same numbers through a Web Audio AnalyserNode. createMouthDriver in vrm-expressions.js does the smoothing. Phone voices move no face; lines without audio keep the old rhythm.",
+    "next": "Larger mouth shapes on the models, and emotion and gesture timed from the same line so a smile lands on the right word.",
+    "accept": "Step through a render frame by frame: the mouth is shut in every pause longer than 0.3 s, open on stressed syllables, and does not flicker between vowels.",
+    "tradeoff": "Brightness is a guess at the vowel, not real phonemes. It costs no speech model and reads at game distance; a close-up would need phoneme timing.",
+    "sample": "// One mouth driver per speaking character; sample = { open: 0..1, vowel } or null.\nconst mouth = createMouthDriver(); // attack 0.04 s, release 0.06 s, vowel hold 0.05 s\nfunction onFrame(dt, t) {\n  const sample = voice.mouthAt(line.id, t); // from the manifest, or the live analyser\n  const weights = mouth.update(dt, sample);  // { aa, ih, ou, ee, oh }\n  for (const [name, value] of Object.entries(weights)) vrm.expressionManager.setValue(name, value);\n}",
+    "file": "apps/game/src/characters/vrm-expressions.js",
+    "source": "apps/game/src/characters/vrm-expressions.js; scripts/voice-episode.mjs",
+    "start": 46,
+    "end": 80,
+    "asset": "talking",
+    "spots": [
+      {
+        "label": "Mouth open on a loud syllable"
+      },
+      {
+        "label": "A darker mouth on brown skin"
+      }
+    ],
+    "observation": "Three frames from Episode 1 during spoken lines.",
+    "docUrl": "https://developer.mozilla.org/en-US/docs/Web/API/AnalyserNode",
+    "docLabel": "MDN AnalyserNode",
+    "exercise": "Try next: compute an RMS envelope for one voice clip at 60 Hz, drive a single mouth-open value with it, and check that the mouth closes in every pause.",
+    "sourceCode": "/** Seconds a new vowel must last before the mouth changes to it (unless nearly closed). */\nexport const VOWEL_HOLD = 0.05;\n/** Open-level smoothing (s): opening a touch slower than the audio envelope, closing faster. */\nexport const MOUTH_SMOOTHING = Object.freeze({ attack: 0.04, release: 0.06, blend: 0.05 });\n/** Below this opening the mouth is closed: a pause is a pause, not a quiver. */\nconst MOUTH_CLOSED = 0.05;\n\n/**\n * Turns an audio mouth sample ({ open 0..1, vowel } or null for silence) into smoothed\n * viseme weights each frame. The opening follows with attack/release smoothing; the vowel\n * changes only once a new one has held for VOWEL_HOLD, or while the mouth is nearly shut,\n * and the shapes cross-fade, so a vowel class that flips frame to frame does not chatter.\n */\nexport function createMouthDriver({ hold = VOWEL_HOLD, smoothing = MOUTH_SMOOTHING } = {}) {\n  const weights = { aa: 0, ih: 0, ou: 0, ee: 0, oh: 0 };\n  let open = 0;\n  let vowel = 'aa';\n  let candidate = null;\n  let candidateFor = 0;\n  return {\n    update(dt, sample) {\n      if (!(dt > 0)) return { ...weights };\n      const target = sample && sample.open >= MOUTH_CLOSED ? Math.min(1, sample.open) : 0;\n      const wanted = sample?.vowel && VISEMES.includes(sample.vowel) ? sample.vowel : vowel;\n      if (wanted === vowel) candidate = null;\n      else if (open < MOUTH_CLOSED * 2) {\n        vowel = wanted;\n        candidate = null;\n      } else {\n        candidateFor = candidate === wanted ? candidateFor + dt : dt;\n        candidate = wanted;\n        if (candidateFor >= hold - 1e-9) {\n          vowel = wanted;\n          candidate = null;\n        }"
+  },
+  {
+    "kind": "studio",
+    "studio": true,
+    "initial": 0,
+    "label": "Explore the concept",
+    "ref": 0,
+    "inspected": "25 September 2026",
+    "sampleTitle": "Working pattern",
+    "sampleNote": "Simplified from current source · setup and helpers omitted",
+    "visual": "nightFace",
+    "title": "Night lighting for faces: pools, caps and halos",
+    "stage": "Studio · 11. Light, dub and cut the story",
+    "statusNote": "schematic of the night face lighting",
+    "values": [
+      "Lamps borrow real lights",
+      "Pools on the ground",
+      "Soft key, cool rim",
+      "Capped: 42–72 → 83–112",
+      "Halos hide behind people"
+    ],
+    "steps": [
+      "The nearest, brightest lamps within 70 m borrow a fixed set of real lights (4 point + 2 spot on High), fading over about half a second",
+      "Every lamp also gets a ground pool and a wet-road streak, drawn as one batch",
+      "Characters get a soft wrapped warm key from their nearest lamp and a cool rim",
+      "Lamp light on the cast is capped at night and skin keeps its own colour: face brightness went from 42–72 to 83–112 of 255",
+      "A halo fades where the camera-to-lamp line passes a person"
+    ],
+    "definition": "At night the scene can stay dark as long as faces read. Faces take light from the nearest real lamp, capped so it cannot blow out, and skin keeps its own colour under coloured light.",
+    "impact": "The first lamp pass lit Ammamma like a torch on her face and drew lamp halos over heads. The next pass left the second half too dark: face brightness in the Aonuma close-ups was 42–72 of 255. After the key, rim and cap changes it is 83–112, and skin stays brown under a sunset, a lamp or a blue night sky.",
+    "present": "rendering/light-pools.js assigns the real lights (3 + 1 on Medium, 1 point on Low) and draws pools and reflections; rendering/light-halos.js has haloHiddenBy, which tests the sightline against each person’s upright capsule. The film pipeline’s rain-night and golden-hour grades are gentler on skin.",
+    "next": "Tame the bright spot on Divya’s cap at the bus door, and keep a short list of face brightness targets per scene in the render checks.",
+    "accept": "In every night close-up, sample face pixels: brightness between about 80 and 120 of 255, hue still brown, and no halo drawn over a head.",
+    "tradeoff": "Character light is a cheat: faces are lit more kindly than the world around them. Keep the cheat small, or the cast looks pasted onto the scene.",
+    "sample": "// Each frame: the lamps that matter most borrow one of a few fixed real lights.\nconst tier = LIGHT_POOL_TIERS[graphicsTier]; // high: 4 point + 2 spot, low: 1 point\nconst ranked = sources\n  .map((s) => ({ s, score: sourceScore(s, camera.position) * (s.lit ? KEEP_BONUS : 1) }))\n  .filter((r) => r.score > 0) // off, or further than 70 m\n  .sort((a, b) => b.score - a.score);\n// Lights fade out before moving to another lamp, so the light count never changes\n// and no shader recompiles. Pools and wet streaks draw for every lamp in one batch.",
+    "file": "apps/game/src/rendering/light-pools.js",
+    "source": "apps/game/src/rendering/light-pools.js; apps/game/src/rendering/light-halos.js",
+    "start": 1,
+    "end": 22,
+    "asset": "night-faces",
+    "spots": [
+      {
+        "label": "Divya at the bus door"
+      },
+      {
+        "label": "Ammamma under the shelter"
+      },
+      {
+        "label": "Ammamma in close-up"
+      }
+    ],
+    "observation": "Three night frames from Episode 3 at Aonuma.",
+    "docUrl": "https://threejs.org/docs/pages/PointLight.html",
+    "docLabel": "Three.js PointLight",
+    "exercise": "Try next: in a night scene, sample the brightness of one face before and after a lighting change, and write the number down with the capture.",
+    "sourceCode": "import { nearClearFog } from './height-fog.js';\n/**\n * Local lamp light: a few real lights near the camera, and cheap light pools and wet\n * reflections for every lamp.\n *\n * Lamps register as sources (a street lamp, a kiosk, bus headlights). Each frame the\n * sources closest to the camera, weighted by brightness, borrow one of a small, fixed set of\n * real point and spot lights. A light fades out before it moves to another lamp and fades\n * in after, so nothing pops, and the light count never changes (no shader recompiles\n * except when the graphics tier changes). Every source also gets a soft light pool on the\n * ground and, when the ground is wet, a streak of reflected light toward the camera; those\n * two are single instanced draws.\n */\nexport const LIGHT_POOL_TIERS = Object.freeze({\n  low: Object.freeze({ points: 1, spots: 0 }),\n  medium: Object.freeze({ points: 3, spots: 1 }),\n  high: Object.freeze({ points: 4, spots: 2 }),\n});\nconst REACH = 70; // metres: sources further than this never borrow a real light\nconst DECAL_REACH = 160;\nconst FADE_RATE = 5; // per second: a light takes about half a second to fade\nconst KEEP_BONUS = 1.35; // a lamp already lit keeps its light unless another is clearly better"
+  },
+  {
+    "kind": "studio",
+    "studio": true,
+    "initial": 0,
+    "label": "Explore the concept",
+    "ref": 0,
+    "inspected": "25 September 2026",
+    "sampleTitle": "Working pattern",
+    "sampleNote": "Simplified from current source · setup and helpers omitted",
+    "visual": "dialogueExchange",
+    "title": "Dialogue scenes instead of narrated one-liners",
+    "stage": "Studio · 11. Light, dub and cut the story",
+    "statusNote": "schematic of a scene that reads",
+    "values": [
+      "Narrator one-liners",
+      "Each line answers the last",
+      "A plan that can fail",
+      "Somebody helps",
+      "Pay it off at the end"
+    ],
+    "steps": [
+      "Before: narrator lines stand alone, and the conflict is a timetable sum",
+      "Arjun asks, Meera answers, and the next line picks up from the answer",
+      "The last bus leaves at 17:40; the train gets in at 17:42",
+      "Arjun calls his sister Divya, who drives the last bus",
+      "The bus waits, and the radio plays for Ammamma"
+    ],
+    "definition": "A short story reads when the characters talk to each other: each line answers the one before and moves the plan along. Narration only sets place and time.",
+    "impact": "The first script was narrator lines with a timetable sum as the conflict. Viewers called it confusing, with no continuation. The rewrite has Meera, her classmate Arjun, Mr. Ishida the conductor, Ammamma and Divya, in 49 lines over three episodes, most of them spoken between characters.",
+    "present": "apps/game/src/drama/series/the-1742.js: each scene is a list of beats; each beat has a shot, cues (mood, intent) and dialogue built with say(cast, English, Telugu, { emotion }). Hindi lines sit in a HINDI map keyed by the English line.",
+    "next": "Show the episodes, with the sound off, to someone who has not seen them and ask them to retell the story. Have native speakers read the Telugu and Hindi.",
+    "accept": "A new viewer can retell who wants what and why the bus waits. Every scene has at least one exchange (a line and its reply).",
+    "tradeoff": "Dialogue makes episodes longer (Episode 1 runs 108 s). Cut narration before cutting an exchange.",
+    "sample": "// A beat is one shot and the lines spoken in it; the reply lives in the same beat.\n{\n  shot: { type: 'portrait', subject: { cast: 'arjun' }, partner: { cast: 'meera' } },\n  cues: [{ after: 0, direct: { cast: 'arjun', mood: 'curious', intent: 'linger' } }],\n  dialogue: [\n    say('arjun', 'Meera? You’re on the late train too?', '…', { emotion: 'curious' }),\n    say('meera', 'Arjun. Hi. I have to get to Aonuma tonight.', '…'),\n  ],\n}",
+    "file": "apps/game/src/drama/series/the-1742.js",
+    "source": "apps/game/src/drama/series/the-1742.js; docs/STORY-BIBLE.md",
+    "start": 203,
+    "end": 232,
+    "asset": "talking",
+    "spots": [
+      {
+        "label": "A line and its reply"
+      },
+      {
+        "label": "A stranger gives advice"
+      }
+    ],
+    "observation": "Frames from the rewritten Episode 1.",
+    "docUrl": "https://threejs.org/docs/pages/PerspectiveCamera.html",
+    "docLabel": "Three.js PerspectiveCamera",
+    "exercise": "Try next: take one narrated line in your script and rewrite it as a question from one character and an answer from another.",
+    "sourceCode": "            {\n              shot: { type: 'portrait', subject: { cast: 'meera' } },\n              cues: [{ after: 0, direct: { cast: 'meera', mood: 'anxious', intent: 'linger' } }],\n              dialogue: [\n                say(\n                  'meera',\n                  'Two minutes. I’m going to miss it by two minutes.',\n                  'రెండే నిమిషాలు. రెండు నిమిషాల తేడాతో బస్సు మిస్ అయిపోతాను.',\n                  { emotion: 'anxious' },\n                ),\n              ],\n            },\n            {\n              shot: { type: 'portrait', subject: { cast: 'arjun' }, partner: { cast: 'meera' } },\n              cues: [\n                { after: 0, direct: { cast: 'arjun', mood: 'curious', intent: 'linger' } },\n                { after: 0, direct: { cast: 'meera', mood: 'anxious', intent: 'linger' } },\n              ],\n              dialogue: [\n                say(\n                  'arjun',\n                  'Meera? You’re on the late train too?',\n                  'మీరా? నువ్వు కూడా ఈ లేట్ ట్రైన్‌కేనా?',\n                  { emotion: 'curious' },\n                ),\n                say(\n                  'meera',\n                  'Arjun. Hi. I have to get to Aonuma tonight.',\n                  'అర్జున్. హాయ్. ఈ రాత్రి నేను అఓనుమా వెళ్ళాలి.',\n                ),"
+  },
+  {
+    "kind": "studio",
+    "studio": true,
+    "initial": 0,
+    "label": "Explore the concept",
+    "ref": 0,
+    "inspected": "25 September 2026",
+    "sampleTitle": "Working pattern",
+    "sampleNote": "Simplified from current source · setup and helpers omitted",
+    "visual": "dubTimeline",
+    "title": "Dubbing: voice language vs caption language",
+    "stage": "Studio · 11. Light, dub and cut the story",
+    "statusNote": "schematic of a dubbed render",
+    "values": [
+      "Every line in each language",
+      "Voice clips keyed by line id",
+      "The voice sets the timing",
+      "Captions from the source language",
+      "Cuts computed per language"
+    ],
+    "steps": [
+      "Write each line in English, Telugu and Hindi next to each other in the script",
+      "Generate one clip per line per language and key it by scene/beat/line",
+      "Each language’s clip lengths set its timeline: in the trailer “Two minutes…” starts at 27.7 s in English, 31.2 s in Hindi",
+      "With subtitles set to source, the English words stay on screen on the Hindi timing",
+      "Rebuild the trailer’s cut list from each language’s timeline: 91.5 s in English, 102.9 s in Hindi"
+    ],
+    "definition": "A dub replaces the voices and keeps the pictures. Each language has its own clips, so its lines start and end at different times, and anything cut from the episode has to follow that language’s timings.",
+    "impact": "For the Hindi trailer with English captions, “Two minutes…” starts at 27.7 s in English and 31.2 s in Hindi. The Hindi trailer runs 102.9 s against 91.5 s for English, so its cut list is computed from the Hindi timelines, not copied.",
+    "present": "createManifestVoice(manifest, { subtitles: \"source\" }) in drama/voice-manifest.js keeps the episode’s English words on screen; scripts/render-episode.mjs takes --subtitles source. Voices come from Sarvam bulbul:v3, which covers 11 Indian languages. All 49 lines have Hindi.",
+    "next": "Native speaker review of both translations, and caption line breaks chosen per language.",
+    "accept": "Every line has a clip in each language; captions change on the same frame as the voice; every trailer shot starts and ends on the same lines in both languages.",
+    "tradeoff": "Keying Hindi by the English sentence breaks silently when the English is edited. The build should fail on a missing key instead of falling back to English.",
+    "sample": "// Hindi voice, English words on screen.\nconst voice = createManifestVoice(hindiManifest, { subtitles: 'source' });\n// Offline: pnpm render:episode -- --episode the-1742/1 --voice hi-IN --subtitles source\n// The timeline JSON next to each render lists every line's start time in that\n// language; the trailer's cut list is built from it, not from the English one.",
+    "file": "apps/game/src/drama/voice-manifest.js",
+    "source": "apps/game/src/drama/voice-manifest.js; scripts/render-episode.mjs; docs/NARRATION.md",
+    "start": 145,
+    "end": 165,
+    "asset": "dub",
+    "spots": [
+      {
+        "label": "English voice"
+      },
+      {
+        "label": "Hindi voice, English words"
+      }
+    ],
+    "observation": "The same line in the English and the Hindi renders of Episode 1.",
+    "docUrl": "https://developer.mozilla.org/en-US/docs/Web/API/WebVTT_API",
+    "docLabel": "MDN WebVTT",
+    "exercise": "Try next: render one scene in two voice languages and compare their timelines line by line; note which lines drift most.",
+    "sourceCode": " * subtitle; the renderer mixes the audio files afterwards at the recorded line times.\n */\n/**\n * `subtitles: 'source'` keeps the episode's own (English) words on screen while the clips\n * speak the manifest's language, e.g. a Hindi voice with English subtitles.\n */\nexport function createManifestVoice(manifest, { subtitles = 'voice' } = {}) {\n  const details = new Map((manifest?.lines ?? []).map((entry) => [entry.line, entry]));\n  const captions = subtitles === 'source' ? {} : (manifest?.captions ?? {});\n  const find = (item) => (item.line ? details.get(item.line) : undefined);\n  return {\n    active: () => true,\n    prepare() {},\n    ready: () => true,\n    text: (item) =>\n      (subtitles === 'source' ? null : find(item)?.text) ??\n      (item.caption && typeof captions[item.caption] === 'string'\n        ? captions[item.caption]\n        : null) ??\n      item.text,\n    durationMs: (item) => find(item)?.durationMs ?? null,"
+  },
+  {
+    "kind": "studio",
+    "studio": true,
+    "initial": 0,
+    "label": "Explore the concept",
+    "ref": 0,
+    "inspected": "25 September 2026",
+    "sampleTitle": "Working pattern",
+    "sampleNote": "Simplified from current source · setup and helpers omitted",
+    "visual": "trailerCut",
+    "title": "Trailer editing from rendered episodes",
+    "stage": "Studio · 11. Light, dub and cut the story",
+    "statusNote": "schematic of the trailer build",
+    "values": [
+      "Render on a fixed clock",
+      "Choose shots by line",
+      "Pre-cut each shot",
+      "Two video, two audio",
+      "PNG frames, grain off",
+      "Check a contact sheet"
+    ],
+    "steps": [
+      "Render each episode frame by frame, with its timeline of line start times",
+      "Choose 18 shots, each starting and ending on a line",
+      "Cut each shot to its own short file first (CRF 14); the editor had timed out on 32 seeks into full episodes",
+      "Place shots on two video tracks and their sound on two audio tracks, with short fades and an end card",
+      "Grain shader + a JPEG per frame + a 6 Mbit/s cap made skin noisy; now PNG frames, grain off, CRF 18 capped at 12 Mbit/s",
+      "Build a contact sheet of every shot and check the file dates before sending"
+    ],
+    "definition": "A trailer is a set of short shots taken from the finished episodes, put in a new order and ending on the title and where to play.",
+    "impact": "The editor timed out loading 32 seeks into the full episodes; pre-cutting 18 shots fixed that. Skin looked grainy because three things stacked: the film-grain shader, a JPEG per frame and a 6 Mbit/s cap. A network drop once failed an episode render without an error, and the trailer silently used old footage.",
+    "present": "scripts/render-episode.mjs writes PNG frames through Chrome DevTools, turns grain off in render mode and encodes H.264 with +faststart. The trailer is a HyperFrames project whose build script pre-cuts the shots. Share copies are CRF 21 capped at 5 Mbit/s: 27.9 MB for English, 31.1 MB for Hindi. The end card has the title and the play link and no tech credits.",
+    "next": "Pick shots by line id instead of by seconds, so a re-render with new timings keeps the same cut.",
+    "accept": "A contact sheet shows every shot; each source file is newer than the last code change; both languages end on the same line.",
+    "tradeoff": "PNG frames make renders slower (Episode 1: 85 s to render 108 s of video) and larger before encoding. The skin is worth it.",
+    "sample": "// Video frames are PNG; a JPEG per frame, re-encoded to H.264, left skin grainy.\nconst frame = await cdp.send('Page.captureScreenshot', {\n  format: 'png', optimizeForSpeed: true, fromSurface: true,\n});\n// Encode: libx264 -crf 18 -maxrate 12M -bufsize 24M -pix_fmt yuv420p -movflags +faststart\n// Trailer shots are pre-cut once:\n// ffmpeg -ss <start> -to <end> -i episode.mp4 -c:v libx264 -crf 14 -preset slow shot-07.mp4",
+    "file": "scripts/render-episode.mjs",
+    "source": "scripts/render-episode.mjs; docs/VIDEO.md",
+    "start": 225,
+    "end": 240,
+    "asset": "trailer-sheet",
+    "spots": [
+      {
+        "label": "The setup, by day"
+      },
+      {
+        "label": "Night at Aonuma"
+      }
+    ],
+    "observation": "The contact sheet of all 18 trailer shots.",
+    "docUrl": "https://trac.ffmpeg.org/wiki/Encode/H.264",
+    "docLabel": "FFmpeg H.264 guide",
+    "exercise": "Try next: cut three shots from a rendered episode into their own files, join them with short fades, and build a contact sheet of the result.",
+    "sourceCode": "  );\n  const cdp = await page.context().newCDPSession(page);\n  const capture = async (quality = null) =>\n    Buffer.from(\n      (\n        await cdp.send('Page.captureScreenshot', {\n          // Video frames are PNG (a lossy JPEG per frame, re-encoded to H.264, left skin\n          // grainy); the poster stays a JPEG.\n          ...(quality === null ? { format: 'png' } : { format: 'jpeg', quality }),\n          optimizeForSpeed: true,\n          fromSurface: true,\n        })\n      ).data,\n      'base64',\n    );\n  const encoder = args['timeline-only']"
   }
 ]

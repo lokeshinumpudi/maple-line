@@ -38,7 +38,7 @@ Each request contains one spoken part, language, character, emotion and priority
 
 Reply changes, language changes, notebook dialogs, leaving the story and switching voice off stop playback, queued browser work and pause timers. Stale responses cannot begin playback. Cached clips remain reusable. Browser autoplay rejection offers **Play narration**, provider failures offer **Retry narration**, and completed scenes offer **Listen again**. Audio emits `maple:narration-state` for the existing environmental sound mix. Between spoken turns it releases the mix so environmental sound remains audible.
 
-The static game build still needs this local backend. There is no deployed narration service, streaming synthesis, voice cloning, generated dialogue, or word-level lip synchronization. Wildlife field-note panels are separate from the main scored dialogue; choice callbacks and the optional wildlife broadcast sentence are included in preparation.
+The static game build still needs this local backend. There is no deployed narration service, streaming synthesis, voice cloning, generated dialogue, or word-level lip synchronization. Drama episodes do move the speaking character's mouth from the loudness and brightness of their voice clip (a 60 Hz curve stored in the voice manifest); that is audio-driven, not word-level. Wildlife field-note panels are separate from the main scored dialogue; choice callbacks and the optional wildlife broadcast sentence are included in preparation.
 
 ## Verification
 

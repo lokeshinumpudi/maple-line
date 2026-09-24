@@ -457,6 +457,49 @@ checks.push(
     'A better camera angle for the after shot.',
   ],
 );
+// Chapters 50–57 (runbook/session-lessons.json), in the same order.
+checks.push(
+  [
+    'Why do heat weights need region rules afterwards?',
+    'Heat weights let an arm drag the blouse side; the rules keep each bone to its own region.',
+    'Heat weights cannot be computed for a humanoid.',
+  ],
+  [
+    'Why should a character studio import the game’s own modules?',
+    'So its numbers match what the game draws.',
+    'So it loads faster than the game.',
+  ],
+  [
+    'A seated character’s thighs sink into the cushion. What do you change first?',
+    'Rest the hips a little above the cushion top.',
+    'Move the seat point further back.',
+  ],
+  [
+    'What should the mouth do in a pause longer than 0.3 s?',
+    'Stay shut.',
+    'Keep opening on the syllable rhythm.',
+  ],
+  [
+    'How do you judge night lighting on a face?',
+    'Sample face brightness and hue against a target.',
+    'Look at whether the whole frame feels dark enough.',
+  ],
+  [
+    'What makes a line of dialogue move a scene?',
+    'It answers the line before and moves the plan along.',
+    'It explains the plot to the viewer.',
+  ],
+  [
+    'Can a Hindi trailer reuse the English cut times?',
+    'No. Rebuild the cut from the Hindi timeline.',
+    'Yes. The pictures are the same.',
+  ],
+  [
+    'A trailer shows an old costume. What do you check?',
+    'The dates of the source renders that went into the cut.',
+    'The trailer’s colour grade.',
+  ],
+);
 if (checks.length !== lessons.length) throw new Error('Every concept needs a practice check.');
 const quiz = document.createElement('section');
 quiz.className = 'concept-check';

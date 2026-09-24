@@ -1,31 +1,44 @@
 [
   {
-    "title": "Compare viewpoints",
-    "hint": "The same world stays in place while the camera changes.",
+    "title": "Same world, three cameras",
+    "hint": "The carriages, river and hills stay where they are. Each camera turns the same objects into a different picture. Show triangles to see the shapes the picture is drawn from.",
     "options": [
       {
         "label": "Look around",
         "config": {
-          "camera": "scenic"
+          "camera": "scenic",
+          "surface": "materials"
         }
       },
       {
         "label": "Driver seat",
         "config": {
-          "camera": "cab"
+          "camera": "cab",
+          "surface": "materials"
         }
       },
       {
         "label": "Passenger seat",
         "config": {
-          "camera": "passenger"
+          "camera": "passenger",
+          "surface": "materials"
+        }
+      },
+      {
+        "label": "Show triangles",
+        "config": {
+          "surface": "wireframe"
         }
       }
     ]
   },
   {
     "title": "Reveal the triangles",
-    "hint": "Wireframe exposes the geometry; the shaded view restores its materials.",
+    "hint": "Only the train is shown. Plain shapes hide the paint so the box body, curved roof and round wheels read as shapes; triangles show how each is built.",
+    "initial": {
+      "focus": "train",
+      "isolation": "subject"
+    },
     "options": [
       {
         "label": "Plain shapes",
@@ -45,15 +58,18 @@
           "surface": "materials"
         }
       }
-    ],
-    "initial": {
-      "focus": "train",
-      "isolation": "subject"
-    }
+    ]
   },
   {
-    "title": "Inspect direction and placement",
-    "hint": "The camera faces the bridge and valley. Remove colors to read the beams and hills, show their triangles, or color each surface by the direction it faces. Drag to inspect another angle.",
+    "title": "See each beam moved, turned and stretched",
+    "hint": "The bridge and hills stand alone. Every diagonal beam is the same box placed at its middle point, stretched to length and turned. Colouring by facing direction shows the turn as a change of colour. Drag to look from another side.",
+    "initial": {
+      "focus": "bridge",
+      "location": "bridge",
+      "isolation": "subject",
+      "surface": "clay",
+      "fogDensity": 0
+    },
     "options": [
       {
         "label": "Plain bridge and hills",
@@ -62,13 +78,13 @@
         }
       },
       {
-        "label": "Structure triangles",
+        "label": "Beam triangles",
         "config": {
           "surface": "wireframe"
         }
       },
       {
-        "label": "Surface directions",
+        "label": "Colour by facing direction",
         "config": {
           "surface": "normals"
         }
@@ -79,39 +95,48 @@
           "surface": "materials"
         }
       }
-    ],
-    "initial": {
-      "focus": "bridge",
-      "location": "bridge",
-      "isolation": "subject",
-      "surface": "clay",
-      "fogDensity": 0
-    }
+    ]
   },
   {
     "title": "Watch the grouped train move",
-    "hint": "Play the train, then orbit around it to see the carriage parts travel together.",
+    "hint": "Each carriage carries its own body, doors and wheels. Play the train and orbit it: the parts travel with their carriage, and each carriage takes its own heading on a bend.",
+    "initial": {
+      "focus": "train"
+    },
     "options": [
       {
-        "label": "Moving train",
+        "label": "Orbit the carriages",
         "config": {
-          "paused": false
+          "camera": "scenic",
+          "focus": "train",
+          "surface": "materials"
         }
       },
       {
-        "label": "Pause and inspect",
+        "label": "Follow from behind",
         "config": {
-          "paused": true
+          "camera": "follow"
+        }
+      },
+      {
+        "label": "Carriage triangles",
+        "config": {
+          "camera": "scenic",
+          "focus": "train",
+          "surface": "wireframe"
         }
       }
-    ],
-    "initial": {
-      "focus": "train"
-    }
+    ]
   },
   {
     "title": "Read the terrain grid",
-    "hint": "Only terrain remains visible. Plain shading reveals the hill shapes; triangles expose the mesh; direction colors show which way each slope faces.",
+    "hint": "Only the terrain remains. Plain shading shows the hill shapes, triangles show the grid of points, and direction colours show which way each slope faces.",
+    "initial": {
+      "focus": "terrain",
+      "location": "bridge",
+      "isolation": "subject",
+      "fogDensity": 0
+    },
     "options": [
       {
         "label": "Plain hillside",
@@ -137,17 +162,14 @@
           "surface": "materials"
         }
       }
-    ],
-    "initial": {
-      "focus": "terrain",
-      "location": "bridge",
-      "isolation": "subject",
-      "fogDensity": 0
-    }
+    ]
   },
   {
     "title": "Compare train surface roughness",
-    "hint": "These presets change the roughness of opaque train materials under the same light.",
+    "hint": "The same light falls on the train. Smooth paint keeps a small, sharp highlight; rough paint spreads it wide and dull.",
+    "initial": {
+      "focus": "train"
+    },
     "options": [
       {
         "label": "Smooth paint",
@@ -167,17 +189,20 @@
           "roughness": null
         }
       }
-    ],
-    "initial": {
-      "focus": "train"
-    }
+    ]
   },
   {
     "title": "Compare generated ground, rock and wood textures",
-    "hint": "Switch the original valley\u2019s generated ground, rock and tree-trunk color detail off and on. These textures use world position. UV coordinates and normal maps are explained separately in the diagram.",
+    "hint": "Switch the valley's generated ground, rock and trunk detail off and on. These textures use world position. UV coordinates and normal maps are separate techniques, explained in the diagram.",
+    "initial": {
+      "focus": "forest",
+      "location": "terraces",
+      "textureDetail": true,
+      "windStrength": 0
+    },
     "options": [
       {
-        "label": "Plain surface colors",
+        "label": "Plain surface colours",
         "config": {
           "textureDetail": false
         }
@@ -188,17 +213,16 @@
           "textureDetail": true
         }
       }
-    ],
-    "initial": {
-      "focus": "forest",
-      "location": "terraces",
-      "textureDetail": true,
-      "windStrength": 0
-    }
+    ]
   },
   {
     "title": "Compare cast shadows",
-    "hint": "Switch the real shadow renderer on and off while keeping the scene unchanged.",
+    "hint": "Switch the shadow renderer on and off with everything else unchanged. Watch the bridge truss pattern on the valley wall.",
+    "initial": {
+      "focus": "bridge",
+      "location": "bridge",
+      "fogDensity": 0
+    },
     "options": [
       {
         "label": "With shadows",
@@ -212,16 +236,14 @@
           "shadows": false
         }
       }
-    ],
-    "initial": {
-      "focus": "bridge",
-      "location": "bridge",
-      "fogDensity": 0
-    }
+    ]
   },
   {
     "title": "Try a different lens",
-    "hint": "Field of view changes how much of the world fits into the same camera position.",
+    "hint": "The camera stays in place; field of view decides how much of the world fits. A narrow lens enlarges the train, a wide one takes in the valley.",
+    "initial": {
+      "focus": "train"
+    },
     "options": [
       {
         "label": "Narrow view",
@@ -241,14 +263,14 @@
           "fov": null
         }
       }
-    ],
-    "initial": {
-      "focus": "train"
-    }
+    ]
   },
   {
     "title": "Follow the bend",
-    "hint": "Watch the carriages follow the route, then stop to inspect their different headings.",
+    "hint": "Play the train through the gorge, then hold it on a curve. Each carriage has its own place and heading along the track, so the cars point in slightly different directions.",
+    "initial": {
+      "focus": "train"
+    },
     "options": [
       {
         "label": "Ride the curve",
@@ -258,37 +280,40 @@
         }
       },
       {
-        "label": "Stop here",
+        "label": "Look from above the train",
         "config": {
-          "paused": true
+          "camera": "follow"
         }
       }
-    ],
-    "initial": {
-      "focus": "train"
-    }
+    ]
   },
   {
-    "title": "Observe time-based movement",
-    "hint": "Play and pause the actual train. This does not artificially change the browser frame rate.",
+    "title": "Watch movement follow time",
+    "hint": "The train moves by speed times the time since the last frame, so it covers the same distance on a fast or slow screen. Read live scene state for its speed; this does not change the frame rate.",
     "options": [
       {
-        "label": "Play movement",
+        "label": "Follow at speed",
         "config": {
+          "camera": "follow",
           "paused": false
         }
       },
       {
-        "label": "Pause movement",
+        "label": "Driver view at speed",
         "config": {
-          "paused": true
+          "camera": "cab",
+          "paused": false
         }
       }
     ]
   },
   {
     "title": "Inspect repeated scenery",
-    "hint": "Visit repeated vegetation, then reveal its triangles. This does not turn instancing off.",
+    "hint": "Visit the repeated trees, then show their triangles. Read live scene state to compare visible batches with the number of drawing requests. This does not switch instancing off.",
+    "initial": {
+      "focus": "forest",
+      "location": "terraces"
+    },
     "options": [
       {
         "label": "Forest surfaces",
@@ -303,15 +328,16 @@
           "wireframe": true
         }
       }
-    ],
-    "initial": {
-      "focus": "forest",
-      "location": "terraces"
-    }
+    ]
   },
   {
     "title": "Watch the tree shader bend branches",
-    "hint": "These settings change the wind strength used by the actual tree vertex shader. The train stays still while the leaves and branches move.",
+    "hint": "These change the wind strength the tree vertex shader reads. The train stays still while crowns sway and trunk bases stay put.",
+    "initial": {
+      "focus": "forest",
+      "location": "terraces",
+      "windStrength": 0.7
+    },
     "options": [
       {
         "label": "Still branches",
@@ -331,16 +357,21 @@
           "windStrength": 3
         }
       }
-    ],
-    "initial": {
-      "focus": "forest",
-      "location": "terraces",
-      "windStrength": 0.7
-    }
+    ]
   },
   {
     "title": "Build the water picture one layer at a time",
-    "hint": "The camera looks directly at the river. Each button changes the actual water shader: depth colors the riverbed, reflections add the surroundings, and ripples bend the reflected light. Drag or zoom to inspect the surface.",
+    "hint": "The camera looks straight at the river. Each button changes the real water shader: depth colours the riverbed, reflections add the surroundings, ripples bend the reflected light. Drag or zoom to inspect.",
+    "initial": {
+      "focus": "water",
+      "location": "gorge",
+      "camera": "scenic",
+      "waterSpeed": 1,
+      "waterReflection": 1,
+      "waterDepth": 1,
+      "waterRipples": 1,
+      "waterFoam": 1
+    },
     "options": [
       {
         "label": "Riverbed",
@@ -352,7 +383,7 @@
         }
       },
       {
-        "label": "Depth color",
+        "label": "Depth colour",
         "config": {
           "waterReflection": 0,
           "waterDepth": 1,
@@ -387,21 +418,14 @@
           "waterFoam": 1
         }
       }
-    ],
-    "initial": {
-      "focus": "water",
-      "location": "gorge",
-      "camera": "scenic",
-      "waterSpeed": 1,
-      "waterReflection": 1,
-      "waterDepth": 1,
-      "waterRipples": 1,
-      "waterFoam": 1
-    }
+    ]
   },
   {
     "title": "Change the weather",
-    "hint": "These controls change the game atmosphere and precipitation.",
+    "hint": "One weather choice changes the sky, fog, particles and wet surfaces together. Watch how far along the route you can still see.",
+    "initial": {
+      "camera": "follow"
+    },
     "options": [
       {
         "label": "Clear",
@@ -420,12 +444,22 @@
         "config": {
           "weather": "snow"
         }
+      },
+      {
+        "label": "Storm",
+        "config": {
+          "weather": "storm"
+        }
       }
     ]
   },
   {
     "title": "Aim a ray at the scene",
-    "hint": "Drag the scene until an object sits under the crosshair. Inspect crosshair casts a real ray from the camera and reports the nearest visible mesh, its hit point and its distance. Instanced objects also report a copy number.",
+    "hint": "Drag until an object sits under the crosshair, then choose Inspect crosshair. The game casts a real ray from the camera and reports the nearest visible mesh, where it was hit and how far away. Instanced objects also report a copy number.",
+    "initial": {
+      "focus": "train",
+      "location": "gorge"
+    },
     "options": [
       {
         "label": "Orbit scene",
@@ -439,15 +473,17 @@
           "camera": "cab"
         }
       }
-    ],
-    "initial": {
-      "focus": "train",
-      "location": "gorge"
-    }
+    ]
   },
   {
     "title": "Change how far scenery batches are drawn",
-    "hint": "This changes the distance cutoff for the original valley\u2019s repeated scenery. Read live scene state to compare visible batches. The extended route has its own chunk loader; this does not change it.",
+    "hint": "This moves the distance cutoff for the valley's repeated scenery. Read live scene state to compare visible and total batches. The extended route has its own chunk loader; this does not change it.",
+    "initial": {
+      "focus": "forest",
+      "location": "terraces",
+      "fogDensity": 0,
+      "sceneryDistance": 720
+    },
     "options": [
       {
         "label": "Nearby: 120 m",
@@ -467,17 +503,11 @@
           "sceneryDistance": 1200
         }
       }
-    ],
-    "initial": {
-      "focus": "forest",
-      "location": "terraces",
-      "fogDensity": 0,
-      "sceneryDistance": 720
-    }
+    ]
   },
   {
     "title": "Visit separated route sections",
-    "hint": "Move between existing sections to observe the loaded scenery. This does not expose a chunk scheduler control.",
+    "hint": "Jump between sections, then read live scene state: regionalWorld lists which extended-route chunks are loaded now and how many were built this session.",
     "options": [
       {
         "label": "Gorge",
@@ -500,8 +530,12 @@
     ]
   },
   {
-    "title": "Change exposure",
-    "hint": "Adjust the renderer exposure while keeping the materials and viewpoint unchanged.",
+    "title": "Change exposure at dusk",
+    "hint": "The dusk sky is far brighter than the hills and the train. Raise exposure and the sky turns flat white; lower it and the train sinks into shadow. Game exposure keeps both readable.",
+    "initial": {
+      "timeOfDay": "dusk",
+      "camera": "follow"
+    },
     "options": [
       {
         "label": "Darker",
@@ -525,7 +559,10 @@
   },
   {
     "title": "Inspect overlapping surfaces",
-    "hint": "Orbit around the train and reveal its triangles. This view does not introduce an artificial depth conflict.",
+    "hint": "Orbit the train and show its triangles. Panels laid over one another sit a small distance apart, so they never share a depth. This view does not add a depth conflict.",
+    "initial": {
+      "focus": "train"
+    },
     "options": [
       {
         "label": "Surface view",
@@ -539,74 +576,92 @@
           "wireframe": true
         }
       }
-    ],
-    "initial": {
-      "focus": "train"
-    }
+    ]
   },
   {
-    "title": "See state become motion",
-    "hint": "Play updates the simulation; pause holds the train at its current route distance.",
+    "title": "See stored state become motion",
+    "hint": "Play the train, hold it, then read live scene state. Its speed and route position are the stored values the carriages are placed from.",
     "options": [
       {
-        "label": "Run simulation",
+        "label": "Run and follow",
         "config": {
-          "paused": false
+          "paused": false,
+          "camera": "follow"
         }
       },
       {
-        "label": "Pause simulation",
+        "label": "Hold and orbit",
         "config": {
+          "paused": true,
+          "camera": "scenic"
+        }
+      }
+    ]
+  },
+  {
+    "title": "Compare a place with a finished scene",
+    "hint": "First the plain station, then the same platform as a finished story beat: sunset light, the cast on their marks, a framed shot and captions. That difference is what a chapter's goal decides.",
+    "options": [
+      {
+        "label": "Plain station",
+        "config": {
+          "location": "station",
+          "timeOfDay": "daylight",
+          "camera": "scenic",
+          "beat": null
+        }
+      },
+      {
+        "label": "Same place as a story beat",
+        "config": {
+          "beat": "momiji-exchange",
           "paused": true
         }
       }
     ]
   },
   {
-    "title": "Compare chapter settings",
-    "hint": "Use a quiet station or a busy city as a scene reference for creative direction.",
-    "options": [
-      {
-        "label": "Station",
-        "config": {
-          "location": "station",
-          "timeOfDay": "daylight"
-        }
-      },
-      {
-        "label": "City at dusk",
-        "config": {
-          "location": "tokyo",
-          "timeOfDay": "dusk"
-        }
-      }
-    ]
-  },
-  {
-    "title": "Compare framing",
-    "hint": "A narrow or wide view changes how the train and background share the picture.",
+    "title": "Make the important part easy to notice",
+    "hint": "A narrow view makes the train fill the picture; a wide one shares it with the valley. The story portrait blurs the background so the face is the first thing you see.",
+    "initial": {
+      "focus": "train",
+      "location": "gorge"
+    },
     "options": [
       {
         "label": "Narrow framing",
         "config": {
-          "fov": 35
+          "fov": 35,
+          "beat": null,
+          "focus": "train",
+          "camera": "scenic"
         }
       },
       {
         "label": "Wide framing",
         "config": {
-          "fov": 80
+          "fov": 80,
+          "beat": null,
+          "focus": "train",
+          "camera": "scenic"
+        }
+      },
+      {
+        "label": "Soft background portrait",
+        "config": {
+          "beat": "momiji-two-minutes",
+          "paused": true,
+          "fov": null
         }
       }
-    ],
-    "initial": {
-      "focus": "train",
-      "location": "gorge"
-    }
+    ]
   },
   {
     "title": "Inspect the main asset",
-    "hint": "Compare the train silhouette with its wireframe. These presets do not add bevel geometry.",
+    "hint": "Compare the train's silhouette with its triangles: the roof, ends and window rhythm carry its identity before small markings do. These presets do not add bevel geometry.",
+    "initial": {
+      "focus": "train"
+    },
     "options": [
       {
         "label": "Train surfaces",
@@ -620,528 +675,11 @@
           "wireframe": true
         }
       }
-    ],
-    "initial": {
-      "focus": "train"
-    }
+    ]
   },
   {
     "title": "Compare the same materials",
-    "hint": "Keep the subject in place while changing the scene lighting.",
-    "options": [
-      {
-        "label": "Daylight",
-        "config": {
-          "timeOfDay": "daylight"
-        }
-      },
-      {
-        "label": "Dusk",
-        "config": {
-          "timeOfDay": "dusk"
-        }
-      },
-      {
-        "label": "Rain",
-        "config": {
-          "weather": "rain"
-        }
-      }
-    ],
-    "initial": {
-      "focus": "train"
-    }
-  },
-  {
-    "title": "Check quality in motion",
-    "hint": "Use the moving forest view to look for shimmering edges, then pause. No temporal filter is switched here.",
-    "options": [
-      {
-        "label": "Travel through trees",
-        "config": {
-          "location": "terraces",
-          "paused": false
-        }
-      },
-      {
-        "label": "Hold this view",
-        "config": {
-          "paused": true
-        }
-      }
-    ]
-  },
-  {
-    "title": "Inspect distant shapes",
-    "hint": "Zoom with the mouse wheel or pinch to compare near and distant objects. This does not add the proposed LOD system.",
-    "options": [
-      {
-        "label": "Forest view",
-        "config": {
-          "location": "terraces",
-          "camera": "scenic"
-        }
-      },
-      {
-        "label": "Reveal triangles",
-        "config": {
-          "wireframe": true
-        }
-      },
-      {
-        "label": "Restore surfaces",
-        "config": {
-          "wireframe": false
-        }
-      }
-    ],
-    "initial": {
-      "focus": "forest",
-      "location": "terraces"
-    }
-  },
-  {
-    "title": "Explore loaded regions",
-    "hint": "Compare separated route sections. Work scheduling is explained by the diagram; these controls use the current loader.",
-    "options": [
-      {
-        "label": "Valley",
-        "config": {
-          "location": "gorge"
-        }
-      },
-      {
-        "label": "Mountain",
-        "config": {
-          "location": "summit"
-        }
-      },
-      {
-        "label": "City",
-        "config": {
-          "location": "tokyo"
-        }
-      }
-    ]
-  },
-  {
-    "title": "Hand control to another view",
-    "hint": "Choose which existing camera rig owns the view. Story camera shots are not triggered here.",
-    "options": [
-      {
-        "label": "Look around",
-        "config": {
-          "camera": "scenic"
-        }
-      },
-      {
-        "label": "Driver",
-        "config": {
-          "camera": "cab"
-        }
-      },
-      {
-        "label": "Passenger",
-        "config": {
-          "camera": "passenger"
-        }
-      }
-    ]
-  },
-  {
-    "title": "Inspect the station setting",
-    "hint": "Use the station as a visual reference. Haru\u2019s authored acting and story interactions remain in the full game.",
-    "options": [
-      {
-        "label": "Station outside",
-        "config": {
-          "location": "station",
-          "camera": "scenic"
-        }
-      },
-      {
-        "label": "Passenger view",
-        "config": {
-          "camera": "passenger"
-        }
-      }
-    ]
-  },
-  {
-    "title": "Try response and feedback",
-    "hint": "Play and pause the train to compare an accepted action with its visible result. Station-duty actions remain in the full game.",
-    "options": [
-      {
-        "label": "Play train",
-        "config": {
-          "paused": false
-        }
-      },
-      {
-        "label": "Pause train",
-        "config": {
-          "paused": true
-        }
-      }
-    ]
-  },
-  {
-    "title": "Compare listening locations visually",
-    "hint": "This embed is silent. Use the exterior and interior as scene references; the diagram explains sound priorities.",
-    "options": [
-      {
-        "label": "Exterior",
-        "config": {
-          "camera": "scenic"
-        }
-      },
-      {
-        "label": "Interior",
-        "config": {
-          "camera": "passenger"
-        }
-      }
-    ]
-  },
-  {
-    "title": "Visit story locations",
-    "hint": "The embed shows location context without recording choices or completing story tasks.",
-    "options": [
-      {
-        "label": "Station",
-        "config": {
-          "location": "station"
-        }
-      },
-      {
-        "label": "Gorge",
-        "config": {
-          "location": "gorge"
-        }
-      }
-    ]
-  },
-  {
-    "title": "Compare drawing conditions",
-    "hint": "Shadow and wireframe settings change drawing conditions. Use the development measurement tool for timed performance evidence.",
-    "options": [
-      {
-        "label": "Shadows on",
-        "config": {
-          "shadows": true
-        }
-      },
-      {
-        "label": "Shadows off",
-        "config": {
-          "shadows": false
-        }
-      },
-      {
-        "label": "Triangles",
-        "config": {
-          "wireframe": true
-        }
-      }
-    ]
-  },
-  {
-    "title": "Choose comfortable motion",
-    "hint": "The train starts paused. Try a fixed driver view or a mouse-controlled exterior; use the same controls with the keyboard.",
-    "options": [
-      {
-        "label": "Still exterior",
-        "config": {
-          "camera": "scenic",
-          "paused": true
-        }
-      },
-      {
-        "label": "Still driver view",
-        "config": {
-          "camera": "cab",
-          "paused": true
-        }
-      }
-    ]
-  },
-  {
-    "title": "Explore without saving",
-    "hint": "This embedded session does not read or write story saves. The migration sequence is explained in the diagram.",
-    "options": [
-      {
-        "label": "Station reference",
-        "config": {
-          "location": "station"
-        }
-      },
-      {
-        "label": "Scenic reference",
-        "config": {
-          "location": "gorge"
-        }
-      }
-    ]
-  },
-  {
-    "title": "Inspect the live embed state",
-    "hint": "Read the bridge snapshot below. These are actual game values; the development MCP tools provide deeper inspection and timed measurements.",
-    "options": [
-      {
-        "label": "Gorge context",
-        "config": {
-          "location": "gorge"
-        }
-      },
-      {
-        "label": "City context",
-        "config": {
-          "location": "tokyo"
-        }
-      }
-    ]
-  },
-  {
-    "title": "See where the cast stands",
-    "hint": "This embed does not play episodes or switch character clips. Use the station to picture where the Momiji cast waits; the clip swap and its measurements are in the full game.",
-    "options": [
-      {
-        "label": "Station outside",
-        "config": {
-          "location": "station",
-          "camera": "scenic"
-        }
-      },
-      {
-        "label": "Passenger view",
-        "config": {
-          "camera": "passenger"
-        }
-      }
-    ]
-  },
-  {
-    "title": "Hold a still frame",
-    "hint": "Pause and play the train. A held frame is where a pose bug shows; the pose test itself runs in the game’s test suite, not in this embed.",
-    "options": [
-      {
-        "label": "Pause",
-        "config": {
-          "paused": true
-        }
-      },
-      {
-        "label": "Play",
-        "config": {
-          "paused": false
-        }
-      }
-    ]
-  },
-  {
-    "title": "Compare still and moving",
-    "hint": "Small motion layers are easiest to judge against something still. Stop the train, then let it run; the character layers themselves are switched only in the full game.",
-    "initial": {
-      "focus": "train",
-      "location": "station"
-    },
-    "options": [
-      {
-        "label": "Stopped",
-        "config": {
-          "paused": true
-        }
-      },
-      {
-        "label": "Moving",
-        "config": {
-          "paused": false
-        }
-      }
-    ]
-  },
-  {
-    "title": "Look at the edges of a built mesh",
-    "hint": "Switch the train between surfaces and triangles. Notice where edges gather at bends and corners; the character topology comparison is in the capture above.",
-    "initial": {
-      "focus": "train"
-    },
-    "options": [
-      {
-        "label": "Surfaces",
-        "config": {
-          "wireframe": false
-        }
-      },
-      {
-        "label": "Triangles",
-        "config": {
-          "wireframe": true
-        }
-      }
-    ]
-  },
-  {
-    "title": "Pick a reference view",
-    "hint": "Use real game views as references beside concept art: the same place in two lights.",
-    "options": [
-      {
-        "label": "Station by day",
-        "config": {
-          "location": "station",
-          "timeOfDay": "daylight"
-        }
-      },
-      {
-        "label": "Station at dusk",
-        "config": {
-          "location": "station",
-          "timeOfDay": "dusk"
-        }
-      }
-    ]
-  },
-  {
-    "title": "Find what blocks a view",
-    "hint": "Director portraits are not triggered here. Orbit the station and notice where walls and posts would block a face, then compare the fixed views.",
-    "initial": {
-      "location": "station"
-    },
-    "options": [
-      {
-        "label": "Orbit the station",
-        "config": {
-          "camera": "scenic"
-        }
-      },
-      {
-        "label": "Passenger view",
-        "config": {
-          "camera": "passenger"
-        }
-      },
-      {
-        "label": "Driver view",
-        "config": {
-          "camera": "cab"
-        }
-      }
-    ]
-  },
-  {
-    "title": "Look for a clock you could show",
-    "hint": "Episodes are not played in this embed. Look for what could show time and pressure on screen: the platform, the light, an arriving train.",
-    "options": [
-      {
-        "label": "Station",
-        "config": {
-          "location": "station",
-          "timeOfDay": "daylight"
-        }
-      },
-      {
-        "label": "Evening",
-        "config": {
-          "location": "station",
-          "timeOfDay": "dusk"
-        }
-      },
-      {
-        "label": "Train arriving",
-        "config": {
-          "paused": false,
-          "camera": "follow"
-        }
-      }
-    ]
-  },
-  {
-    "title": "Hold one frame",
-    "hint": "The embed runs on the normal clock. Pause to hold a single frame; the fixed render clock (?render=1) exists only in the full game.",
-    "options": [
-      {
-        "label": "Run",
-        "config": {
-          "paused": false
-        }
-      },
-      {
-        "label": "Hold",
-        "config": {
-          "paused": true
-        }
-      }
-    ]
-  },
-  {
-    "title": "Choose a quiet place to listen",
-    "hint": "This embed is silent. Voices play in the full game and in rendered videos; these views show where the lines are spoken.",
-    "options": [
-      {
-        "label": "Station",
-        "config": {
-          "location": "station"
-        }
-      },
-      {
-        "label": "Gorge",
-        "config": {
-          "location": "gorge"
-        }
-      }
-    ]
-  },
-  {
-    "title": "Open places from a fixed list",
-    "hint": "A ?scene= link chooses from a fixed list of places, like these buttons do. The embed itself does not read ?scene= or #ep= links.",
-    "options": [
-      {
-        "label": "Station",
-        "config": {
-          "location": "station"
-        }
-      },
-      {
-        "label": "Bridge",
-        "config": {
-          "location": "bridge"
-        }
-      },
-      {
-        "label": "Gorge",
-        "config": {
-          "location": "gorge"
-        }
-      }
-    ]
-  },
-  {
-    "title": "Visit separate areas",
-    "hint": "Each agent owned an area of the game. These are separate route sections you can check one at a time.",
-    "options": [
-      {
-        "label": "Gorge",
-        "config": {
-          "location": "gorge"
-        }
-      },
-      {
-        "label": "Station",
-        "config": {
-          "location": "station"
-        }
-      },
-      {
-        "label": "Tokyo",
-        "config": {
-          "location": "tokyo"
-        }
-      }
-    ]
-  },
-  {
-    "title": "Change one thing at a time",
-    "hint": "Keep the camera still and change a single setting, as in a before/after capture. Compare each view with the one before it.",
+    "hint": "Keep the train in place and change the light. Paint, windows and hills should still agree at dusk and in rain.",
     "initial": {
       "focus": "train"
     },
@@ -1165,6 +703,1046 @@
         "config": {
           "timeOfDay": "daylight",
           "weather": "rain"
+        }
+      }
+    ]
+  },
+  {
+    "title": "Check quality in motion",
+    "hint": "Travel through the forest and watch leaf edges against the sky for shimmer, then hold the view and compare. No temporal filter is switched here.",
+    "options": [
+      {
+        "label": "Travel through trees",
+        "config": {
+          "location": "terraces",
+          "paused": false,
+          "camera": "follow"
+        }
+      },
+      {
+        "label": "Driver view through trees",
+        "config": {
+          "camera": "cab",
+          "paused": false
+        }
+      }
+    ]
+  },
+  {
+    "title": "Inspect distant shapes",
+    "hint": "Zoom with the wheel or pinch to compare near and distant trees. Show triangles to see where detail sits. This does not add the proposed detail levels.",
+    "initial": {
+      "focus": "forest",
+      "location": "terraces"
+    },
+    "options": [
+      {
+        "label": "Forest view",
+        "config": {
+          "location": "terraces",
+          "camera": "scenic"
+        }
+      },
+      {
+        "label": "Reveal triangles",
+        "config": {
+          "wireframe": true
+        }
+      },
+      {
+        "label": "Restore surfaces",
+        "config": {
+          "wireframe": false
+        }
+      }
+    ]
+  },
+  {
+    "title": "Explore loaded regions",
+    "hint": "Jump between regions, then read live scene state to see which chunks are loaded. How the work could be spread across frames is in the diagram.",
+    "options": [
+      {
+        "label": "Valley",
+        "config": {
+          "location": "gorge"
+        }
+      },
+      {
+        "label": "Mountain",
+        "config": {
+          "location": "summit"
+        }
+      },
+      {
+        "label": "City",
+        "config": {
+          "location": "tokyo"
+        }
+      }
+    ]
+  },
+  {
+    "title": "Hand the camera to one system at a time",
+    "hint": "Each button gives the view to one camera system. Director shot stages a story beat, and the director camera takes over from the player's rig; End the scene hands it back.",
+    "options": [
+      {
+        "label": "Look around",
+        "config": {
+          "camera": "scenic",
+          "beat": null
+        }
+      },
+      {
+        "label": "Driver",
+        "config": {
+          "camera": "cab",
+          "beat": null
+        }
+      },
+      {
+        "label": "Passenger",
+        "config": {
+          "camera": "passenger",
+          "beat": null
+        }
+      },
+      {
+        "label": "Director shot",
+        "config": {
+          "beat": "train-call",
+          "paused": true
+        }
+      },
+      {
+        "label": "End the scene",
+        "config": {
+          "beat": null,
+          "camera": "follow"
+        }
+      }
+    ]
+  },
+  {
+    "title": "Check that feet stay on the ground",
+    "hint": "Meera stands alone on the Momiji platform. With motion layers on, her feet stay planted while her weight shifts; with them off, the clip alone decides. Mr. Ishida's hips rest on his bench. Drag to look from the side.",
+    "options": [
+      {
+        "label": "Meera, layers on",
+        "config": {
+          "beat": null,
+          "focus": "cast",
+          "location": "station",
+          "camera": "scenic",
+          "isolation": "all",
+          "surface": "materials",
+          "pose": "clip",
+          "skeleton": false,
+          "motionLayers": true,
+          "subject": "meera",
+          "clip": "idle"
+        }
+      },
+      {
+        "label": "Meera, layers off",
+        "config": {
+          "motionLayers": false
+        }
+      },
+      {
+        "label": "Plain shape, from the side",
+        "config": {
+          "surface": "clay",
+          "motionLayers": true
+        }
+      },
+      {
+        "label": "Mr. Ishida on his bench",
+        "config": {
+          "subject": "ishida",
+          "clip": "sit",
+          "surface": "materials"
+        }
+      }
+    ]
+  },
+  {
+    "title": "Watch an action and its result",
+    "hint": "The train stops at Momiji, the doors open, and Meera runs to the front car: each step waits for the one before it. Power and door controls stay in the full game.",
+    "options": [
+      {
+        "label": "Doors open at Momiji",
+        "config": {
+          "beat": "momiji-doors",
+          "paused": false
+        }
+      },
+      {
+        "label": "Follow the train",
+        "config": {
+          "beat": null,
+          "camera": "follow",
+          "paused": false
+        }
+      }
+    ]
+  },
+  {
+    "title": "See where speech has to be heard",
+    "hint": "The embed is silent. These beats show where a spoken line competes with the river and platform, then with wheels inside the car; the captions carry the words. The mix itself is in the diagram.",
+    "options": [
+      {
+        "label": "On the platform",
+        "config": {
+          "beat": "momiji-ishida",
+          "paused": true
+        }
+      },
+      {
+        "label": "Inside the moving car",
+        "config": {
+          "beat": "train-call",
+          "paused": true
+        }
+      }
+    ]
+  },
+  {
+    "title": "Follow a choice to what it changes",
+    "hint": "The 17:42 has no player choices, but it turns on one: Arjun decides to call his sister. The second beat is what that call changed. Haru's choices and saves are in the full game.",
+    "options": [
+      {
+        "label": "Arjun makes the call",
+        "config": {
+          "beat": "train-arjun-call",
+          "paused": true
+        }
+      },
+      {
+        "label": "The bus waited",
+        "config": {
+          "beat": "aonuma-bus",
+          "paused": true
+        }
+      }
+    ]
+  },
+  {
+    "title": "Compare drawing conditions",
+    "hint": "Change shadows or show triangles under the same camera, then read live scene state for frame timing and drawing counts. These are readings from this browser, not a benchmark.",
+    "options": [
+      {
+        "label": "Shadows on",
+        "config": {
+          "shadows": true,
+          "wireframe": false
+        }
+      },
+      {
+        "label": "Shadows off",
+        "config": {
+          "shadows": false,
+          "wireframe": false
+        }
+      },
+      {
+        "label": "Triangles",
+        "config": {
+          "wireframe": true
+        }
+      }
+    ]
+  },
+  {
+    "title": "Say the same thing in more than one way",
+    "hint": "The same beat with captions in English, Telugu and Hindi, so it reads without sound and in the viewer's language. The fixed driver view is the calm choice for motion comfort.",
+    "options": [
+      {
+        "label": "English captions",
+        "config": {
+          "beat": "momiji-exchange",
+          "paused": true,
+          "captions": "en"
+        }
+      },
+      {
+        "label": "Telugu captions",
+        "config": {
+          "captions": "te-IN"
+        }
+      },
+      {
+        "label": "Hindi captions",
+        "config": {
+          "captions": "hi-IN"
+        }
+      },
+      {
+        "label": "Still driver view",
+        "config": {
+          "beat": null,
+          "camera": "cab",
+          "paused": true,
+          "captions": "en"
+        }
+      }
+    ]
+  },
+  {
+    "title": "Explore without saving",
+    "hint": "This embed never reads or writes a save, so nothing here can be lost. How an old save is checked and migrated is in the diagram.",
+    "options": [
+      {
+        "label": "Station",
+        "config": {
+          "location": "station"
+        }
+      },
+      {
+        "label": "Gorge",
+        "config": {
+          "location": "gorge"
+        }
+      }
+    ]
+  },
+  {
+    "title": "Inspect the live game like an agent",
+    "hint": "Inspect crosshair casts a real ray and names what it hits. Read live scene state returns the bridge snapshot: camera, place, speed, loaded chunks and frame timing. The development tools add object search and timed measurements.",
+    "options": [
+      {
+        "label": "Train in the gorge",
+        "config": {
+          "location": "gorge",
+          "focus": "train",
+          "camera": "scenic"
+        }
+      },
+      {
+        "label": "Station",
+        "config": {
+          "location": "station",
+          "focus": "station",
+          "camera": "scenic"
+        }
+      },
+      {
+        "label": "City",
+        "config": {
+          "location": "tokyo",
+          "focus": "route",
+          "camera": "follow"
+        }
+      }
+    ]
+  },
+  {
+    "title": "Watch the motion-capture clips",
+    "hint": "The cast plays motion-capture clips from the Quaternius animation library on their VRM bodies. The home-made clips they replaced are not in the game any more; the bars compare the two.",
+    "options": [
+      {
+        "label": "Meera, idle",
+        "config": {
+          "beat": null,
+          "focus": "cast",
+          "location": "station",
+          "camera": "scenic",
+          "isolation": "all",
+          "surface": "materials",
+          "pose": "clip",
+          "skeleton": false,
+          "motionLayers": true,
+          "subject": "meera",
+          "clip": "idle"
+        }
+      },
+      {
+        "label": "Meera checks her phone",
+        "config": {
+          "subject": "meera",
+          "clip": "check-phone"
+        }
+      },
+      {
+        "label": "Arjun walks",
+        "config": {
+          "subject": "arjun",
+          "clip": "walk"
+        }
+      },
+      {
+        "label": "Ammamma waves",
+        "config": {
+          "subject": "ammamma",
+          "clip": "wave"
+        }
+      }
+    ]
+  },
+  {
+    "title": "Break and fix the pose reset",
+    "hint": "Mr. Ishida plays the sitting clip on his bench. The bug resets every bone to rest before the clips run: bones the clip holds still are never written again, so his legs stand straight through the bench. The fix puts back the clip's own pose.",
+    "options": [
+      {
+        "label": "Fixed: sitting",
+        "config": {
+          "beat": null,
+          "focus": "cast",
+          "location": "station",
+          "camera": "scenic",
+          "isolation": "all",
+          "surface": "materials",
+          "pose": "clip",
+          "skeleton": false,
+          "motionLayers": true,
+          "subject": "ishida",
+          "clip": "sit"
+        }
+      },
+      {
+        "label": "The bug: reset to rest each frame",
+        "config": {
+          "pose": "reset-bug"
+        }
+      },
+      {
+        "label": "Rest pose (T-pose)",
+        "config": {
+          "pose": "rest"
+        }
+      }
+    ]
+  },
+  {
+    "title": "Switch the motion layers",
+    "hint": "Meera plays her idle clip. Layers on adds breathing, a head turn, hand grips and planted feet on top of the clip; layers off leaves the clip alone. The goal is that switching them on adds no shake. Show skeleton draws the bones.",
+    "options": [
+      {
+        "label": "Layers on",
+        "config": {
+          "beat": null,
+          "focus": "cast",
+          "location": "station",
+          "camera": "scenic",
+          "isolation": "all",
+          "surface": "materials",
+          "pose": "clip",
+          "skeleton": false,
+          "motionLayers": true,
+          "subject": "meera",
+          "clip": "idle"
+        }
+      },
+      {
+        "label": "Layers off",
+        "config": {
+          "motionLayers": false
+        }
+      },
+      {
+        "label": "Show skeleton",
+        "config": {
+          "skeleton": true,
+          "surface": "clay"
+        }
+      },
+      {
+        "label": "Hide skeleton",
+        "config": {
+          "skeleton": false,
+          "surface": "materials",
+          "motionLayers": true
+        }
+      }
+    ]
+  },
+  {
+    "title": "Look at a character's topology",
+    "hint": "Meera alone, shown as triangles. Edge loops gather at the eyes, mouth, shoulders, elbows and knees, where the body bends. The earlier tube-built figures are not in the game any more; the capture compares them.",
+    "options": [
+      {
+        "label": "Meera's triangles",
+        "config": {
+          "beat": null,
+          "focus": "cast",
+          "location": "station",
+          "camera": "scenic",
+          "isolation": "subject",
+          "surface": "wireframe",
+          "pose": "clip",
+          "skeleton": false,
+          "motionLayers": true,
+          "subject": "meera",
+          "clip": "idle"
+        }
+      },
+      {
+        "label": "Plain shape",
+        "config": {
+          "surface": "clay"
+        }
+      },
+      {
+        "label": "Ammamma's triangles",
+        "config": {
+          "subject": "ammamma",
+          "surface": "wireframe"
+        }
+      },
+      {
+        "label": "Game materials",
+        "config": {
+          "surface": "materials",
+          "isolation": "all"
+        }
+      }
+    ]
+  },
+  {
+    "title": "Compare a built character with the sheet",
+    "hint": "A turnaround draws a character from front, side and back in one pose. Meera stands here in her rest pose; drag round her the way a sheet shows her. Story key frame stages one frame of the plot.",
+    "options": [
+      {
+        "label": "Meera, rest pose",
+        "config": {
+          "beat": null,
+          "focus": "cast",
+          "location": "station",
+          "camera": "scenic",
+          "isolation": "all",
+          "surface": "materials",
+          "pose": "rest",
+          "skeleton": false,
+          "motionLayers": true,
+          "subject": "meera",
+          "clip": "idle"
+        }
+      },
+      {
+        "label": "Ammamma, rest pose",
+        "config": {
+          "subject": "ammamma",
+          "pose": "rest"
+        }
+      },
+      {
+        "label": "Meera moving",
+        "config": {
+          "subject": "meera",
+          "pose": "clip"
+        }
+      },
+      {
+        "label": "Story key frame",
+        "config": {
+          "beat": "momiji-timetable",
+          "paused": true
+        }
+      }
+    ]
+  },
+  {
+    "title": "Watch the camera look for a clear view",
+    "hint": "These dialogue shots are blocked from their planned angle. The director tries nearby angles and keeps the first clear one on the same side of the speakers. Read live scene state: the log says which angle was blocked and where the camera moved.",
+    "options": [
+      {
+        "label": "Mr. Ishida on the bench",
+        "config": {
+          "beat": "momiji-ishida",
+          "paused": true
+        }
+      },
+      {
+        "label": "Ammamma at the bus stop",
+        "config": {
+          "beat": "aonuma-ammamma",
+          "paused": true
+        }
+      },
+      {
+        "label": "Orbit the station yourself",
+        "config": {
+          "beat": null,
+          "location": "station",
+          "camera": "scenic"
+        }
+      }
+    ]
+  },
+  {
+    "title": "Find the parts of the story on screen",
+    "hint": "Each button stages one part of The 17:42 with the sound off: what Meera wants, what she loses, the clock she is racing, the person who chooses to help, and the payoff.",
+    "options": [
+      {
+        "label": "A clear want",
+        "config": {
+          "beat": "momiji-exchange",
+          "paused": true
+        }
+      },
+      {
+        "label": "Stakes",
+        "config": {
+          "beat": "train-call",
+          "paused": true
+        }
+      },
+      {
+        "label": "A visible clock",
+        "config": {
+          "beat": "momiji-timetable",
+          "paused": true
+        }
+      },
+      {
+        "label": "Someone chooses",
+        "config": {
+          "beat": "train-arjun-call",
+          "paused": true
+        }
+      },
+      {
+        "label": "Payoff on screen",
+        "config": {
+          "beat": "aonuma-bus",
+          "paused": true
+        }
+      }
+    ]
+  },
+  {
+    "title": "Hold one frame of an episode",
+    "hint": "The embed runs on the page clock. Holding a beat stops the train, the people, the camera and the caption timers together, which is what the render clock does between two steps. Videos come from pnpm render:episode.",
+    "options": [
+      {
+        "label": "Held frame: the platform",
+        "config": {
+          "beat": "momiji-exchange",
+          "paused": true
+        }
+      },
+      {
+        "label": "Held frame: the timetable",
+        "config": {
+          "beat": "momiji-timetable",
+          "paused": true
+        }
+      },
+      {
+        "label": "Play a beat on",
+        "config": {
+          "beat": "momiji-ishida",
+          "paused": false
+        }
+      }
+    ]
+  },
+  {
+    "title": "Read one line in three languages",
+    "hint": "The embed is silent. Each line carries a hand-written Telugu and Hindi translation, shown here as captions; in the full game and in rendered videos the same lines are voiced.",
+    "options": [
+      {
+        "label": "English",
+        "config": {
+          "beat": "aonuma-ammamma",
+          "paused": true,
+          "captions": "en"
+        }
+      },
+      {
+        "label": "Telugu",
+        "config": {
+          "captions": "te-IN"
+        }
+      },
+      {
+        "label": "Hindi",
+        "config": {
+          "captions": "hi-IN"
+        }
+      }
+    ]
+  },
+  {
+    "title": "Choose only from fixed lists",
+    "hint": "Like a ?scene= link, this embed accepts only places, beats and settings from fixed lists and number ranges; anything else is refused before the scene changes. Read live scene state to see what was applied.",
+    "options": [
+      {
+        "label": "Station",
+        "config": {
+          "location": "station",
+          "beat": null
+        }
+      },
+      {
+        "label": "Bridge",
+        "config": {
+          "location": "bridge",
+          "beat": null
+        }
+      },
+      {
+        "label": "Gorge",
+        "config": {
+          "location": "gorge",
+          "beat": null
+        }
+      },
+      {
+        "label": "A listed beat",
+        "config": {
+          "beat": "momiji-arrival",
+          "paused": true
+        }
+      }
+    ]
+  },
+  {
+    "title": "Visit the areas agents owned",
+    "hint": "Each agent owned one area of the game in its own worktree: characters, water, storms and the drama. These buttons open one area at a time.",
+    "options": [
+      {
+        "label": "Characters",
+        "config": {
+          "beat": null,
+          "focus": "cast",
+          "location": "station",
+          "camera": "scenic",
+          "isolation": "all",
+          "surface": "materials",
+          "pose": "clip",
+          "skeleton": false,
+          "motionLayers": true,
+          "subject": "meera",
+          "clip": "idle",
+          "weather": "clear"
+        }
+      },
+      {
+        "label": "Water",
+        "config": {
+          "beat": null,
+          "focus": "water",
+          "location": "gorge",
+          "camera": "scenic",
+          "weather": "clear"
+        }
+      },
+      {
+        "label": "Storm",
+        "config": {
+          "beat": null,
+          "focus": "route",
+          "location": "bridge",
+          "camera": "follow",
+          "weather": "storm"
+        }
+      },
+      {
+        "label": "Drama",
+        "config": {
+          "beat": "momiji-exchange",
+          "paused": true,
+          "weather": "clear"
+        }
+      }
+    ]
+  },
+  {
+    "title": "Change one thing at a time",
+    "hint": "Keep the camera still and change one setting, as in a before/after capture. Compare each view with the one before it.",
+    "initial": {
+      "focus": "train"
+    },
+    "options": [
+      {
+        "label": "Daylight",
+        "config": {
+          "timeOfDay": "daylight",
+          "weather": "clear"
+        }
+      },
+      {
+        "label": "Dusk",
+        "config": {
+          "timeOfDay": "dusk",
+          "weather": "clear"
+        }
+      },
+      {
+        "label": "Rain",
+        "config": {
+          "timeOfDay": "daylight",
+          "weather": "rain"
+        }
+      }
+    ]
+  },
+  {
+    "title": "Look at a built and rigged character",
+    "hint": "Meera and Ammamma were built from painted views. Show the rig to see the skeleton that moves the body, or the rest pose it was weighted in. Drag round them to compare front and side.",
+    "options": [
+      {
+        "label": "Meera in the game",
+        "config": {
+          "beat": null,
+          "focus": "cast",
+          "location": "station",
+          "camera": "scenic",
+          "isolation": "all",
+          "surface": "materials",
+          "pose": "clip",
+          "skeleton": false,
+          "motionLayers": true,
+          "subject": "meera",
+          "clip": "idle"
+        }
+      },
+      {
+        "label": "Her rig",
+        "config": {
+          "skeleton": true,
+          "surface": "clay"
+        }
+      },
+      {
+        "label": "Rest pose",
+        "config": {
+          "pose": "rest",
+          "skeleton": true,
+          "surface": "clay"
+        }
+      },
+      {
+        "label": "Ammamma",
+        "config": {
+          "subject": "ammamma",
+          "pose": "clip",
+          "skeleton": false,
+          "surface": "materials"
+        }
+      }
+    ]
+  },
+  {
+    "title": "Use a small character studio",
+    "hint": "One character, a clip list, a layer switch and a skeleton, like the studio's first panels. The full studio, with jitter and foot-slide numbers, is character-studio.html on the dev server.",
+    "options": [
+      {
+        "label": "Idle",
+        "config": {
+          "beat": null,
+          "focus": "cast",
+          "location": "station",
+          "camera": "scenic",
+          "isolation": "all",
+          "surface": "materials",
+          "pose": "clip",
+          "skeleton": false,
+          "motionLayers": true,
+          "subject": "meera",
+          "clip": "idle"
+        }
+      },
+      {
+        "label": "Check phone",
+        "config": {
+          "clip": "check-phone"
+        }
+      },
+      {
+        "label": "Wave",
+        "config": {
+          "clip": "wave"
+        }
+      },
+      {
+        "label": "Layers off",
+        "config": {
+          "motionLayers": false
+        }
+      },
+      {
+        "label": "Skeleton",
+        "config": {
+          "skeleton": true,
+          "surface": "clay"
+        }
+      }
+    ]
+  },
+  {
+    "title": "Check the seats",
+    "hint": "Meera and Arjun sit in the front car; their hips rest just above the cushion. Mr. Ishida sits on his bench on his own: drag to a low side view to check the thighs and shins.",
+    "options": [
+      {
+        "label": "Meera on the phone",
+        "config": {
+          "beat": "train-call",
+          "paused": true
+        }
+      },
+      {
+        "label": "Meera and Arjun talk",
+        "config": {
+          "beat": "train-seated",
+          "paused": true
+        }
+      },
+      {
+        "label": "Mr. Ishida's bench, side on",
+        "config": {
+          "beat": null,
+          "focus": "cast",
+          "location": "station",
+          "camera": "scenic",
+          "isolation": "all",
+          "surface": "materials",
+          "pose": "clip",
+          "skeleton": false,
+          "motionLayers": true,
+          "subject": "ishida",
+          "clip": "sit"
+        }
+      }
+    ]
+  },
+  {
+    "title": "Watch mouths move on spoken lines",
+    "hint": "These beats play on so the mouths move. The embed has no audio, so mouths follow the fallback syllable rhythm, not the voice; the audio-driven version is in rendered videos.",
+    "options": [
+      {
+        "label": "Meera speaks",
+        "config": {
+          "beat": "momiji-two-minutes",
+          "paused": false
+        }
+      },
+      {
+        "label": "Mr. Ishida speaks",
+        "config": {
+          "beat": "momiji-ishida",
+          "paused": false
+        }
+      },
+      {
+        "label": "Arjun and Meera talk",
+        "config": {
+          "beat": "train-seated",
+          "paused": false
+        }
+      }
+    ]
+  },
+  {
+    "title": "See faces at night",
+    "hint": "Aonuma at blue hour in the rain. Faces take a soft key from the nearest lamp and keep their own skin colour, while the scene around them stays dark.",
+    "options": [
+      {
+        "label": "Divya at the bus door",
+        "config": {
+          "beat": "aonuma-bus",
+          "paused": true
+        }
+      },
+      {
+        "label": "Ammamma under the lamp",
+        "config": {
+          "beat": "aonuma-ammamma",
+          "paused": true
+        }
+      },
+      {
+        "label": "The platform in the rain",
+        "config": {
+          "beat": "aonuma-arrival",
+          "paused": true
+        }
+      }
+    ]
+  },
+  {
+    "title": "Watch a scene, not a one-liner",
+    "hint": "Each line answers the one before it: Arjun asks, Meera answers, Mr. Ishida gives advice, and later Meera and Arjun work out a plan. The captions carry the whole exchange.",
+    "options": [
+      {
+        "label": "Arjun and Meera",
+        "config": {
+          "beat": "momiji-exchange",
+          "paused": true
+        }
+      },
+      {
+        "label": "Mr. Ishida's advice",
+        "config": {
+          "beat": "momiji-ishida",
+          "paused": true
+        }
+      },
+      {
+        "label": "Who was that?",
+        "config": {
+          "beat": "train-seated",
+          "paused": true
+        }
+      }
+    ]
+  },
+  {
+    "title": "Switch the caption language",
+    "hint": "A dub can keep captions in one language while the voice speaks another. The embed has no voice, so this shows the caption side: the same line in English, Hindi and Telugu.",
+    "options": [
+      {
+        "label": "English captions",
+        "config": {
+          "beat": "train-call",
+          "paused": true,
+          "captions": "en"
+        }
+      },
+      {
+        "label": "Hindi captions",
+        "config": {
+          "captions": "hi-IN"
+        }
+      },
+      {
+        "label": "Telugu captions",
+        "config": {
+          "captions": "te-IN"
+        }
+      }
+    ]
+  },
+  {
+    "title": "Pick shots for a trailer",
+    "hint": "A trailer shot starts and ends on a line. These four beats are the kind of shots the trailer uses: the place, the meeting, the call and the night at Aonuma.",
+    "options": [
+      {
+        "label": "Opening: Momiji",
+        "config": {
+          "beat": "momiji-arrival",
+          "paused": true
+        }
+      },
+      {
+        "label": "The meeting",
+        "config": {
+          "beat": "momiji-exchange",
+          "paused": true
+        }
+      },
+      {
+        "label": "The call",
+        "config": {
+          "beat": "train-arjun-call",
+          "paused": true
+        }
+      },
+      {
+        "label": "Night at Aonuma",
+        "config": {
+          "beat": "aonuma-ammamma",
+          "paused": true
         }
       }
     ]

@@ -42,7 +42,7 @@ The snapshot reports camera, weather, daylight, pause state, approximate speed a
 
 Messages require the parent window and the same origin as the game. Inputs are validated before configuration runs; unsupported fields and commands return errors. The bridge does not expose arbitrary code execution, scene mutation or the development inspector. It disables remote director requests and audio, and passes no storage adapter to preferences or story state. Embedded experiments do not read or replace the player's saved preferences and story progress.
 
-This API controls views, scene conditions, wireframe, shadows, lens angle, exposure, fog density and the roughness of opaque train materials. Mesh construction, story actions and arbitrary object edits remain outside its contract. The schematic examples illustrate those concepts separately. Public builds send credits and field-guide links to `lokeshinumpudi.com`; internal builds retain Signal links.
+This API controls views, scene conditions, wireframe, shadows, lens angle, exposure, fog density and the roughness of opaque train materials. It can also stage fixed drama beats and a single cast view (below). Mesh construction, story choices and arbitrary object edits remain outside its contract. The schematic examples illustrate those concepts separately. Public builds send credits and field-guide links to `lokeshinumpudi.com`; internal builds retain Signal links.
 
 Chapter presets live in `runbook/live-presets.json`. Every chapter has a relevant scene and labeled comparison controls. Architecture, audio and save chapters describe the limits of their visual reference rather than claiming to change those systems. Scenic mode supports mouse drag and wheel zoom; touch supports orbit and pinch. Cab and passenger views support looking around.
 
@@ -56,6 +56,23 @@ Chapter presets live in `runbook/live-presets.json`. Every chapter has a relevan
 | `fogDensity`    | 0–0.015, or `null` for game weather        |
 
 The snapshot also reports these overrides and camera position. A chapter switch resets previous visual overrides before applying its own preset. No measurement claims should be inferred from the embed's drawing counters; use the development performance tool for a timed sample.
+
+## Story beats and cast views
+
+The embed can also stage the drama and show one character. The lists live in `apps/game/src/embed/stage.js` (`EMBED_BEATS`, `CAST_SUBJECTS`, `CAST_CLIPS`, `CAST_POSES`); the bridge rejects anything outside them.
+
+| Setting        | Accepted values                                                                                                 |
+| -------------- | --------------------------------------------------------------------------------------------------------------- |
+| `beat`         | one of the ids in `EMBED_BEATS` (Momiji platform, the train in Episode 2, night at Aonuma), or `null` to end it |
+| `captions`     | `en`, `te-IN`, `hi-IN` (hand-written translations; the embed plays no audio)                                    |
+| `focus: cast`  | frames one cast member full-body on the Momiji platform                                                         |
+| `subject`      | `meera`, `arjun`, `ishida`, `ammamma`, `divya`                                                                  |
+| `clip`         | a clip from `CAST_CLIPS` (idle, walk, check-phone, wave, sit and others)                                        |
+| `pose`         | `clip`, `rest` (the T-pose), `reset-bug` (resets bones to rest before the clips run, the chapter 39 bug)        |
+| `skeleton`     | boolean                                                                                                         |
+| `motionLayers` | boolean                                                                                                         |
+
+A staged beat starts through the episode runner's `from` option: earlier beats' walks become instant placements, the director films the beat's shot, and the beat holds once its caption has been readable (`paused: false` plays on). Without audio, mouths use the syllable rhythm, not the voice-driven lip sync. When a beat stops, the game pushes its state to the parent page.
 
 ## Inspection settings and future building tools
 

@@ -12,6 +12,11 @@ export function mountMapleLine(container, { src, config = {}, onState = () => {}
   const receive = (event) => {
     if (event.source !== frame.contentWindow || event.origin !== url.origin) return;
     if (event.data?.channel !== 'maple-line-embed-v1') return;
+    // A change the scene made on its own, such as a staged beat that now holds.
+    if (event.data.type === 'state' && event.data.id === undefined) {
+      if (event.data.state && typeof event.data.state === 'object') onState(event.data.state);
+      return;
+    }
     const request = pending.get(event.data.id);
     if (!request) return;
     pending.delete(event.data.id);

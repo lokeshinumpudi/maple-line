@@ -2,423 +2,1113 @@
   "assets": {
     "train": {
       "caption": "Train carriages beside the rice terraces",
-      "box": [19, 36, 80, 45]
+      "box": [
+        19,
+        36,
+        80,
+        45
+      ]
     },
     "roof": {
       "caption": "Carriage roof, vents, windows and body panels",
-      "box": [34, 40, 57, 24]
+      "box": [
+        34,
+        40,
+        57,
+        24
+      ]
     },
     "wheels": {
       "caption": "Close view of wheels, underframe and sliding doors",
-      "box": [5, 41, 80, 20]
+      "box": [
+        5,
+        41,
+        80,
+        20
+      ]
     },
     "bridge": {
       "caption": "Steel valley bridge and its cast shadow",
-      "box": [12, 27, 86, 28]
+      "box": [
+        12,
+        27,
+        86,
+        28
+      ]
     },
     "driver": {
       "caption": "Forward view through the driver's cab",
-      "box": [37, 14, 28, 50]
+      "box": [
+        37,
+        14,
+        28,
+        50
+      ]
     },
     "forest": {
       "caption": "Repeated trees across the rice-terrace hills",
-      "box": [2, 36, 95, 35]
+      "box": [
+        2,
+        36,
+        95,
+        35
+      ]
     },
     "foliage": {
       "caption": "Broadleaf crowns, trunks and conifers on the hillside",
-      "box": [32, 17, 54, 43]
+      "box": [
+        32,
+        17,
+        54,
+        43
+      ]
     },
     "station": {
       "caption": "Momiji platform and the stopped train",
-      "box": [17, 37, 82, 40]
+      "box": [
+        17,
+        37,
+        82,
+        40
+      ]
     },
     "sign": {
       "caption": "Momiji destination board, viewed below the platform canopy",
-      "box": [21, 37, 58, 26]
+      "box": [
+        21,
+        37,
+        58,
+        26
+      ]
     },
     "rain": {
       "caption": "Rain over the village railway",
-      "box": [3, 2, 93, 65]
+      "box": [
+        3,
+        2,
+        93,
+        65
+      ]
     },
     "dusk": {
       "caption": "Carriages and the track bend at dusk",
-      "box": [3, 25, 96, 61]
+      "box": [
+        3,
+        25,
+        96,
+        61
+      ]
     },
     "water": {
       "caption": "River surface, shallow bank and reflected detail",
-      "box": [49, 13, 49, 85]
+      "box": [
+        49,
+        13,
+        49,
+        85
+      ]
     },
     "cast": {
       "caption": "Haru and Emi with the recorder and notebook",
-      "box": [38, 32, 25, 45]
+      "box": [
+        38,
+        32,
+        25,
+        45
+      ]
     },
     "clips": {
       "caption": "Retargeted Quaternius clips on the VRM cast",
-      "box": [0, 0, 100, 100],
+      "box": [
+        0,
+        0,
+        100,
+        100
+      ],
       "note": "1920 × 1080 contact sheet from the 23 September 2026 session"
     },
     "pose-fix": {
       "caption": "Mr. Sato standing and Riko sitting, before and after the pose fix",
-      "box": [0, 0, 100, 100],
+      "box": [
+        0,
+        0,
+        100,
+        100
+      ],
       "note": "1920 × 810 · old build left, fixed build right · 23 September 2026 session"
     },
     "cast-models": {
       "caption": "Riko, Mr. Sato and Mr. Ishida as VRM and as Blender-built figures",
-      "box": [12, 26, 76, 50],
+      "box": [
+        12,
+        26,
+        76,
+        50
+      ],
       "note": "1400 × 800 character lab capture from the 23 September 2026 session"
     },
     "concept-sheet": {
       "caption": "Riko turnaround sheet: front, side and back",
-      "box": [3, 2, 94, 96],
+      "box": [
+        3,
+        2,
+        94,
+        96
+      ],
       "note": "1536 × 1024 · AI-generated concept art (openai/gpt-image-2.5-flare), not a game capture"
     },
     "key-frame": {
       "caption": "Story key frame: Riko runs for the village bus in the rain",
-      "box": [20, 10, 78, 85],
+      "box": [
+        20,
+        10,
+        78,
+        85
+      ],
       "note": "1536 × 1024 · AI-generated story key frame (openai/gpt-image-2.5-flare), not a game capture"
     },
     "dialogue-lines": {
       "caption": "Episode 1 of The 17:42, one frame per spoken line",
-      "box": [0, 4, 100, 92],
+      "box": [
+        0,
+        4,
+        100,
+        92
+      ],
       "note": "1920 × 810 contact sheet from an episode render in the 23 September 2026 session"
     },
     "blocked-shot": {
       "caption": "A dialogue portrait of Mr. Ishida before the framing fix",
-      "box": [0, 15, 100, 70],
+      "box": [
+        0,
+        15,
+        100,
+        70
+      ],
       "note": "1400 × 900 capture from the 23 September 2026 session, before the fix"
     },
     "before-after": {
       "caption": "Water, storm, foliage and dusk passes, before and after",
-      "box": [0, 0, 100, 100],
+      "box": [
+        0,
+        0,
+        100,
+        100
+      ],
       "note": "1280 × 1440 · before left, after right · 23 September 2026 session"
     },
     "episode-poster": {
       "caption": "Poster frame for The 17:42, Episode 1",
-      "box": [0, 12, 100, 76],
+      "box": [
+        0,
+        12,
+        100,
+        76
+      ],
       "note": "1920 × 1080 poster written by the render script"
+    },
+    "studio": {
+      "caption": "Character Studio · Meera’s model on the idle clip",
+      "box": [
+        0,
+        0,
+        100,
+        100
+      ],
+      "note": "1600 × 1000 capture of the local Character Studio, 25 September 2026"
+    },
+    "seated": {
+      "caption": "Seated cast in Episode 2",
+      "box": [
+        0,
+        0,
+        100,
+        100
+      ],
+      "note": "Two frames from the 9:16 English render, side by side"
+    },
+    "talking": {
+      "caption": "Spoken lines in Episode 1",
+      "box": [
+        0,
+        0,
+        100,
+        100
+      ],
+      "note": "Three frames from the 9:16 English render, side by side"
+    },
+    "night-faces": {
+      "caption": "Faces at night in Episode 3",
+      "box": [
+        0,
+        0,
+        100,
+        100
+      ],
+      "note": "Three frames from the 9:16 English render, side by side"
+    },
+    "dub": {
+      "caption": "English and Hindi renders of one line",
+      "box": [
+        0,
+        0,
+        100,
+        100
+      ],
+      "note": "English render (left) and Hindi render with English captions (right)"
+    },
+    "trailer-sheet": {
+      "caption": "The 17:42 trailer · contact sheet",
+      "box": [
+        0,
+        0,
+        100,
+        100
+      ],
+      "note": "One frame from each of the 18 trailer shots"
     }
   },
   "subjects": {
     "River surface": {
       "asset": "water",
-      "box": [58, 14, 40, 83],
+      "box": [
+        58,
+        14,
+        40,
+        83
+      ],
       "observation": "The water combines extra pictures of the scene with moving surface detail. It looks rippled without simulating every moving drop of water."
     },
     "Shallow river": {
       "asset": "water",
-      "box": [35, 51, 38, 37],
+      "box": [
+        35,
+        51,
+        38,
+        37
+      ],
       "observation": "Surface detail changes how light appears to hit the water. The shallow bank helps show where the water meets the land."
     },
     "Bank and shallows": {
       "asset": "water",
-      "box": [31, 47, 40, 37],
+      "box": [
+        31,
+        47,
+        40,
+        37
+      ],
       "observation": "The riverbank and riverbed use the same path as the water. Their edges must agree so the river does not leave holes or spill onto dry ground."
     },
     "Submerged detail": {
       "asset": "water",
-      "box": [72, 16, 21, 40],
+      "box": [
+        72,
+        16,
+        21,
+        40
+      ],
       "observation": "A separate picture of the scene supplies what appears below the surface. Depth checks help keep objects in front of the river from appearing underwater."
     },
     "Rain-lit river": {
       "asset": "water",
-      "box": [58, 14, 40, 83],
+      "box": [
+        58,
+        14,
+        40,
+        83
+      ],
       "label": "River surface response"
     },
     "Curved roof": {
       "asset": "roof",
-      "box": [35, 42, 54, 21],
+      "box": [
+        35,
+        42,
+        54,
+        21
+      ],
       "observation": "A 2D outline is extended along the carriage to make the rounded roof. It is real shape, so its outline stays curved from different camera angles."
     },
     "Roof and fittings": {
       "asset": "roof",
-      "box": [35, 39, 54, 24]
+      "box": [
+        35,
+        39,
+        54,
+        24
+      ]
     },
     "Lit carriage roof": {
       "asset": "roof",
-      "box": [35, 39, 54, 24]
+      "box": [
+        35,
+        39,
+        54,
+        24
+      ]
     },
     "Wheel area": {
       "asset": "wheels",
-      "box": [3, 41, 81, 18],
+      "box": [
+        3,
+        41,
+        81,
+        18
+      ],
       "observation": "Wheels and axles are built from cylinder shapes. During a ride, their turn angle comes from how far the train has travelled. This photo shows the parts; the experiment below explains the movement."
     },
     "Door leaves": {
       "asset": "wheels",
-      "box": [63, 1, 21, 47],
+      "box": [
+        63,
+        1,
+        21,
+        47
+      ],
       "observation": "Each sliding door moves inside its carriage group. The carriage can follow the track while the door separately opens or closes."
     },
     "Body panels": {
       "asset": "roof",
-      "box": [42, 50, 39, 32]
+      "box": [
+        42,
+        50,
+        39,
+        32
+      ]
     },
     "Painted body": {
       "asset": "roof",
-      "box": [42, 58, 39, 24],
+      "box": [
+        42,
+        58,
+        39,
+        24
+      ],
       "observation": "The same body shape can look like painted metal or another surface by changing its material settings."
     },
     "Window strip": {
       "asset": "roof",
-      "box": [43, 52, 31, 18],
+      "box": [
+        43,
+        52,
+        31,
+        18
+      ],
       "observation": "The window material lets the carriage interior show through. Reflected light and the window frame help make the glass visible."
     },
     "Window frames": {
       "asset": "roof",
-      "box": [43, 52, 31, 18],
+      "box": [
+        43,
+        52,
+        31,
+        18
+      ],
       "observation": "Frames, glass and body panels sit at different depths. That separation helps the game decide which surface should appear in front."
     },
     "Cream/red boundary": {
       "asset": "roof",
-      "box": [40, 55, 43, 26],
+      "box": [
+        40,
+        55,
+        43,
+        26
+      ],
       "observation": "These colored panels meet at their edges instead of covering exactly the same surface. That avoids flicker when the camera moves."
     },
     "First carriage": {
       "asset": "train",
-      "box": [65, 46, 34, 35]
+      "box": [
+        65,
+        46,
+        34,
+        35
+      ]
     },
     "Middle carriage": {
       "asset": "train",
-      "box": [41, 42, 26, 23]
+      "box": [
+        41,
+        42,
+        26,
+        23
+      ]
     },
     "Rear carriage": {
       "asset": "train",
-      "box": [18, 36, 13, 13]
+      "box": [
+        18,
+        36,
+        13,
+        13
+      ]
     },
     "Whole rendered view": {
       "asset": "train",
-      "box": [1, 1, 98, 98]
+      "box": [
+        1,
+        1,
+        98,
+        98
+      ]
     },
     "Pick a carriage": {
       "asset": "roof",
-      "box": [35, 41, 56, 48]
+      "box": [
+        35,
+        41,
+        56,
+        48
+      ]
     },
     "Pick a tree": {
       "asset": "foliage",
-      "box": [34, 28, 9, 20]
+      "box": [
+        34,
+        28,
+        9,
+        20
+      ]
     },
     "Station lettering": {
       "asset": "sign",
-      "box": [21, 37, 58, 26],
+      "box": [
+        21,
+        37,
+        58,
+        26
+      ],
       "observation": "The letters are drawn into an image and placed on a flat sign. The game does not need a separate 3D shape for every letter."
     },
     "Diagonal steel members": {
       "asset": "bridge",
-      "box": [13, 32, 86, 23],
+      "box": [
+        13,
+        32,
+        86,
+        23
+      ],
       "observation": "Each beam needs a length and a direction. The builder points a simple shape between two endpoints instead of placing every corner by hand."
     },
     "Train orientation": {
       "asset": "bridge",
-      "box": [19, 26, 37, 10]
+      "box": [
+        19,
+        26,
+        37,
+        10
+      ]
     },
     "Faceted hillside": {
       "asset": "bridge",
-      "box": [1, 2, 47, 22]
+      "box": [
+        1,
+        2,
+        47,
+        22
+      ]
     },
     "Deep valley": {
       "asset": "bridge",
-      "box": [5, 47, 89, 45]
+      "box": [
+        5,
+        47,
+        89,
+        45
+      ]
     },
     "Bridge shadow": {
       "asset": "bridge",
-      "box": [13, 68, 86, 30]
+      "box": [
+        13,
+        68,
+        86,
+        30
+      ]
     },
     "Distant track": {
       "asset": "driver",
-      "box": [43, 34, 11, 18],
+      "box": [
+        43,
+        34,
+        11,
+        18
+      ],
       "observation": "The rails look closer together farther away. That is perspective: the camera makes distant objects occupy fewer pixels."
     },
     "Near track": {
       "asset": "driver",
-      "box": [39, 45, 15, 18],
+      "box": [
+        39,
+        45,
+        15,
+        18
+      ],
       "observation": "Nearby sleepers occupy more of the picture. The camera view angle changes how wide and deep the track feels."
     },
     "Track bend": {
       "asset": "dusk",
-      "box": [2, 24, 27, 18]
+      "box": [
+        2,
+        24,
+        27,
+        18
+      ]
     },
     "Carriage spacing": {
       "asset": "dusk",
-      "box": [24, 32, 42, 35]
+      "box": [
+        24,
+        32,
+        42,
+        35
+      ]
     },
     "Broadleaf crowns": {
       "asset": "foliage",
-      "box": [33, 17, 22, 25],
+      "box": [
+        33,
+        17,
+        22,
+        25
+      ],
       "observation": "Many trees reuse the same source shapes. Their positions, sizes and colors vary, so the hill does not look like identical copies in a row."
     },
     "Conifers": {
       "asset": "foliage",
-      "box": [59, 33, 7, 24],
+      "box": [
+        59,
+        33,
+        7,
+        24
+      ],
       "observation": "Repeated cone-like layers make these trees. The game can draw matching shapes together to reduce repeated drawing instructions."
     },
     "Rocks": {
       "asset": "foliage",
-      "box": [44, 31, 11, 14],
+      "box": [
+        44,
+        31,
+        11,
+        14
+      ],
       "observation": "These rocks can share a source shape. Rotating and resizing the copies gives each a different appearance."
     },
     "Canopy": {
       "asset": "foliage",
-      "box": [33, 17, 22, 25],
+      "box": [
+        33,
+        17,
+        22,
+        25
+      ],
       "observation": "Code on the graphics processor moves the leaf points to suggest wind. The upper branches move more than the base. A still image shows the affected shape; the experiment explains the motion."
     },
     "Trunk bases": {
       "asset": "foliage",
-      "box": [37, 35, 4, 12],
+      "box": [
+        37,
+        35,
+        4,
+        12
+      ],
       "observation": "The bottom of each tree stays steadier than its crown. Otherwise the whole tree would slide or bend away from the ground."
     },
     "Foreground trees": {
       "asset": "foliage",
-      "box": [62, 57, 37, 42],
+      "box": [
+        62,
+        57,
+        37,
+        42
+      ],
       "observation": "Nearby trees remain visible. Skipping distant objects saves drawing work, but their data may still be stored in memory."
     },
     "Falling rain": {
       "asset": "rain",
-      "box": [4, 1, 68, 30],
+      "box": [
+        4,
+        1,
+        68,
+        30
+      ],
       "observation": "Thin moving lines make the rain streaks. The buildings stay in place while the game updates the positions of those lines."
     },
     "Distant skyline": {
       "asset": "rain",
-      "box": [1, 1, 24, 23],
+      "box": [
+        1,
+        1,
+        24,
+        23
+      ],
       "observation": "Fog reduces contrast in the distance. It makes faraway scenery fade toward the sky color."
     },
     "Terrain and vegetation": {
       "asset": "forest",
-      "box": [3, 35, 94, 37]
+      "box": [
+        3,
+        35,
+        94,
+        37
+      ]
     },
     "Sky and distant hills": {
       "asset": "dusk",
-      "box": [1, 1, 38, 29]
+      "box": [
+        1,
+        1,
+        38,
+        29
+      ]
     },
     "Dark foreground": {
       "asset": "dusk",
-      "box": [2, 59, 80, 39]
+      "box": [
+        2,
+        59,
+        80,
+        39
+      ]
     },
     "Stopped train": {
       "asset": "station",
-      "box": [17, 37, 42, 21]
+      "box": [
+        17,
+        37,
+        42,
+        21
+      ]
     },
     "Platform and doors": {
       "asset": "station",
-      "box": [44, 43, 54, 37]
+      "box": [
+        44,
+        43,
+        54,
+        37
+      ]
     },
     "Departure feedback": {
       "asset": "sign",
-      "box": [21, 37, 58, 26],
+      "box": [
+        21,
+        37,
+        58,
+        26
+      ],
       "label": "Station destination sign",
       "observation": "The destination board helps the player identify the stop. Whether departure is allowed comes from the driving and station rules; this still image does not show a live clearance."
     },
     "Retargeted clip sheet": {
       "asset": "clips",
-      "box": [0, 0, 100, 100],
+      "box": [
+        0,
+        0,
+        100,
+        100
+      ],
       "observation": "Twelve frames from the retargeted Quaternius clips: Riko holding her radio, walking and sitting, Mr. Sato walking and sitting, Mr. Ishida walking. The VRM bodies did not change; only the clips and the pose reset did."
     },
     "Old and new idle": {
       "asset": "pose-fix",
-      "box": [0, 0, 100, 50],
+      "box": [
+        0,
+        0,
+        100,
+        50
+      ],
       "observation": "Mr. Sato standing, before (left) and after (right). The old home-made idle held him stiff with his arms at his sides; the Quaternius idle puts his weight on one leg and lets his arms hang loose."
     },
     "T-pose after a cross-fade": {
       "asset": "pose-fix",
-      "box": [0, 50, 50, 50],
+      "box": [
+        0,
+        50,
+        50,
+        50
+      ],
       "observation": "Before the fix: Riko should be sitting, but her arms stay at the VRM rest pose, straight out. The clip held those bones still, three.js never rewrote them, and the rig had reset them to rest."
     },
     "Seated after the fix": {
       "asset": "pose-fix",
-      "box": [50, 50, 50, 50],
+      "box": [
+        50,
+        50,
+        50,
+        50
+      ],
       "observation": "After the fix, the same moment: the rig restores the clip’s own last pose before adding layers, so Riko sits with her hands on the radio."
     },
     "Radio cradle": {
       "asset": "clips",
-      "box": [0, 0, 33.3, 25],
+      "box": [
+        0,
+        0,
+        33.3,
+        25
+      ],
       "observation": "Standing still, Riko brings the radio up in front of her with both hands; it hangs from her left hand’s socket by its handle and the grip layer closes her fingers. Walking, the walk-carry clip already places her hands, so no arm IK runs."
     },
     "Planted stance foot": {
       "asset": "clips",
-      "box": [0, 50, 33.3, 25],
+      "box": [
+        0,
+        50,
+        33.3,
+        25
+      ],
       "observation": "Mr. Sato mid-stride. Only the stance foot is pinned; it plants over 0.12 s and lets go over 0.2 s, so the layer adds no shake to the leg the clip is swinging."
     },
     "VRM and Blender-built figures": {
       "asset": "cast-models",
-      "box": [12, 26, 76, 50],
+      "box": [
+        12,
+        26,
+        76,
+        50
+      ],
       "observation": "Each cast member twice: the VRM model first, then the earlier Blender-built figure. The VRM bodies were modelled with loops at the joints and face; the Blender figures were assembled from primitives and skin-modifier tubes."
     },
     "Tube limbs": {
       "asset": "cast-models",
-      "box": [25, 29, 11, 45],
+      "box": [
+        25,
+        29,
+        11,
+        45
+      ],
       "observation": "The Blender-built Riko. Arms and legs are smooth tubes with no edge loops at the elbow or knee, so a bend pinches like a pipe, and the face has no shape keys for expressions."
     },
     "Riko turnaround sheet": {
       "asset": "concept-sheet",
-      "box": [3, 2, 94, 96],
+      "box": [
+        3,
+        2,
+        94,
+        96
+      ],
       "observation": "AI-generated concept art: Riko from the front, side and back in an A-pose, at one scale on a plain background. Check that the views agree (the hair clip, the bag strap, the skirt length) before using it as a modelling reference."
     },
     "Story key frame": {
       "asset": "key-frame",
-      "box": [20, 10, 78, 85],
+      "box": [
+        20,
+        10,
+        78,
+        85
+      ],
       "observation": "An AI-generated key frame from the session: Riko runs for a waiting bus in the rain while the driver waves. One picture shows who, where, what she wants and the time pressure, without words."
     },
     "Eleven spoken lines": {
       "asset": "dialogue-lines",
-      "box": [0, 4, 100, 92],
+      "box": [
+        0,
+        4,
+        100,
+        92
+      ],
       "observation": "One frame per spoken line of Episode 1 after the framing fix, rendered at 16:9. The speaker’s face is visible in all 11 lines, including Mr. Ishida on his moved bench."
     },
     "Shot blocked by the station": {
       "asset": "blocked-shot",
-      "box": [0, 15, 100, 70],
+      "box": [
+        0,
+        15,
+        100,
+        70
+      ],
       "observation": "Before the fix: a portrait meant for Mr. Ishida shows the back of his head and the station wall. His bench stood 0.6 m inside the building, so no nearby camera could see his face."
     },
     "Arithmetic as conflict": {
       "asset": "dialogue-lines",
-      "box": [0, 4, 25, 25],
+      "box": [
+        0,
+        4,
+        25,
+        25
+      ],
       "observation": "The first line of the first script: “Seventeen forty-two in. Seventeen forty out.” The problem lives in the numbers. With the sound off, nothing in the picture shows a bus, a clock or what is at stake."
     },
     "A frame that tells the story": {
       "asset": "key-frame",
-      "box": [20, 10, 78, 85],
+      "box": [
+        20,
+        10,
+        78,
+        85
+      ],
       "observation": "An AI-generated key frame: rain, a waiting bus, a girl running with something she must deliver. Muted, the picture already states the want and the pressure."
     },
     "Poster frame": {
       "asset": "episode-poster",
-      "box": [0, 12, 100, 76],
+      "box": [
+        0,
+        12,
+        100,
+        76
+      ],
       "observation": "The poster the render script writes: a frame with the dialogue hidden and the series and episode title set over it, taken 2.5 s into the first portrait beat."
     },
     "Captions in the frame": {
       "asset": "dialogue-lines",
-      "box": [0, 4, 50, 25],
+      "box": [
+        0,
+        4,
+        50,
+        25
+      ],
       "observation": "Captions are part of each page screenshot, drawn with the game’s own fonts and styles. Their fades are set from the render clock, so each frame shows exactly the caption state for its time."
     },
     "Subtitled lines": {
       "asset": "dialogue-lines",
-      "box": [0, 4, 100, 92],
+      "box": [
+        0,
+        4,
+        100,
+        92
+      ],
       "observation": "Rendered lines with subtitles and speaker names. In a voiced render the subtitle uses the chosen language, and each beat holds until its clip has finished."
     },
     "A place a link can open": {
       "asset": "station",
-      "box": [17, 37, 82, 40],
+      "box": [
+        17,
+        37,
+        82,
+        40
+      ],
       "observation": "A place link such as ?scene=station/sunset/rain opens here. Every part after the place is checked against fixed lists of offsets, times, weather and cameras before the game acts on it; anything else shows a short notice."
     },
     "Evidence an agent returns": {
       "asset": "clips",
-      "box": [0, 0, 100, 100],
+      "box": [
+        0,
+        0,
+        100,
+        100
+      ],
       "observation": "A contact sheet one agent returned with its jitter and foot-slide numbers. The reviewer checks twelve moments at a glance before merging, instead of replaying every clip."
     },
     "Before/after pair": {
       "asset": "before-after",
-      "box": [0, 0, 100, 25],
+      "box": [
+        0,
+        0,
+        100,
+        25
+      ],
       "observation": "A before/after pair another agent returned from the water pass: same camera, same size, old build left and new build right."
     },
     "River before and after": {
       "asset": "before-after",
-      "box": [0, 0, 100, 25],
+      "box": [
+        0,
+        0,
+        100,
+        25
+      ],
       "observation": "Before (left) and after (right) the water pass, from one camera. The bank, trees and sky stay put, so the change in the water’s colour and reflection is easy to see."
     },
     "Storm before and after": {
       "asset": "before-after",
-      "box": [0, 25, 100, 25],
+      "box": [
+        0,
+        25,
+        100,
+        25
+      ],
       "observation": "The station in the evening, before (left) and after (right) the storm pass: darker clouds, lamp glow and rain streaks, from the same camera."
     },
     "Forest before and after": {
       "asset": "before-after",
-      "box": [0, 50, 100, 25],
+      "box": [
+        0,
+        50,
+        100,
+        25
+      ],
       "observation": "The terraces from above, before (left) and after (right) the foliage pass. With the camera fixed, the change in the tree crowns and haze can be compared directly."
+    },
+    "Painted views behind the model": {
+      "asset": "studio",
+      "box": [
+        16,
+        48,
+        64,
+        40
+      ],
+      "observation": "Front and side views with the concept overlay on. The painted Meera sits behind the built one, so a wide sleeve or a short leg shows as a visible offset."
+    },
+    "Humanoid bone list": {
+      "asset": "studio",
+      "box": [
+        80,
+        8,
+        20,
+        26
+      ],
+      "observation": "The joint list with VRM humanoid names beside the file’s own bone names. A clip plays on any character whose bones map to these names."
+    },
+    "Motion layer switches": {
+      "asset": "studio",
+      "box": [
+        80,
+        50,
+        20,
+        30
+      ],
+      "observation": "One switch per motion layer, with the live values below. Turning a layer off shows what it adds, or which one fights the clip."
+    },
+    "Clip timeline": {
+      "asset": "studio",
+      "box": [
+        16,
+        89,
+        64,
+        11
+      ],
+      "observation": "The idle clip is 75 frames at 30 fps. Diamonds mark keys on the head bone; set in and set out trim a range for export."
+    },
+    "Clip library": {
+      "asset": "studio",
+      "box": [
+        0,
+        51,
+        16,
+        49
+      ],
+      "observation": "Eighteen clips from one .vrma file: idle, chat, walks, hurry, sit, sit-enter, sit-exit, check-phone and more. Every character plays the same set."
+    },
+    "Meera on the bench": {
+      "asset": "seated",
+      "box": [
+        0,
+        0,
+        50,
+        100
+      ],
+      "observation": "Hips at 0.62 m: the skirt lies on the cushion and both shins stand clear of the bench front."
+    },
+    "Arjun on the far bench": {
+      "asset": "seated",
+      "box": [
+        50,
+        0,
+        50,
+        100
+      ],
+      "observation": "The seat across the aisle, with no crowd rider in it. The reservation hides riders within 1.2 m while the scene renews it."
+    },
+    "Mouth open on a loud syllable": {
+      "asset": "talking",
+      "box": [
+        0,
+        0,
+        34,
+        100
+      ],
+      "observation": "Meera on “Two minutes”: the mouth is open on the stressed syllable. In the gap before “I’m going to miss it” it shuts."
+    },
+    "A darker mouth on brown skin": {
+      "asset": "talking",
+      "box": [
+        66,
+        0,
+        34,
+        100
+      ],
+      "observation": "Every cast mouth was retinted to a dark red-brown (#3a0e10) so it reads against brown skin at phone size."
+    },
+    "Divya at the bus door": {
+      "asset": "night-faces",
+      "box": [
+        0,
+        0,
+        34,
+        100
+      ],
+      "observation": "The bus door light reads on her shirt and face. The bright spot on her cap is a known problem still open."
+    },
+    "Ammamma under the shelter": {
+      "asset": "night-faces",
+      "box": [
+        33,
+        0,
+        34,
+        100
+      ],
+      "observation": "A soft warm key from the shelter lamp and a cool rim from the rain. The first pass lit this face like a torch."
+    },
+    "Ammamma in close-up": {
+      "asset": "night-faces",
+      "box": [
+        66,
+        0,
+        34,
+        100
+      ],
+      "observation": "Face brightness in the Aonuma close-ups went from 42–72 to 83–112 of 255, with the skin still brown."
+    },
+    "A line and its reply": {
+      "asset": "talking",
+      "box": [
+        0,
+        0,
+        67,
+        100
+      ],
+      "observation": "Meera’s worry, then what she is carrying and why. Each caption answers the line before it."
+    },
+    "A stranger gives advice": {
+      "asset": "talking",
+      "box": [
+        66,
+        0,
+        34,
+        100
+      ],
+      "observation": "Mr. Ishida: “Sit in the front car. When the doors open, run.” Advice from a character does the job a narrator line used to do."
+    },
+    "English voice": {
+      "asset": "dub",
+      "box": [
+        0,
+        0,
+        50,
+        100
+      ],
+      "observation": "The English render at 29 s: Meera’s line started at 27.7 s."
+    },
+    "Hindi voice, English words": {
+      "asset": "dub",
+      "box": [
+        50,
+        0,
+        50,
+        100
+      ],
+      "observation": "The Hindi render at 32.2 s: the same line started at 31.2 s. The captions stay in English."
+    },
+    "The setup, by day": {
+      "asset": "trailer-sheet",
+      "box": [
+        0,
+        0,
+        100,
+        50
+      ],
+      "observation": "Place, timetable, the two-minute problem, Arjun, Mr. Ishida and Ammamma on the phone. Every shot starts and ends on a line."
+    },
+    "Night at Aonuma": {
+      "asset": "trailer-sheet",
+      "box": [
+        0,
+        50,
+        100,
+        50
+      ],
+      "observation": "The farm crossing, the call, Meera running, the bus still there, Ammamma and the last line."
     }
   }
 }

@@ -1816,7 +1816,7 @@ body:not(.playing) #places-picker #create-world {
   text-underline-offset: 3px;
 }
 
-/* Runbook embeds expose their controls in the parent page. */
-body.embedded-game > :not(canvas):not(script):not(style) {
+/* Runbook embeds expose their controls in the parent page; a staged beat keeps its captions. */
+body.embedded-game > :not(canvas):not(script):not(style):not(.film-captions) {
   display: none !important;
 }

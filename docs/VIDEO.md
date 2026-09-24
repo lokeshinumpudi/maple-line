@@ -37,7 +37,7 @@ The game's own dev port (4173) is not used, so a render can run while `pnpm dev`
 
 1. The page is opened with `?render=1&fps=30&aspect=9:16`. In render mode the game does not start its animation-frame loop. It disables the AI director and minds requests and sound, fixes the pixel ratio at one output pixel per CSS pixel (the adaptive resolution drop is off), uses the full film finish, and replaces `Math.random` with a seeded generator so repeated renders match.
 2. `window.__mapleRender.step()` advances a render clock by exactly 1/fps seconds and runs one game frame with it. Train motion, people, weather, the director camera, the episode runner and caption timers all run from that frame time. Caption fades are set from the render clock each frame instead of CSS transitions, which would run on the wall clock and finish between two captured frames.
-3. After each step the script captures the page with the Chrome DevTools screenshot command and pipes the JPEG to ffmpeg. A second ffmpeg pass mixes the audio clips (or silence) and copies the video stream.
+3. After each step the script captures the page with the Chrome DevTools screenshot command and pipes the PNG frame to ffmpeg (the poster is still a JPEG). Film grain is off in render mode. A second ffmpeg pass mixes the audio clips (or silence) and copies the video stream.
 
 Captions are captured as page composites, not drawn into the WebGL canvas. The screenshot contains exactly what a viewer of the game sees, using the same caption styles and fonts, and no second caption renderer has to be kept in step with the game. The cost is a screenshot per frame; on an Apple M4 Pro with Metal the whole loop runs at about 15–18 frames per second, so an 88-second episode took 114 s (16:9) and 156 s (9:16).
 
@@ -139,6 +139,6 @@ When a voiced line plays, the speaking hero's VRM visemes follow the curve inste
 
 - The capture needs a working WebGL context. On macOS headless Chromium uses the GPU through ANGLE Metal; `--gl swiftshader` works without a GPU but is many times slower.
 - The game's own sound (train, ambience, crossing bells) is not recorded. Only the clips from `--audio` are in the video.
-- Frames are captured as JPEG at quality 92 before H.264 encoding. That loss is well below what messaging apps apply when they recompress a video.
+- Frames are captured as PNG, then encoded at CRF 18 capped at 12 Mbit/s (`--crf` changes it). JPEG frames at quality 92, the grain shader and a 6 Mbit/s cap together made skin look grainy in the first trailer.
 - Shots are planned by the director camera, as in the game. Portraits avoid walls, posts, the train and people in front of the face (see [framing people](DIRECTOR.md#framing-people)); other shot types check scenery only. `window.__mapleRender.framing()` returns the current shot's framing, sightline score and the cast's head positions, for checking a render.
 - Render mode and `window.__mapleRender` are available in any build opened with `?render=1`. They are for local capture only and change nothing in normal play.

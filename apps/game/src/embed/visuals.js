@@ -14,20 +14,30 @@ export function createEmbedVisuals({
   wind,
   surfaceDetail,
   forestSource,
+  // Optional embed cast (stage.js createEmbedCast) for `focus: 'cast'`.
+  cast = null,
 }) {
   const wire = new THREE.MeshBasicMaterial({ color: '#24483e', wireframe: true });
   const clay = new THREE.MeshStandardMaterial({ color: '#858b90', roughness: 0.9, metalness: 0 });
   const normals = new THREE.MeshNormalMaterial();
+  // Opaque train materials and their own roughness. Collected again on each change, because
+  // the Blender train model replaces the procedural body after it loads.
   const surfaces = new Map();
-  const trainObjects = new Set();
-  for (const carriage of train)
-    carriage.traverse((object) => {
-      trainObjects.add(object);
-      const materials = Array.isArray(object.material) ? object.material : [object.material];
-      for (const material of materials)
-        if (material?.isMeshStandardMaterial && !material.transparent)
-          surfaces.set(material, material.roughness);
-    });
+  function collectSurfaces() {
+    for (const carriage of train)
+      carriage.traverse((object) => {
+        const materials = Array.isArray(object.material) ? object.material : [object.material];
+        for (const material of materials)
+          if (material?.isMeshStandardMaterial && !material.transparent && !surfaces.has(material))
+            surfaces.set(material, material.roughness);
+      });
+  }
+  collectSurfaces();
+  const inTrain = (object) => {
+    for (let parent = object; parent; parent = parent.parent)
+      if (train.includes(parent)) return true;
+    return false;
+  };
   const hidden = new Map();
 
   const settings = {
@@ -48,6 +58,11 @@ export function createEmbedVisuals({
     waterDepth: 1,
     waterFoam: 1,
     waterSpeed: 1,
+    subject: 'meera',
+    clip: 'idle',
+    skeleton: false,
+    motionLayers: true,
+    pose: 'clip',
   };
   const waterUniforms = riverWater.material.uniforms;
   for (const name of ['Reflection', 'Ripples', 'Depth', 'Foam'])
@@ -84,16 +99,17 @@ export function createEmbedVisuals({
   function isSubject(object) {
     const materials = Array.isArray(object.material) ? object.material : [object.material];
     const name = `${object.name} ${materials.map((m) => m?.name || '').join(' ')}`.toLowerCase();
-    if (settings.focus === 'train') return trainObjects.has(object);
+    if (settings.focus === 'train') return inTrain(object);
+    if (settings.focus === 'cast') return Boolean(cast?.contains(object));
     if (settings.focus === 'water')
       return object === riverWater.mesh || /river|terrain-valley/.test(name);
     if (settings.focus === 'terrain') return /terrain/.test(name);
     if (settings.focus === 'bridge')
-      return trainObjects.has(object) || /bridge|terrain|ballast|rail hardware/.test(name);
+      return inTrain(object) || /bridge|terrain|ballast|rail hardware/.test(name);
     if (settings.focus === 'forest') return /tree|foliage|trunk|leaf|terrain/.test(name);
     if (settings.focus === 'station') {
       for (let parent = object; parent; parent = parent.parent) if (parent === station) return true;
-      return trainObjects.has(object);
+      return inTrain(object);
     }
     return true;
   }
@@ -109,6 +125,15 @@ export function createEmbedVisuals({
         settings.surface = config.wireframe ? 'wireframe' : 'materials';
       settings.wireframe = settings.surface === 'wireframe';
       renderer.shadowMap.enabled = settings.shadows;
+      cast?.configure({
+        active: settings.focus === 'cast',
+        subject: settings.subject,
+        clip: settings.clip,
+        skeleton: settings.skeleton,
+        motionLayers: settings.motionLayers,
+        pose: settings.pose,
+      });
+      collectSurfaces();
       for (const [material, roughness] of surfaces)
         material.roughness = settings.roughness ?? roughness;
     },
@@ -117,6 +142,7 @@ export function createEmbedVisuals({
     focusPose() {
       const focus = settings.focus;
       if (focus === 'route') return null;
+      if (focus === 'cast') return cast?.focusPose() ?? null;
       let target,
         offset,
         minDistance = 3,
@@ -155,7 +181,10 @@ export function createEmbedVisuals({
       };
     },
     apply(dt = 0) {
-      scene.overrideMaterial = { clay, wireframe: wire, normals }[settings.surface] ?? null;
+      const surface = { clay, wireframe: wire, normals }[settings.surface] ?? null;
+      // A cast subject takes the surface on its own meshes (see stage.js setSurface).
+      scene.overrideMaterial = settings.focus === 'cast' ? null : surface;
+      cast?.setSurface(settings.focus === 'cast' ? surface : null);
       if (settings.fov !== null && camera.fov !== settings.fov) {
         camera.fov = settings.fov;
         camera.updateProjectionMatrix();
@@ -170,10 +199,22 @@ export function createEmbedVisuals({
         waterTime += Math.min(dt, 0.05) * (settings.waterSpeed ?? 1);
         waterUniforms.time.value = waterTime;
       }
-      if (settings.isolation !== 'all')
+      // A lit override on a line (no normals) draws NaN, which the film pass spreads over
+      // the whole frame, so clay and direction views hide lines.
+      const litOverride = scene.overrideMaterial === clay || scene.overrideMaterial === normals;
+      if (settings.isolation !== 'all' || litOverride)
         scene.traverse((object) => {
-          if (!object.isMesh && !object.isPoints && !object.isSprite) return;
-          if (!isSubject(object)) {
+          // An LOD shows one of its levels itself every frame, so hide the LOD instead.
+          const drawn = object.isMesh || object.isPoints || object.isSprite || object.isLine;
+          if (!drawn && !object.isLOD) return;
+          if (object.parent?.isLOD) return;
+          const subject =
+            (!object.isLine || !litOverride) &&
+            (settings.isolation === 'all' ||
+              (object.isLOD
+                ? isSubject(object) || object.levels.some((level) => isSubject(level.object))
+                : isSubject(object)));
+          if (!subject) {
             if (!hidden.has(object)) hidden.set(object, object.visible);
             object.visible = false;
           }
@@ -182,6 +223,7 @@ export function createEmbedVisuals({
     snapshot: () => ({
       ...settings,
       hiddenObjects: hidden.size,
+      cast: cast?.snapshot() ?? null,
       applied: {
         surfaceDetailStrength: surfaceDetail.strength.value,
         windStrength: wind.getState().strength,
@@ -193,6 +235,7 @@ export function createEmbedVisuals({
     }),
     dispose() {
       restoreVisibility();
+      cast?.dispose();
       wire.dispose();
       clay.dispose();
       normals.dispose();

@@ -2,7 +2,14 @@ import { SUN_PHASES } from './rendering/sun-phases.js';
 import { createTrackSnow } from './world/track-snow.js';
 import { TERRAIN_LATERAL_SAMPLES, naturalValleyTerrain } from './world/terrain-surface.js';
 import { createEmbedVisuals } from './embed/visuals.js';
-import { installEmbedBridge } from './embed/bridge.js';
+import {
+  EMBED_BEATS,
+  createBeatHold,
+  createCaptionVoice,
+  createEmbedCast,
+  createHeldClock,
+} from './embed/stage.js';
+import { installEmbedBridge, postEmbedState } from './embed/bridge.js';
 import {
   createStableSunShadow,
   SUN_SHADOW_FRUSTUM,
@@ -157,6 +164,9 @@ const $ = (id) => document.getElementById(id);
 const renderMode = readRenderOptions(location.search);
 const renderClock = renderMode ? createRenderClock({ fps: renderMode.fps }) : null;
 if (renderMode) Math.random = seededRandom(1742);
+// The embed holds a staged beat by pausing, so its captions run on simulation time too.
+const embedCaptionClock =
+  import.meta.env.MODE.endsWith('-embed') && !renderMode ? createHeldClock() : null;
 const scene = new THREE.Scene();
 scene.name = 'Maple Line world';
 scene.background = new THREE.Color('#abc9cd');
@@ -257,7 +267,10 @@ const filmPipeline = createFilmPipeline({
 });
 const filmQuality = (preference) =>
   renderMode ? 'full' : preference === 'auto' ? (mobilePlay ? 'off' : 'full') : preference;
-const filmCaptions = mountFilmCaptions(document.body, renderClock ? { clock: renderClock } : {});
+const filmCaptions = mountFilmCaptions(
+  document.body,
+  renderClock || embedCaptionClock ? { clock: renderClock ?? embedCaptionClock } : {},
+);
 const renderOverlay = renderMode ? mountRenderOverlay({ clock: renderClock }) : null;
 const renderTimeline = renderMode ? createRenderTimeline() : null;
 let renderEventTime = 0;
@@ -876,6 +889,10 @@ const embedded = import.meta.env.MODE.endsWith('-embed');
 let embedSuspended = false;
 let embedVisuals;
 let embedLocation = null;
+/** Embed staging (embed/stage.js): a lone cast member, runner events, per-frame work. */
+let embedCast = null;
+let embedEpisodeEvent = null;
+let embedFrame = null;
 const gameStore = createGameStore(startT * trackLength);
 const preferenceStorage = attachPreferenceStorage({
   gameStore,
@@ -1041,7 +1058,8 @@ const dramaStage = createDramaStage({
 const heroWorld = {
   setStandIn: (id, enabled) => worldDetails.setStandIn?.(id, enabled),
   figureOf: (id) =>
-    dramaStage.has(id) ? dramaStage.figureOf(id) : (worldDetails.figureOf?.(id) ?? null),
+    embedCast?.figureOf(id) ??
+    (dramaStage.has(id) ? dramaStage.figureOf(id) : (worldDetails.figureOf?.(id) ?? null)),
 };
 // A staged person's acting note comes from the stage; everyone else's from their mind.
 const heroMinds = {
@@ -1767,7 +1785,10 @@ const episodeAudio = document.createElement('audio');
 episodeAudio.hidden = true;
 episodeAudio.dataset.source = 'sarvam-drama';
 document.body.append(episodeAudio);
-/** Set by render mode: holds each line for its pre-generated clip. */
+/**
+ * Set by render mode (holds each line for its pre-generated clip) and by the embed
+ * (captions in the chosen language, no audio).
+ */
 let renderVoice = null;
 const episodeVoice = createEpisodeVoice({
   audio: episodeAudio,
@@ -1907,7 +1928,10 @@ const episodeRunner = createEpisodeRunner(
   {
     stops: routeStops.map((stop) => stop.id),
     crossings: levelCrossings.getState().crossings.map((item) => item.id),
-    onEvent: (event) => renderTimeline?.record(event, renderEventTime),
+    onEvent: (event) => {
+      renderTimeline?.record(event, renderEventTime);
+      embedEpisodeEvent?.(event);
+    },
   },
 );
 directorNote = (message) => {
@@ -2574,7 +2598,8 @@ function frame(now) {
     missionChipRenderedAt = now;
     renderMissionChip(missionChip, missionBoard.getState());
   }
-  updateCamera(dt);
+  // A held embed beat keeps the director's shot: its clock stops with the scene.
+  updateCamera(embedded && state.paused && view === 'director' ? 0 : dt);
   storyLevels?.update({
     position: train[0].position,
     storyState: storyEngine.getState(),
@@ -2697,8 +2722,10 @@ function frame(now) {
   });
   // Heroes look at a speaker, the train, or the camera when a portrait frames them.
   const heroShot = view === 'director' ? filmDirector.getState().shot : null;
+  // The embed's lone cast member keeps playing their clip while the train is held.
+  const castLive = Boolean(embedCast?.active());
   const heroContext = {
-    paused: state.paused,
+    paused: state.paused && !castLive,
     trainPosition: train[0].position,
     camera,
     portrait: heroShot?.type === 'portrait' ? (heroShot.subject?.person ?? null) : null,
@@ -2712,7 +2739,8 @@ function frame(now) {
     wetness: surfaceDetail.wetness.value,
   });
   stationProps.update(state.paused ? 0 : dt, { minutes: railNetwork.now(), dusk });
-  for (const hero of heroCasts) hero.update(state.paused ? 0 : dt, heroContext);
+  for (const hero of heroCasts) hero.update(state.paused && !castLive ? 0 : dt, heroContext);
+  embedFrame?.(dt);
   mindsStop ??= nearestUpcomingStop();
   mindsStopAge += realDt;
   if (mindsStopAge > 0.5) {
@@ -2772,8 +2800,10 @@ function frame(now) {
     camera,
     weather: localWeather,
     season: gameStore.getState().worldBuilder.active?.plan.season ?? 'autumn',
-    hero: heroContext,
-    paused: state.paused,
+    // A held embed scene still poses its crowd: figures that load while held would otherwise
+    // stand in their rest pose (arms out) until the scene plays.
+    hero: embedded ? { ...heroContext, paused: false } : heroContext,
+    paused: state.paused && !embedded,
     insideTrain: view === 'passenger' || view === 'cab',
   });
   if (state.doorsClosing && trainModel.getDoorState().openFraction === 0) {
@@ -2922,8 +2952,9 @@ function frame(now) {
   // Train, foliage and light transforms must share the shadow image’s frame.
   renderer.shadowMap.needsUpdate = true;
   riverDetails.update(state.paused ? 0 : dt);
-  embedVisuals?.apply(dt);
   riverWater.mesh.visible = camera.position.z < 1400;
+  // After the river's own visibility, so an embed view that isolates a subject can hide it.
+  embedVisuals?.apply(dt);
   if (riverWater.mesh.visible) {
     const reflectionDue = reflectionElapsed >= sceneryEffects.settings.reflectionInterval;
     riverWater.capture({ refreshReflection: reflectionDue });
@@ -3906,7 +3937,31 @@ sceneryEffects.onTier((settings, tier) => {
   crowd?.setTier(tier);
 });
 if (embedded) {
+  // Mr. Ishida's reading bench, remembered while he sits on it: he walks home after a while.
+  let readingBench = null;
+  const noteReadingBench = () => {
+    const reader = worldDetails.figureOf?.('reader-1');
+    if (reader?.pose === 'reading')
+      readingBench = { ...reader.position, heading: reader.heading, bench: true };
+  };
+  noteReadingBench();
+  // A lone cast member stands on the Momiji platform, facing along it, for `focus: 'cast'`.
+  embedCast = createEmbedCast({
+    THREE,
+    scene,
+    heroCasts,
+    place(subject) {
+      // Mr. Ishida keeps his reading bench, so the sit clip has a seat under it.
+      if (subject === 'ishida') {
+        noteReadingBench();
+        if (readingBench) return { ...readingBench };
+      }
+      const frame = frameOfStop('momiji');
+      return frame ? { ...frame.point(3.2, 0.6, 6), heading: frame.heading(Math.PI) } : null;
+    },
+  });
   embedVisuals = createEmbedVisuals({
+    cast: embedCast,
     THREE,
     scene,
     camera,
@@ -3941,6 +3996,48 @@ if (embedded) {
     tokyo: landmarks.tokyoZ,
   };
   const inspectionRay = new THREE.Raycaster();
+  // A staged beat of The 17:42: it plays until its first caption can be read, then holds
+  // (or plays on when the page asks for `paused: false`).
+  let embedBeat = null;
+  let embedCaptions = 'en';
+  const beatHold = createBeatHold();
+  embedEpisodeEvent = (event) => beatHold.event(event);
+  embedFrame = (dt) => {
+    if (!readingBench) noteReadingBench();
+    const simDt = state.paused ? 0 : dt;
+    // A held beat keeps its caption; with no beat, a hidden caption still fades out.
+    embedCaptionClock?.advance(embedBeat ? simDt : dt);
+    embedCast.update();
+    if (beatHold.update(simDt)) {
+      changeDrive((drive) => {
+        drive.paused = true;
+      });
+      postEmbedState(window, embedSnapshot());
+    }
+  };
+  function endBeat() {
+    beatHold.cancel();
+    if (episodeRunner.playing) episodeRunner.stop();
+    dramaStage.clear();
+    villageBus.reset();
+    stationProps.setClock(null);
+    filmCaptions.hide();
+    renderVoice = null;
+    embedBeat = null;
+  }
+  function stageBeat(id, hold) {
+    const at = EMBED_BEATS[id];
+    const episode = THE_1742.episodes.find((item) => item.number === at.episode);
+    renderVoice = createCaptionVoice(embedCaptions);
+    filmCaptions.hide();
+    changeDrive((drive) => {
+      drive.paused = false;
+    });
+    if (view !== 'director') selectCamera('director');
+    episodeRunner.play(episode, { from: { scene: at.scene, beat: at.beat } });
+    embedBeat = id;
+    beatHold.arm(hold, at.line ?? 1);
+  }
   const disposeEmbed = installEmbedBridge({
     inspect(x, y) {
       inspectionRay.setFromCamera(new THREE.Vector2(x, y), camera);
@@ -3959,6 +4056,16 @@ if (embedded) {
     },
     configure(config) {
       const paused = config.paused ?? state.paused;
+      if (config.captions !== undefined) embedCaptions = config.captions;
+      // A new beat, or new caption language for the current one, stages it again.
+      const nextBeat = Object.hasOwn(config, 'beat')
+        ? config.beat
+        : config.captions !== undefined
+          ? embedBeat
+          : undefined;
+      if (nextBeat === null || (nextBeat && embedBeat)) endBeat();
+      if (nextBeat === null && config.camera === undefined && view === 'director')
+        selectCamera('scenic');
       embedVisuals.configure(config);
       if (config.location !== undefined) {
         jumpTo(locations[config.location]);
@@ -3974,16 +4081,41 @@ if (embedded) {
           dusk: config.timeOfDay === 'dusk',
           sunPhase: config.timeOfDay === 'dusk' ? 'daylight' : config.timeOfDay,
         });
-      changeDrive((drive) => {
-        drive.paused = paused;
-      });
+      if (nextBeat) stageBeat(nextBeat, paused);
+      else {
+        if (Object.hasOwn(config, 'paused')) beatHold.cancel();
+        changeDrive((drive) => {
+          drive.paused = paused;
+        });
+      }
       updateCamera(
         0,
         ['focus', 'camera', 'location'].some((key) => Object.hasOwn(config, key)),
       );
     },
-    snapshot: () => ({
+    snapshot: () => embedSnapshot(),
+    suspend(value) {
+      embedSuspended = value;
+    },
+  });
+  function embedSnapshot() {
+    return {
       camera: view,
+      beat: embedBeat,
+      captions: embedCaptions,
+      episode: (() => {
+        const runner = episodeRunner.getState();
+        return {
+          status: runner.status,
+          title: runner.episode?.title ?? null,
+          scene: runner.scene?.heading ?? null,
+          beat: runner.beat ? runner.beat.index + 1 : null,
+          shot: filmDirector.getState().shot?.type ?? null,
+          holding: state.paused && runner.status === 'playing',
+          captionLanguage: runner.voice?.language ?? null,
+          log: runner.log.slice(-6).map((item) => item.message),
+        };
+      })(),
       visual: embedVisuals.snapshot(),
       inspection: {
         visibleSceneryBatches: sceneryChunks.filter((chunk) => chunk.mesh.visible).length,
@@ -4001,7 +4133,8 @@ if (embedded) {
       },
       location: embedLocation,
       cameraPosition: camera.position.toArray().map((value) => Math.round(value * 100) / 100),
-      weather,
+      // A storm is heavy rain with the storm preference on.
+      weather: weather === 'rain' && gameStore.getState().preferences.storm ? 'storm' : weather,
       timeOfDay: dusk ? 'dusk' : gameStore.getState().preferences.sunPhase,
       paused: state.paused,
       speedKmh: Math.round(state.speed * 3.6),
@@ -4009,11 +4142,8 @@ if (embedded) {
       drawCalls: renderer.info.render.calls,
       triangles: renderer.info.render.triangles,
       note: 'Latest rendered frame counts; not a performance benchmark.',
-    }),
-    suspend(value) {
-      embedSuspended = value;
-    },
-  });
+    };
+  }
   window.addEventListener('pagehide', disposeEmbed, { once: true });
 }
 /** Vertical videos stay full frame; a 2.39:1 band inside 9:16 would leave a small picture. */

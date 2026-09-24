@@ -180,6 +180,14 @@ function livePreset() {
     exposure: null,
     roughness: null,
     fogDensity: null,
+    // A staged beat of The 17:42 and its caption language; a lone cast member's view.
+    beat: null,
+    captions: 'en',
+    subject: 'meera',
+    clip: 'idle',
+    pose: 'clip',
+    skeleton: false,
+    motionLayers: true,
     ...livePresets[selected].options[0].config,
     ...livePresets[selected].initial,
     paused: true,
@@ -192,14 +200,20 @@ function showLiveState(state) {
   for (const key of ['camera', 'weather', 'timeOfDay', 'location'])
     if (typeof state[key] === 'string') liveInputs[key].value = state[key];
   livePaused = state.paused;
+  // A lone cast member keeps playing their clip; the train button has nothing to do there.
+  livePlay.hidden = state.visual?.focus === 'cast';
   livePlay.textContent =
     state.visual?.focus === 'water'
       ? state.visual.waterSpeed
         ? 'Pause ripples'
         : 'Play ripples'
-      : state.paused
-        ? 'Play train'
-        : 'Pause train';
+      : state.beat
+        ? state.paused
+          ? 'Play the scene'
+          : 'Hold the scene'
+        : state.paused
+          ? 'Play train'
+          : 'Pause train';
   livePlay.setAttribute(
     'aria-pressed',
     String(state.visual?.focus === 'water' ? Boolean(state.visual.waterSpeed) : !state.paused),
@@ -344,6 +358,11 @@ const scene = mountMapleLine(document.querySelector('#scene'), {
 await scene.ready;
 await scene.configure({ weather: 'rain' });
 await scene.configure({ paused: false });
+// Stage a beat of The 17:42 with Hindi captions (no sound), then end it:
+await scene.configure({ beat: 'momiji-exchange', captions: 'hi-IN' });
+await scene.configure({ beat: null, camera: 'follow' });
+// One cast member alone, in clay, with the skeleton drawn over the body:
+await scene.configure({ focus: 'cast', subject: 'meera', clip: 'wave', surface: 'clay', skeleton: true });
 console.log(await scene.snapshot());
 // Suspend drawing when your view is hidden:
 await scene.setVisible(false);
@@ -421,8 +440,8 @@ snapshotButton.addEventListener('click', async () => {
   if (!live) return;
   snapshotButton.disabled = true;
   try {
-    const state = selected === 15 ? await live.inspect() : await live.snapshot();
-    snapshotOutput.textContent = JSON.stringify(selected === 15 ? state.selection : state, null, 2);
+    const state = await live.snapshot();
+    snapshotOutput.textContent = JSON.stringify(state, null, 2);
     snapshotOutput.hidden = false;
   } catch (error) {
     liveStatus.textContent = error.message;
@@ -430,7 +449,25 @@ snapshotButton.addEventListener('click', async () => {
     snapshotButton.disabled = false;
   }
 });
-liveControls.append(snapshotButton);
+// A real ray from the camera through the crosshair: the nearest visible mesh it hits.
+const inspectButton = document.createElement('button');
+inspectButton.type = 'button';
+inspectButton.className = 'btn';
+inspectButton.textContent = 'Inspect crosshair';
+inspectButton.addEventListener('click', async () => {
+  if (!live) return;
+  inspectButton.disabled = true;
+  try {
+    const state = await live.inspect();
+    snapshotOutput.textContent = JSON.stringify(state.selection, null, 2);
+    snapshotOutput.hidden = false;
+  } catch (error) {
+    liveStatus.textContent = error.message;
+  } finally {
+    inspectButton.disabled = false;
+  }
+});
+liveControls.append(inspectButton, snapshotButton);
 liveStatus.after(snapshotOutput);
 let chapterButtons = [];
 function syncChapterButtons() {
@@ -472,9 +509,11 @@ function updateChapterControls() {
     chapterButtons.push({ button, config });
   }
   syncChapterButtons();
-  snapshotButton.hidden = ![11, 15, 16, 17, 20, 27, 33, 36].includes(selected);
-  snapshotButton.textContent = selected === 15 ? 'Inspect crosshair' : 'Read live scene state';
-  liveViewport.classList.toggle('show-crosshair', selected === 15);
+  // Chapter indices from 0: 16 and 37 aim a ray; these read the bridge snapshot.
+  const inspects = [15, 36].includes(selected);
+  inspectButton.hidden = !inspects;
+  snapshotButton.hidden = ![11, 16, 17, 20, 27, 33, 36, 42, 46].includes(selected);
+  liveViewport.classList.toggle('show-crosshair', inspects);
   snapshotOutput.hidden = true;
 }
 const updateBeforeChapterControls = update;

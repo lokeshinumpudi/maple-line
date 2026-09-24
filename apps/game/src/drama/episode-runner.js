@@ -231,12 +231,13 @@ export function createEpisodeRunner(host, { stops = [], crossings = [], onEvent 
     return { ...rest, type: scene().stopAt ? 'platform' : 'orbit' };
   }
 
-  function startScene(index, { deferBeat = false } = {}) {
+  function startScene(index, { deferBeat = false, set } = {}) {
     sceneIndex = index;
     released = false;
     const current = scene();
     host.setStop(current.stopAt ?? null, { crossing: current.holdAt ?? null });
-    if (current.set) host.setScene(current.set, current);
+    const settings = set ?? current.set;
+    if (settings) host.setScene(settings, current);
     // Staged people stand on their marks before the first shot looks for them.
     for (const [cast, mark] of Object.entries(current.marks ?? {})) {
       try {
@@ -455,16 +456,61 @@ export function createEpisodeRunner(host, { stops = [], crossings = [], onEvent 
     return items.every((item) => speaker.ready(item));
   }
 
+  /**
+   * Start partway through a scene, as if its earlier beats had played: the scene's set and
+   * marks, then each earlier beat's acting notes, walks (the walker is placed on the mark)
+   * and bus cues. A scene whose earlier beat waited for the train to stop starts with the
+   * train at the stop. Doors, releases and world events are not replayed.
+   */
+  function startAt(sceneAt, beatAt) {
+    const target = episode.scenes[sceneAt];
+    const arrived =
+      target.stopAt && target.beats.slice(0, beatAt).some((item) => item.waitFor === 'stopped');
+    const set = arrived && target.set ? { ...target.set, offset: 0, speedKmh: 0 } : target.set;
+    startScene(sceneAt, { deferBeat: true, set });
+    for (const earlier of target.beats.slice(0, beatAt))
+      for (const cue of earlier.cues) {
+        try {
+          if (cue.move) host.mark?.(target.actors[cue.move.cast], cue.move.to);
+          else if (cue.bus) host.bus?.(cue.bus.state);
+          else if (cue.direct)
+            host.direct(target.actors[cue.direct.cast], {
+              mood: cue.direct.mood,
+              intent: cue.direct.intent,
+              holdSeconds: cue.direct.hold,
+            });
+        } catch (error) {
+          note(`earlier cue skipped: ${error.message}`);
+        }
+      }
+    startBeat(beatAt);
+  }
+
   const api = {
-    /** Validate and start an episode. Throws a readable TypeError for invalid data. */
-    play(input) {
+    /**
+     * Validate and start an episode. Throws a readable TypeError for invalid data.
+     * `from: { scene, beat }` (indices from 0) starts at that beat without the title card.
+     */
+    play(input, { from = null } = {}) {
       const next = normalizeEpisode(input, { stops, crossings });
+      if (from) {
+        const scene = next.scenes[from.scene];
+        if (!Number.isInteger(from.beat) || !scene?.beats[from.beat])
+          throw new TypeError('from must name a scene and beat in this episode.');
+      }
       api.stop();
       host.clearStage?.();
       episode = next;
       status = 'playing';
       elapsed = 0;
       log = [];
+      if (from) {
+        onEvent({ type: 'episode', id: episode.id, title: episode.title });
+        prerolling = false;
+        lead = 0;
+        startAt(from.scene, from.beat);
+        return api.getState();
+      }
       const heading = [episode.series, episode.number ? `Episode ${episode.number}` : null]
         .filter(Boolean)
         .join(' · ');

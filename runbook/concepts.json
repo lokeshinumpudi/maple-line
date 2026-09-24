@@ -546,6 +546,10 @@
       {
         "heading": "Match the clip’s stride to the body’s speed",
         "body": "Each walk clip’s foot speed comes from the pack’s root-motion files, scaled by the character’s hips height. strideTimeScale() in apps/game/src/world/character-motion.js divides the body’s drawn speed by that foot speed and clamps the result to 0.3–1.6. The switch between walk and hurry has 0.1 m/s of hysteresis either side, a gap that stops a speed near the boundary flipping the gait every few frames. The Quaternius walk is 0.92 m/s for Riko, slower than the residents’ 1.05–1.29 m/s, so walks play up to 1.6 times faster than recorded."
+      },
+      {
+        "heading": "Where the clips come from",
+        "body": "The cast plays the Quaternius Universal Animation Library (CC0), retargeted once to the VRM humanoid skeleton and stored as one cast-clips.vrma file with 18 clips. Retargeting to the standard skeleton is what lets the crowd, the hero cast and the concept-built characters share one set."
       }
     ]
   },
@@ -591,6 +595,10 @@
       {
         "heading": "Where base meshes come from, and the licence traps",
         "body": "Three sources came up in this session. Quaternius publishes free CC0 packs. Fab offers a free Personal licence for individuals under $100k revenue. Booth.pm shares and sells anime models with terms that differ per model. Two traps: the free Quaternius Universal Base Characters “Standard” pack contains only muscular superhero bodies, which do not suit a quiet anime cast, and Fab’s Standard licence forbids redistributing source files. The maple-line GitHub repository is public, so licensed source files stay outside git; commit only what the licence allows. asset-src/THIRD_PARTY.md records every outside file with its licence, size and SHA-256."
+      },
+      {
+        "heading": "A smoothing step can glue legs together",
+        "body": "The blur that rounds a carved body also closes small gaps. It turned the 1.5 cm gap between Meera’s shoes into a bar that stretched as she walked, although the cut-out of the painted view was clean. Cutting the body on the centre plane below the hips keeps the legs apart. Check between the feet and under the arms after any smoothing change."
       }
     ]
   },
@@ -625,7 +633,13 @@
     "watch": "Walk through the six parts a short story needs.",
     "howItWorks": "Give one character one clear want. Show the stakes: what they lose if they fail. Put a clock on screen that the viewer can read, such as a station clock or a bus about to leave. Add an obstacle. Let someone make a choice. Show the payoff on screen instead of saying it. Keep to 3–4 characters so each one gets a face and a reason to be there.",
     "inScene": "The first script of The 17:42 failed this test. Its conflict was arithmetic in dialogue (“Seventeen forty-two in. Seventeen forty out.”), nothing was at stake, the payoff was never shown, six characters shared the episode, and the bus and the clock never appeared on screen. A rewrite built on this recipe is being written; it is not in the game yet.",
-    "takeaway": "Draw the key frames first and watch the cut muted. Keep “how it’s made” credits out of a story video; they belong in the blog or the post that shares it."
+    "takeaway": "Draw the key frames first and watch the cut muted. Keep “how it’s made” credits out of a story video; they belong in the blog or the post that shares it.",
+    "sections": [
+      {
+        "heading": "Let the models decide the casting",
+        "body": "Write for what the viewer sees. A character meant as a grandfather read as a young man, so viewers took him for a love interest. Changing the story to fit the model (two classmates, and the girl’s grandmother) was faster than rebuilding him and made the story clearer."
+      }
+    ]
   },
   {
     "title": "Render video on a fixed clock",
@@ -634,7 +648,13 @@
     "watch": "Follow one frame from the clock step to the finished MP4.",
     "howItWorks": "With ?render=1 the game does not run its own loop. A script calls window.__mapleRender.step(), which advances one controllable clock by exactly 1/30 s and runs one frame. The simulation, captions and fades all read that clock. Random numbers come from a fixed seed and adaptive resolution is off, so two renders match. Each frame is captured as a page screenshot, captions included, and sent to ffmpeg. The video is H.264 with yuv420p colour and +faststart, which plays in WhatsApp and iMessage; WebM from the browser’s MediaRecorder does not play on iPhones.",
     "inScene": "The poster is the render script’s own output for Episode 1 of The 17:42. The episode is 88 s long: 2,631 frames at 30 fps. It took 114 s to render at 16:9 and 156 s at 9:16 on an Apple M4 Pro, and the file is about 20 MB. Voice clips are placed by line id (scene/beat/line, counted from 1) from an audio manifest.",
-    "takeaway": "Give video its own clock, seed and fixed resolution. Capture what the viewer sees, and choose a format the target phones play."
+    "takeaway": "Give video its own clock, seed and fixed resolution. Capture what the viewer sees, and choose a format the target phones play.",
+    "sections": [
+      {
+        "heading": "Grain has more than one cause",
+        "body": "Noisy skin in the first trailer came from three things at once: the film-grain shader, a lossy JPEG per frame and a 6 Mbit/s cap. Removing one did not fix it. Render mode now turns grain off, frames are PNG, and the encode is CRF 18 capped at 12 Mbit/s; share copies are made from that master at CRF 21."
+      }
+    ]
   },
   {
     "title": "Voices in many languages",
@@ -643,7 +663,13 @@
     "watch": "Follow one line from English text to a spoken clip the scene waits for.",
     "howItWorks": "Each line starts in English. If the episode has a hand-written translation for the language, the game uses it; otherwise it asks machine translation, passing the speaker’s gender so verbs agree, and names stay as they are. Then a text-to-speech model speaks the line. Clips and translations are stored on disk, so a line never costs twice. The episode waits until the clip ends before moving on.",
     "inScene": "Voices use Sarvam bulbul:v3 in 11 languages. bulbul:v4-flash (224 speakers tagged by style) exists but is beta-gated for this account, so the model is a setting. Machine translation made mistakes in this session: a clock time read as “inches”, “front car” as “motor car”, and he and she swapped. Voicing an episode costs about ₹1 in English and about ₹3 in Telugu.",
-    "takeaway": "Keep the model configurable, cache everything, and let hand-written translations win. Have a native speaker check a voiced video before it is shared."
+    "takeaway": "Keep the model configurable, cache everything, and let hand-written translations win. Have a native speaker check a voiced video before it is shared.",
+    "sections": [
+      {
+        "heading": "Hindi voices with English words",
+        "body": "A dub keeps the English captions while a different language speaks: createManifestVoice(manifest, { subtitles: \"source\" }). The dubbed timeline is longer, so anything cut from it is recomputed; chapter 56 covers the details."
+      }
+    ]
   },
   {
     "title": "Treat shared links as untrusted input",
@@ -670,6 +696,96 @@
     "watch": "Follow the steps that make a before/after pair fair.",
     "howItWorks": "Save a camera pose, the weather, the time of day and the output size. Capture before the change and after it with exactly those settings, then compare side by side at normal viewing size. Put detail where the player looks first: the start screen, the train, which is on screen 100% of the time, and faces in close-ups.",
     "inScene": "Each row in the picture is one fixed camera, before on the left and after on the right, from the water, storm and foliage work. The first Blender pass looked like no change at all because its 4 new models sat about 1 km from where the player starts, used one flat vertex-colour material, and flat lighting washed them out.",
-    "takeaway": "If a change does not show in a side-by-side of the first screen, the train or a face, the player will not see it either."
+    "takeaway": "If a change does not show in a side-by-side of the first screen, the train or a face, the player will not see it either.",
+    "sections": [
+      {
+        "heading": "Capture from the angle that shows the problem",
+        "body": "The seat problem survived two fixes because each check used the dialogue camera, which hides the thighs. Add the angle the viewer complained about to the fixed poses, and keep it for every later change to that area."
+      }
+    ]
+  },
+  {
+    "title": "Turn painted views into a rigged character",
+    "explanation": "A rig is a skeleton inside the model plus a rule for how much each bone moves each part of the skin. Once a character uses the standard humanoid skeleton, every walk, sit and wave made for that skeleton plays on it.",
+    "analogy": "A puppet maker carves the body to match the drawing, then decides which strings move the sleeves and which move the skirt.",
+    "watch": "Follow a painted character sheet through each build step until it plays a clip in the game.",
+    "howItWorks": "The build cuts the character out of three painted views and fills each horizontal slice with a rounded shape that fits inside the front and side outlines. It paints the model by projecting the views back onto it and draws the face as thin layers on the head, with one shape per expression (blink, smile, the five vowels). Bones go on measured landmarks: elbows at 47% of the arm, hips at 0.545 of the height. Blender guesses skin weights from the shape, and region rules correct the guesses, so an arm never drags the side of the blouse and each leg only moves its own side.",
+    "inScene": "Meera and her Ammamma were both made this way from generated concept art. The picture shows Meera in the Character Studio with her painted views behind the model, so any place the build drifted from the art shows at once.",
+    "takeaway": "Fix what the viewer notices first. The smoothing step once closed the 1.5 cm gap between Meera’s shoes into a bar that stretched as she walked; cutting the body on the centre plane below the hips fixed it. Small colour fixes, like a darker mouth on brown skin, go through retint.mjs without a rebuild.",
+    "sections": [
+      {
+        "heading": "Why the VRM models looked better than the earlier Blender figures",
+        "body": "The earlier figures were assembled from boxes and tubes with home-made clips. The VRM cast has a humanoid skeleton that motion-capture clips can drive, toon shading (MToon) with an outline and a controlled shaded side, face expressions and spring bones for hair and skirts. Most of the gain came from motion and shading, not triangle count."
+      }
+    ]
+  },
+  {
+    "title": "Build your own character studio",
+    "explanation": "A character studio is a workbench page for one character. It shows the model from several sides, plays one clip at a time and lets you switch each part of the motion on and off while it shows numbers for how smooth it is.",
+    "analogy": "A mechanic lifts the car on a ramp and runs one part at a time instead of listening to the whole engine on the road.",
+    "watch": "Follow one question (why do the arms shake?) from opening the studio to the fix.",
+    "howItWorks": "The studio loads the character with the same code the game uses. It shows four cameras at once, with the concept art behind the model. A timeline plays the chosen clip at a fixed step, so the same frame can be shown again. Each extra motion layer on top of the clip (breathing, looking at someone, holding a prop with both hands, planting the feet) has its own switch. A measure button runs the clip for a few seconds on the studio’s own clock and reports joint shake and foot slide.",
+    "inScene": "The picture shows Meera’s model on the idle clip at frame 36, with every motion layer on. Grip, foot planting and look-at values are printed under the switches.",
+    "takeaway": "Make every studio state reachable from a link and every control callable from code. Then a person and an agent can look at the same frame and argue from the same number.",
+    "sections": [
+      {
+        "heading": "Build tools when buying them is not an option",
+        "body": "We did not add a paid character service. The studio, the render script, the video edit and the Blender build are all small programs made for this game. Each one started when a problem could not be seen in the game itself: shaking arms, a camera staring at a wall, grainy skin."
+      }
+    ]
+  },
+  {
+    "title": "Stop characters sinking into seats",
+    "explanation": "A sitting character is placed by the hips. Put the hips a little above the cushion, keep the seat point near the cushion’s front edge, and make sure nobody else is sitting in the same place.",
+    "analogy": "A stage manager marks where the actor sits and keeps that chair empty until the scene is over.",
+    "watch": "Follow the seat fix from the complaint to the check that proves it.",
+    "howItWorks": "The cushion top is 0.5 m above the car floor. Seated cast members now rest their hips at 0.62 m, so thighs lie on the cushion instead of inside it. The seat point sits near the front edge; moving it back pushed the shins into the bench front. While a scene uses a seat, it renews a short reservation every frame, and the train hides any crowd rider within 1.2 m of it. When the scene stops renewing, the rider comes back.",
+    "inScene": "Meera on the left and Arjun on the right, both seated after the fix. The dialogue camera hides a sunk thigh well; the complaint came from a wider shot.",
+    "takeaway": "Check contact from the angle that shows it, low and to the side. The dialogue camera was the one angle that hid the problem, which is why the fix took three rounds."
+  },
+  {
+    "title": "Move the mouth with the voice",
+    "explanation": "Lip sync makes a character’s mouth follow their own recorded line. The louder the sound, the wider the mouth opens; the brightness of the sound picks the mouth shape.",
+    "analogy": "A puppeteer watching the sound meter opens the jaw on the loud parts and shuts it in the gaps.",
+    "watch": "Follow one spoken line from its sound file to the mouth on screen.",
+    "howItWorks": "When the voices are made, a script measures each clip 60 times a second: how loud it is and roughly which vowel it sounds like. That curve is saved next to the clip. During a render the character reads the curve; in live play the game measures the playing sound the same way. A small driver smooths it: the mouth opens quickly, closes a little slower, and only changes vowel once the new one has lasted 50 ms, so it does not flicker.",
+    "inScene": "Meera and Mr. Ishida mid-line in Episode 1. The mouths are small on these models, so the effect is gentle, but the pauses now read as pauses.",
+    "takeaway": "Check the mouth can be seen before tuning how it moves. For a day the lip sync worked and nobody could tell, because a brown-red mouth on brown skin disappeared at video size."
+  },
+  {
+    "title": "Light faces at night",
+    "explanation": "A night scene can be dark, but faces must read. Give each face a soft light from the nearest lamp, stop that light from getting too strong, and do not let coloured lamps turn skin orange.",
+    "analogy": "A film crew shooting a night street still puts a soft lamp just out of shot for the actor’s face.",
+    "watch": "Follow the night lighting from the lamp to the face.",
+    "howItWorks": "The browser can only afford a few real lights, so the lamps nearest the camera borrow them and fade as the camera moves. Every lamp still gets a cheap glowing pool on the ground and a streak on the wet road. Characters get an extra soft light from their nearest lamp and a cool edge light from behind. Lamp light on characters is capped at night, and skin takes only part of a light’s colour. Lamp glows fade out when a person stands between the camera and the lamp.",
+    "inScene": "Divya at the bus door, then Ammamma under the shelter lamp and in close-up. Her face is readable without the “torch on the face” look of the first pass. The bright spot on Divya’s cap is still too strong.",
+    "takeaway": "Judge night lighting by numbers on the face, not the feel of the whole frame. Two rounds of fixes went in opposite directions (too bright, then too dark) until face brightness had a target."
+  },
+  {
+    "title": "Write scenes, not one-liners",
+    "explanation": "People follow a story when characters talk to each other. Each line answers the one before it, and together they move a plan forward. The narrator only says where and when.",
+    "analogy": "A good conversation on a train: one person asks, the other answers, and by the next stop you know what they both want.",
+    "watch": "Follow how The 17:42 changed from narration to scenes.",
+    "howItWorks": "Give each character one want: Meera wants to bring the radio home tonight, Ammamma wants to hear it, Arjun wants to help. Put a real obstacle in the way: the last bus leaves two minutes before the train arrives. Let a character find the way round it (Arjun’s sister drives that bus) instead of the narrator explaining it. Close on something small that pays off the want: the radio finds Grandpa’s station.",
+    "inScene": "Meera and Arjun meet on the platform, and Mr. Ishida the conductor tells her to sit in the front car. The captions carry the whole exchange, so it reads with the sound off.",
+    "takeaway": "Cast the story the models can play. An older man who was meant to be a grandfather read as a young man, so the story changed to two classmates and the girl’s grandmother, and the characters became an Indian family in the Japanese valley."
+  },
+  {
+    "title": "Dub a story into another language",
+    "explanation": "A dub swaps the voices and keeps the pictures. Each language has its own recordings, so lines take different lengths, and the episode’s timing follows the language being spoken.",
+    "analogy": "A film shown with a new soundtrack: the actors are the same, but every pause now fits the new voices.",
+    "watch": "Follow one line through the English and Hindi versions.",
+    "howItWorks": "The script holds each line in English, Telugu and Hindi side by side. Each language gets its own voice clips, named by scene, beat and line number. When an episode is rendered in Hindi, the Hindi clip lengths decide when each line starts. A setting keeps the English words on screen while the Hindi voices play. Anything cut from the episodes, like a trailer, is recomputed from the Hindi timings.",
+    "inScene": "Left: the English render. Right: the Hindi render with English captions. The line starts 3.5 s later in Hindi because the lines before it take longer to say.",
+    "takeaway": "Never reuse one language’s cut times for another. The Hindi trailer is 11 s longer than the English one from the same shots."
+  },
+  {
+    "title": "Cut a trailer from finished episodes",
+    "explanation": "A trailer is a short set of shots taken from the finished episodes, placed in a new order, ending on the title and where to play.",
+    "analogy": "A film editor pulls the best takes from the finished reels onto a new short reel.",
+    "watch": "Follow the trailer from episode renders to the file you send.",
+    "howItWorks": "The episodes render frame by frame on a fixed clock, so every render of the same code is the same. Each render also writes the start time of every line. The trailer picks shots that start and end on lines, cuts each one to its own small file, and lays them out with short sound fades and a closing card. Frames are saved without lossy compression and the film grain is off for video, because compression and grain stack into noisy skin.",
+    "inScene": "All 18 shots of the trailer: the first row sets up the platform and the train, the second row is the crossing and the night at Aonuma.",
+    "takeaway": "Check what went into the cut, not only the cut. A render that failed during a network drop left an old episode in place, and the trailer showed Ammamma in the wrong clothes until the file dates were checked."
   }
 ]
