@@ -84,6 +84,7 @@ import { STAGED_CAST } from './drama/drama-roles.js';
 import { clockMinutes } from './drama/drama-props.js';
 import { createStationProps, stationFrame } from './world/station-props.js';
 import { createVillageBus } from './world/village-bus.js';
+import { createAonumaPlanting } from './world/aonuma-planting.js';
 import { CAR_COUNT } from './train/consist.js';
 import { createVrmLoader } from './characters/vrm-loader.js';
 import { createCrowd } from './characters/crowd/crowd.js';
@@ -1067,6 +1068,19 @@ const villageBus = createVillageBus({
   railPoint,
   groundAt: (x, z) => terrain(x - center(z), z),
   stops: routeStops,
+  lightPool: sceneryEffects.lights,
+});
+// Night planting and station lamps behind the Aonuma bus stop.
+const aonumaPlanting = createAonumaPlanting({
+  THREE,
+  scene,
+  railPoint,
+  groundAt: (x, z) => terrain(x - center(z), z),
+  stops: routeStops,
+  cardCanopy: sceneryEffects.canopy,
+  lightPool: sceneryEffects.lights,
+  wind,
+  surfaceDetail,
 });
 // Development: episode checks read the stage, the bus and the props through this.
 if (import.meta.env.DEV)
@@ -1121,6 +1135,7 @@ if (import.meta.hot)
     stationModules.dispose();
     stationProps.dispose();
     villageBus.dispose();
+    aonumaPlanting?.dispose();
   });
 if (import.meta.hot) import.meta.hot.dispose(() => mindsClient.dispose());
 directorButton.onclick = () => {
@@ -2677,7 +2692,13 @@ function frame(now) {
     portrait: heroShot?.type === 'portrait' ? (heroShot.subject?.person ?? null) : null,
   };
   dramaStage.update(state.paused ? 0 : dt);
-  villageBus.update(state.paused ? 0 : dt, { camera, dusk });
+  villageBus.update(state.paused ? 0 : dt, { camera, dusk, wet: atmosphere.getState().rain });
+  aonumaPlanting?.update(state.paused ? 0 : dt, {
+    camera,
+    dusk,
+    weather: atmosphere.weather,
+    wetness: surfaceDetail.wetness.value,
+  });
   stationProps.update(state.paused ? 0 : dt, { minutes: railNetwork.now(), dusk });
   for (const hero of heroCasts) hero.update(state.paused ? 0 : dt, heroContext);
   mindsStop ??= nearestUpcomingStop();

@@ -3,6 +3,7 @@ import { updateWaterSurface } from './water-surface.js';
 import { createCardCanopy } from '../world/card-canopy.js';
 import { createFallingLeaves } from '../world/falling-leaves.js';
 import { createLightHalos } from './light-halos.js';
+import { createLightPool } from './light-pools.js';
 
 /** Camera layer for particles the water mirror should not redraw (rain, snow, leaves). */
 export const FX_LAYER = 3;
@@ -39,6 +40,7 @@ export function createSceneryEffects({
   leaves.setCount(QUALITY_TIERS[tier].fallingLeaves);
   scene.add(leaves.mesh);
   const halos = createLightHalos({ THREE, scene });
+  const lights = createLightPool({ THREE, scene, tier });
   let slowSeconds = 0,
     healthySeconds = 0,
     sinceChange = 0;
@@ -48,6 +50,7 @@ export function createSceneryEffects({
     if (next === tier) return;
     tier = next;
     canopy.setTier(tier);
+    lights.setTier(tier);
     leaves.setCount(QUALITY_TIERS[tier].fallingLeaves);
     for (const listener of listeners) listener(QUALITY_TIERS[tier], tier);
   }
@@ -57,6 +60,7 @@ export function createSceneryEffects({
     canopy,
     leaves,
     halos,
+    lights,
     get tier() {
       return tier;
     },
@@ -97,6 +101,7 @@ export function createSceneryEffects({
     } = {}) {
       updateWaterSurface(paused ? 0 : dt, { rain });
       halos.update(realDt, { cameraPosition, night, wet: Math.min(1, rain), pixelHeight });
+      lights.update(realDt, { cameraPosition, night, wet: Math.min(1, rain) });
       canopy.update(cameraPosition);
       if (sunColor && skyColor) light.copy(sunColor).multiplyScalar(0.35).add(skyColor);
       leaves.update(paused ? 0 : dt, {
@@ -131,11 +136,13 @@ export function createSceneryEffects({
       canopy: canopy.getState(),
       fallingLeaves: leaves.getState(),
       halos: halos.getState(),
+      lights: lights.getState(),
     }),
     dispose() {
       scene.remove(leaves.mesh);
       leaves.dispose();
       halos.dispose();
+      lights.dispose();
       canopy.dispose();
       listeners.clear();
     },

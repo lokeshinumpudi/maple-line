@@ -39,7 +39,15 @@ const DOOR_SECONDS = 1.1;
 const CRUISE = 6.5; // m/s along the lane
 const ACCEL = 1.6;
 
-export function createVillageBus({ THREE, scene, loader, railPoint, groundAt, stops }) {
+export function createVillageBus({
+  THREE,
+  scene,
+  loader,
+  railPoint,
+  groundAt,
+  stops,
+  lightPool = null,
+}) {
   const stop = stops.find((item) => item.id === BUS_STOP.stop);
   const frame = stationFrame(railPoint, stop.z);
   const root = new THREE.Group();
@@ -150,9 +158,58 @@ export function createVillageBus({ THREE, scene, loader, railPoint, groundAt, st
     0.36,
   );
   lamp.castShadow = false;
-  const shelterLight = new THREE.PointLight('#ffd49a', 0, 9, 1.6);
-  shelterLight.position.copy(lamp.position).add(new THREE.Vector3(0, -0.3, 0));
-  root.add(shelterLight);
+  // With a light pool the shelter lamp, headlights, cabin and tail lamps are pool sources:
+  // real lights only while the camera is close, ground pools and wet reflections always.
+  // Without one, the shelter and cabin keep their own point lights.
+  const shelterLight = lightPool ? null : new THREE.PointLight('#ffd49a', 0, 9, 1.6);
+  if (shelterLight) {
+    shelterLight.position.copy(lamp.position).add(new THREE.Vector3(0, -0.3, 0));
+    root.add(shelterLight);
+  }
+  const shelterSource = lightPool?.add('aonuma-bus-shelter', {
+    position: lamp.position.clone().add(new THREE.Vector3(0, -0.3, 0)),
+    ground: shelterY,
+    color: '#ffd49a',
+    intensity: 10,
+    distance: 10,
+    pool: 2.6,
+    level: 0,
+    // The stop's key light: it keeps faces readable, so it always wins a real light nearby.
+    priority: 4,
+  });
+  const busSources = lightPool
+    ? {
+        headlights: [-1, 1].map((side) =>
+          lightPool.add(`aonuma-bus-headlight-${side}`, {
+            kind: 'spot',
+            color: '#fff1d6',
+            intensity: 70,
+            distance: 30,
+            angle: 0.46,
+            pool: 3.2,
+            level: 0,
+          }),
+        ),
+        tails: [-1, 1].map((side) =>
+          lightPool.add(`aonuma-bus-tail-${side}`, {
+            color: '#ff4a2a',
+            intensity: 2.5,
+            distance: 5,
+            pool: 0.9,
+            level: 0,
+          }),
+        ),
+        cabin: lightPool.add('aonuma-bus-cabin', {
+          color: '#ffe6bf',
+          intensity: 6,
+          distance: 8,
+          pool: 3.4,
+          streak: false,
+          level: 0,
+          priority: 3,
+        }),
+      }
+    : null;
 
   // ---- the bus ----
   const bus = new THREE.Group();
@@ -164,9 +221,31 @@ export function createVillageBus({ THREE, scene, loader, railPoint, groundAt, st
   const materials = {};
   let layout = null;
   let modelState = 'loading';
-  const cabinLight = new THREE.PointLight('#ffe6bf', 0, 7, 1.7);
-  cabinLight.position.set(0, 2.2, 1.6);
-  bus.add(cabinLight);
+  const cabinLight = lightPool ? null : new THREE.PointLight('#ffe6bf', 0, 7, 1.7);
+  if (cabinLight) {
+    cabinLight.position.set(0, 2.2, 1.6);
+    bus.add(cabinLight);
+  }
+  const busPoint = new THREE.Vector3(),
+    busForward = new THREE.Vector3();
+  /** Move the bus's pool sources with it; level 0..1 is how bright its lamps are. */
+  function placeSources(level, cabin) {
+    if (!busSources || !layout) return;
+    bus.updateWorldMatrix(true, false);
+    const floor = bus.position.y;
+    const half = layout.halfLength ?? 3.55;
+    busForward.set(0, -0.14, 1).transformDirection(bus.matrixWorld);
+    busSources.headlights.forEach((source, i) => {
+      busPoint.set((i ? 1 : -1) * 0.78, 0.78, half + 0.05).applyMatrix4(bus.matrixWorld);
+      source.set({ position: busPoint, direction: busForward, level, ground: floor });
+    });
+    busSources.tails.forEach((source, i) => {
+      busPoint.set((i ? 1 : -1) * 0.85, 0.9, -half - 0.08).applyMatrix4(bus.matrixWorld);
+      source.set({ position: busPoint, level, ground: floor });
+    });
+    busPoint.set(0, 2.2, 1.6).applyMatrix4(bus.matrixWorld);
+    busSources.cabin.set({ position: busPoint, level: cabin, ground: floor });
+  }
   const ready = loader.get(BUS_MODEL_PATH).then((gltf) => {
     if (!gltf) {
       modelState = 'failed';
@@ -297,10 +376,14 @@ export function createVillageBus({ THREE, scene, loader, railPoint, groundAt, st
       speed = 0;
       doors = 0;
     },
-    update(dt, { camera, dusk = false } = {}) {
+    update(dt, { camera, dusk = false, wet = 0 } = {}) {
       clock += dt;
       const near = camera ? Math.abs(camera.position.z - stop.z) < 700 : true;
       root.visible = near;
+      if (!near) {
+        shelterSource?.set({ level: 0 });
+        placeSources(0, 0);
+      }
       if (!near || !(dt > 0)) return;
       const running = state !== 'parked' && state !== 'gone';
       if (state === 'leaving') {
@@ -345,9 +428,14 @@ export function createVillageBus({ THREE, scene, loader, railPoint, groundAt, st
       set('bus-sign', lights * 1.6);
       set('bus-light', lights * 2.2 * night);
       set('bus-glass', lights * 0.22 * night);
-      cabinLight.intensity = lights * (dusk ? 5 : 0);
+      if (cabinLight) cabinLight.intensity = lights * (dusk ? 5 : 0);
       lampGlass.emissiveIntensity = dusk ? 2.2 : 0;
-      shelterLight.intensity = dusk ? 7 : 0;
+      if (shelterLight) shelterLight.intensity = dusk ? 7 : 0;
+      shelterSource?.set({ level: dusk ? 1 : 0 });
+      const visible = bus.visible ? 1 : 0;
+      placeSources(lights * visible * (dusk ? 1 : 0.35), lights * visible * night);
+      // Wet paving shines under the lamps.
+      paving.roughness += ((wet > 0.3 ? 0.2 : 0.62) - paving.roughness) * (1 - Math.exp(-dt * 0.5));
     },
     /**
      * Stage spots: `door` just outside the front door (boarding), `step` on the floor just
@@ -417,6 +505,16 @@ export function createVillageBus({ THREE, scene, loader, railPoint, groundAt, st
       lights: Number(lights.toFixed(2)),
     }),
     dispose() {
+      if (lightPool)
+        for (const id of [
+          'aonuma-bus-shelter',
+          'aonuma-bus-headlight--1',
+          'aonuma-bus-headlight-1',
+          'aonuma-bus-tail--1',
+          'aonuma-bus-tail-1',
+          'aonuma-bus-cabin',
+        ])
+          lightPool.remove(id);
       root.removeFromParent();
       for (const item of owned) item.dispose();
     },
