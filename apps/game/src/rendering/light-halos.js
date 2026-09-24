@@ -48,7 +48,8 @@ export function createLightHalos({ THREE, scene, layer = 0, radius = 420 }) {
         gl_Position = projectionMatrix * mvPosition;
         // World-size halo projected to pixels, clamped so far lamps stay small points.
         float pixels = haloSize * haloScale * projectionMatrix[1][1] * pixelHeight * 0.5 / max(-mvPosition.z, 0.5);
-        gl_PointSize = clamp(pixels, 2.0, 220.0);
+        // Capped so a lamp near the lens never becomes a disc over the frame.
+        gl_PointSize = clamp(pixels, 2.0, pixelHeight * 0.07);
         #include <fog_vertex>
       }`,
     fragmentShader: /* glsl */ `
@@ -89,10 +90,21 @@ export function createLightHalos({ THREE, scene, layer = 0, radius = 420 }) {
     matrix = new THREE.Matrix4(),
     sphere = new THREE.Sphere();
 
+  // People near the camera: a halo just behind a head is shrunk so it does not sit on a face.
+  const people = [];
+  const head = new THREE.Vector3(),
+    toLamp = new THREE.Vector3(),
+    toHead = new THREE.Vector3();
   function scan(cameraPosition) {
     sources.length = 0;
+    people.length = 0;
     scene.traverseVisible((object) => {
+      if (object.isSkinnedMesh && people.length < 24) {
+        object.getWorldPosition(head);
+        if (head.distanceTo(cameraPosition) < 45) people.push(object);
+      }
       if (sources.length >= MAX_HALOS || object === points || !object.isMesh) return;
+      if (object.userData.noHalo) return;
       const materialValue = Array.isArray(object.material) ? object.material[0] : object.material;
       if (emissiveStrength(materialValue) < 0.35) return;
       const geometryValue = object.geometry;
@@ -113,7 +125,30 @@ export function createLightHalos({ THREE, scene, layer = 0, radius = 420 }) {
       } else add(object.matrixWorld, -1);
     });
   }
-  function place() {
+  /** 0..1 size factor for a lamp at world: small near the lens and behind a nearby head. */
+  function clearOfFaces(world, cameraPosition) {
+    const distance = world.distanceTo(cameraPosition);
+    let factor = Math.min(1, Math.max(0, (distance - 2.5) / 8));
+    if (!people.length || distance > 60) return factor;
+    toLamp.copy(world).sub(cameraPosition).normalize();
+    for (const person of people) {
+      if (!person.parent) continue;
+      if (!person.geometry.boundingSphere) person.geometry.computeBoundingSphere();
+      head.copy(person.geometry.boundingSphere.center).applyMatrix4(person.matrixWorld);
+      head.y +=
+        person.geometry.boundingSphere.radius * 0.55 * person.matrixWorld.getMaxScaleOnAxis();
+      toHead.copy(head).sub(cameraPosition);
+      const headDistance = toHead.length();
+      // In front of a face or just behind it, a halo would sit on the face.
+      if (headDistance < 0.2) continue;
+      // Angle between the lamp and the head, against the head's apparent size.
+      const apart = Math.acos(Math.min(1, toLamp.dot(toHead.divideScalar(headDistance))));
+      const size = 0.45 / headDistance;
+      if (apart < size * 3.5) factor = Math.min(factor, 0.05 + 0.95 * (apart / (size * 3.5)) ** 2);
+    }
+    return factor;
+  }
+  function place(cameraPosition) {
     count = 0;
     for (const source of sources) {
       const glow = emissiveStrength(source.material);
@@ -131,7 +166,7 @@ export function createLightHalos({ THREE, scene, layer = 0, radius = 420 }) {
       colors[count * 3] = c.r * level;
       colors[count * 3 + 1] = c.g * level;
       colors[count * 3 + 2] = c.b * level;
-      sizes[count] = 1.1 + Math.min(1.6, glow) * 0.9;
+      sizes[count] = (1.1 + Math.min(1.6, glow) * 0.9) * clearOfFaces(world, cameraPosition);
       count++;
     }
     geometry.setDrawRange(0, count);
@@ -159,7 +194,7 @@ export function createLightHalos({ THREE, scene, layer = 0, radius = 420 }) {
         sinceScan = 0;
         scan(cameraPosition);
       }
-      place();
+      if (cameraPosition) place(cameraPosition);
     },
     getState: () => ({ halos: count, strength, visible: points.visible }),
     dispose() {
