@@ -92,6 +92,7 @@
       "sat": [0.19, 0.6],
       "val": [0.62, 1.0]
     },
-    "neckShade": 0.3
+    "neckShade": 0.3,
+    "clothBelow": 0.365
   }
 }

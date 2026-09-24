@@ -363,6 +363,18 @@ def body_volume(views, cfg):
     return grid, occ, m, F, S
 
 
+def separate_legs(field, grid, m, half_gap=0.003):
+    """Keep the legs apart below the crotch. The blur that rounds the voxel steps also
+    fills a narrow gap: shoes 1.5 cm apart met in a bar at the floor, and the bar
+    stretched between the feet when she walked. Cells on the centre plane stay empty."""
+    xs = np.abs(grid.xs)[:, None, None]
+    zs = grid.zs[None, None, :]
+    cut = (xs < half_gap) & (zs < m["z_crotch"] - 0.02)
+    out = field.copy()
+    out[np.broadcast_to(cut, field.shape)] = 0.0
+    return out
+
+
 def mesh_from_field(name, grid, field, threshold=0.5):
     """Iso-surface of a float field through an OpenVDB grid and Volume to Mesh."""
     import openvdb
@@ -856,7 +868,7 @@ def main():
     # 2. Body volume, iso-surface and retopology; head, hair and skirt.
     grid, occ, m, F, S = body_volume(views, cfg)
     log("landmarks", {k: round(float(v), 3) for k, v in m.items() if isinstance(v, (float, np.floating))})
-    body = mesh_from_field("Body", grid, sh.blur3(occ, 4))
+    body = mesh_from_field("Body", grid, separate_legs(sh.blur3(occ, 4), grid, m))
     log("iso-surface", len(body.data.vertices), "vertices")
     if ARGS.stage == "iso":
         return

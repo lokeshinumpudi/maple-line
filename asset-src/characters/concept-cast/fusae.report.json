@@ -42,10 +42,12 @@
     "lookLeft",
     "lookRight"
   ],
-  "springs": ["bun"],
-  "triangles": 12652,
+  "springs": [
+    "bun"
+  ],
+  "triangles": 12696,
   "trianglesPerMesh": {
-    "Body": 5368,
+    "Body": 5412,
     "Face": 384,
     "Glasses": 792,
     "Hair": 2980,

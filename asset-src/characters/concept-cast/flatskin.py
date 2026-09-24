@@ -83,6 +83,10 @@ def apply(views, pos, nrm, vis, covered, ids, body_rgb, body_ok, hair, m, z_coll
     weight, _ok = bake.project(views, pos, nrm, vis, body, exclude=hair, images=images)
     bare, neck = bare_regions(pos, m, z_collar)
     s = smoothstep(0.4, 0.6, weight[..., 0]) * bare
+    if cfg.get("clothBelow") is not None:
+        # Knee socks: below their top the leg is cloth, even where no view shows it (the
+        # inner sides of the shins took the other leg's skin otherwise).
+        s = s * smoothstep(cfg["clothBelow"] - 0.004, cfg["clothBelow"] + 0.004, pos[..., 2])
     s = np.maximum(s, neck)  # the neck above the collar is always skin
     s = np.where(body, s, 0.0).astype(np.float32)
     log("flat skin texels", int((s > 0.5).sum()))
