@@ -27,12 +27,14 @@ export const STAGE_MARKS = Object.freeze({
   // The front car's other platform-side door, so two people do not share one doorway.
   'front-car-door-rear': { kind: 'door', car: 0, door: 0 },
   // Longitudinal benches face across the aisle: Meera on the platform side, Arjun opposite.
-  // At the front end of the car, clear of the seats the other riders use.
-  'front-car-seat': { kind: 'car', car: 0, x: -1.0, z: 3.05, face: Math.PI / 2, seated: true },
+  // At the front end of the car, clear of the seats the other riders use. x is the middle of
+  // the 0.55 m-deep cushion (about 0.78 to 1.33 m from the centre line), so the hips sit on it
+  // rather than on the front lip with the thighs through the bench.
+  'front-car-seat': { kind: 'car', car: 0, x: -1.02, z: 3.05, face: Math.PI / 2, seated: true },
   'front-car-seat-across': {
     kind: 'car',
     car: 0,
-    x: 1.0,
+    x: 1.12,
     z: 2.2,
     face: -Math.PI / 2,
     seated: true,

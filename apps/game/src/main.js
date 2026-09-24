@@ -973,7 +973,8 @@ const frameOfStop = (stopId) => {
   return stageFrames.get(stopId);
 };
 const stagePoint = new THREE.Vector3();
-const CAR_SEAT_HEIGHT = 0.5;
+// Hips rest a little above the 0.5 m cushion top, as Mr. Ishida's do on his bench.
+const CAR_SEAT_HEIGHT = 0.62;
 const stageForward = new THREE.Vector3();
 const dramaStage = createDramaStage({
   resolve(mark) {
