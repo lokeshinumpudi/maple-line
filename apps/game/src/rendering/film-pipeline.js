@@ -239,7 +239,11 @@ const filmShader = {
     }`,
 };
 
-export function createFilmPipeline({ renderer, scene, camera, quality = 'full' }) {
+/**
+ * `grain: false` drops the animated film grain: it looks fine live but video encoders turn
+ * per-frame noise into crawling blocks on skin, so episode renders leave it out.
+ */
+export function createFilmPipeline({ renderer, scene, camera, quality = 'full', grain = true }) {
   if (!FILM_QUALITIES.includes(quality)) throw new TypeError(`Unknown film quality: ${quality}`);
   const size = new THREE.Vector2();
   let width = 0,
@@ -396,7 +400,7 @@ export function createFilmPipeline({ renderer, scene, camera, quality = 'full' }
       u.dofMaxBlur.value = active === 'full' ? look.dofMaxBlur : 0;
       // About 1 px of lateral colour in the corners at 1080p; none at the centre.
       u.aberration.value = active === 'full' ? 0.0025 : 0;
-      u.grain.value = active === 'full' ? 0.014 : 0.01;
+      u.grain.value = !grain ? 0 : active === 'full' ? 0.014 : 0.01;
       u.vignette.value = 0.2 + look.letterbox * 0.12;
       // 2.39:1 frame inside the current aspect, capped so portrait phones keep a picture.
       u.letterbox.value = look.letterbox * Math.min(0.3, Math.max(0, 1 - width / height / 2.39));

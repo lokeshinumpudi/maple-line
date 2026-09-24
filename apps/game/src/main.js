@@ -247,7 +247,13 @@ const stableSunShadow = createStableSunShadow({
 const shadowFocus = new THREE.Vector3();
 const shadowLook = new THREE.Vector3();
 // Linear HDR scene target with bloom, sun shafts, focus and grade; 'off' is the plain render.
-const filmPipeline = createFilmPipeline({ renderer, scene, camera, quality: 'off' });
+const filmPipeline = createFilmPipeline({
+  renderer,
+  scene,
+  camera,
+  quality: 'off',
+  grain: !renderMode,
+});
 const filmQuality = (preference) =>
   renderMode ? 'full' : preference === 'auto' ? (mobilePlay ? 'off' : 'full') : preference;
 const filmCaptions = mountFilmCaptions(document.body, renderClock ? { clock: renderClock } : {});

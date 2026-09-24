@@ -42,7 +42,7 @@ const { values: args } = parseArgs({
     'poster-beat': { type: 'string' },
     'poster-at': { type: 'string' },
     'max-seconds': { type: 'string', default: '600' },
-    crf: { type: 'string', default: '22' },
+    crf: { type: 'string', default: '18' },
     gl: { type: 'string', default: process.platform === 'darwin' ? 'metal' : 'swiftshader' },
     ffmpeg: { type: 'string', default: process.env.FFMPEG ?? 'ffmpeg' },
     'timeline-only': { type: 'boolean', default: false },
@@ -64,7 +64,7 @@ if (args.help) {
   --subtitles source       keep the episode's own words on screen under a translated voice
   --poster-beat <id>       poster from a beat, e.g. momiji-platform/2 (default: first portrait)
   --poster-at <seconds>    poster from a video time instead
-  --crf <n>                x264 quality, lower is larger (default 22, capped at 6 Mbit/s)
+  --crf <n>                x264 quality, lower is larger (default 18, capped at 12 Mbit/s)
   --gl <backend>           metal, swiftshader, egl or default (default metal on macOS)
   --timeline-only          simulate and write the timeline JSON without video
   --max-seconds <n>        stop a runaway render (default 600)`);
@@ -224,12 +224,13 @@ async function renderAspect(browser, base, aspect) {
     `${episodeId} ${aspect}: ${width}×${height} @ ${fps} fps on ${ready.gpu} (planned ≈${played.plannedSeconds}s + waits)`,
   );
   const cdp = await page.context().newCDPSession(page);
-  const capture = async (quality) =>
+  const capture = async (quality = null) =>
     Buffer.from(
       (
         await cdp.send('Page.captureScreenshot', {
-          format: 'jpeg',
-          quality,
+          // Video frames are PNG (a lossy JPEG per frame, re-encoded to H.264, left skin
+          // grainy); the poster stays a JPEG.
+          ...(quality === null ? { format: 'png' } : { format: 'jpeg', quality }),
           optimizeForSpeed: true,
           fromSurface: true,
         })
@@ -246,7 +247,7 @@ async function renderAspect(browser, base, aspect) {
           '-f',
           'image2pipe',
           '-c:v',
-          'mjpeg',
+          'png',
           '-framerate',
           String(fps),
           '-i',
@@ -257,16 +258,17 @@ async function renderAspect(browser, base, aspect) {
           'medium',
           '-crf',
           String(crf),
-          // Keeps a 90-second episode near 60 MB for messaging apps.
+          // Enough for clean skin and rain at 1080 × 1920; a 90-second episode stays under
+          // about 100 MB, which messaging apps accept.
           '-maxrate',
-          '6M',
-          '-bufsize',
           '12M',
+          '-bufsize',
+          '24M',
           '-profile:v',
           'high',
           '-level:v',
           '4.2',
-          // Screenshots are full-range JPEG; phones expect limited-range yuv420p.
+          // Screenshots are full-range RGB; phones expect limited-range yuv420p.
           '-vf',
           'scale=in_range=pc:out_range=tv,format=yuv420p',
           '-color_range',
@@ -315,8 +317,8 @@ async function renderAspect(browser, base, aspect) {
       };
     }
     if (encoder) {
-      const jpeg = await capture(92);
-      if (!encoder.child.stdin.write(jpeg)) await once(encoder.child.stdin, 'drain');
+      const frame = await capture();
+      if (!encoder.child.stdin.write(frame)) await once(encoder.child.stdin, 'drain');
     }
     if (frame % (fps * 10) === 0) {
       const rate = (frame + 1) / ((performance.now() - started) / 1000);
