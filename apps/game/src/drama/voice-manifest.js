@@ -47,7 +47,8 @@ export const clipFileName = ({ line, cast }) => `${line.replaceAll('/', '-')}-${
 /**
  * The audio manifest for one language. `clips` is exactly what the video renderer reads
  * ({ line, file } with paths relative to the manifest). `lines` carries the details of
- * each clip (cast, speaker, translated text, length). `plan` estimates when each line
+ * each clip (cast, speaker, translated text, length and its mouth curve for lip sync,
+ * drama/mouth-curve.js). `plan` estimates when each line
  * starts if the train never makes a beat wait: the first beat holds for the title card,
  * a beat's first line starts one second in, a voiced line holds for its clip plus 0.2 s,
  * lines are 0.35 s apart, and a beat ends 0.9 s after its last line or at its hold.
@@ -119,6 +120,8 @@ export function buildVoiceManifest({
       sourceText: clip.sourceText,
       textSource: clip.textSource,
       plannedStartMs: starts.get(clip.line),
+      // Lip sync: { rate: 60, open: [0-15 per frame], vowel: two letters per frame }.
+      ...(clip.mouth ? { mouth: clip.mouth } : {}),
     })),
     // Beat narration lines (`<scene id>/<beat number>`) and the end card line ('end')
     // in this language, so a render can show them translated too.
@@ -163,8 +166,14 @@ export function createManifestVoice(manifest, { subtitles = 'voice' } = {}) {
     play(item) {
       const entry = find(item);
       if (!entry?.durationMs) return null;
-      // The runner holds the line for the clip; nothing plays in the page itself.
-      return { durationMs: entry.durationMs, done: true, stop() {} };
+      // The runner holds the line for the clip; nothing plays in the page itself. The
+      // speaker's mouth follows the clip's curve from the manifest.
+      return {
+        durationMs: entry.durationMs,
+        done: true,
+        stop() {},
+        mouth: entry.mouth?.open?.length ? entry.mouth : null,
+      };
     },
     stopAll() {},
     status: () => ({

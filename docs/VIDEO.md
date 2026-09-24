@@ -121,6 +121,20 @@ An audio manifest places sound files on that timeline:
 
 Clips are delayed to their start with ffmpeg `adelay`, mixed with `amix` without level normalization, and padded or trimmed to the video length. `apps/game/src/drama/render-timeline.js` holds the validation and filter-graph code with unit tests.
 
+## Lip sync
+
+A `pnpm voice:episode` manifest gives every line a mouth curve read from its WAV, 60 frames a second:
+
+```json
+"mouth": { "rate": 60, "open": [0, 3, 9, 14, 15, 12, 6, 0], "vowel": "aaaaaaaaohohohoh" }
+```
+
+- `open` is the mouth opening from 0 (closed) to 15: an RMS envelope of the clip with about 30 ms attack and 80 ms release, divided by that speaker's loud level (the 95th percentile over all their clips in the episode and language), and closed below 12 % of it or under about −46 dBFS.
+- `vowel` has two letters per frame (`aa`, `ih`, `ou`, `ee`, `oh`): the spectral centroid between 250 Hz and 4 kHz against the speaker's median centroid. Low reads as `ou` or `oh`, the middle as `aa`, high as `ih` or `ee`. A seven-frame majority removes single odd frames, and pauses keep the vowel before them.
+- `pnpm voice:episode --episode the-1742-1 --lang te-IN --mouth-only` rewrites only these curves from the clips already in the output folder. It makes no TTS or translation requests and needs no key.
+
+When a voiced line plays, the speaking hero's VRM visemes follow the curve instead of the fixed syllable rhythm. The opening is smoothed (40 ms up, 60 ms down), a new vowel takes the mouth only after it has lasted 50 ms or while the mouth is nearly shut, and the shapes cross-fade, so the mouth does not chatter. In the game, live clips play through an `AnalyserNode` that measures the same envelope and centroid each frame (`apps/game/src/drama/live-mouth.js`), with running per-voice levels in place of the manifest's percentiles. Lines without audio, or before Web Audio has started, keep the syllable rhythm. A voice on the phone moves no face. The code is in `apps/game/src/drama/mouth-curve.js` and `createMouthDriver` in `apps/game/src/characters/vrm-expressions.js`.
+
 ## Limits
 
 - The capture needs a working WebGL context. On macOS headless Chromium uses the GPU through ANGLE Metal; `--gl swiftshader` works without a GPU but is many times slower.

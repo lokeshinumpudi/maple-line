@@ -19,7 +19,9 @@ import { lineId, beatId } from './render-timeline.js';
  *   setStop(stopId | null, { crossing }) scheduled stop for auto drive; with a crossing id
  *                                   (scene holdAt) the train stops short of that crossing
  *   cut(shot)                       director shot; subjects already resolved
- *   say({ speaker, text, seconds, phone, entity, voiced })
+ *   say({ speaker, text, seconds, phone, entity, voiced, mouth })
+ *                                   entity: the person whose mouth moves (null for a voice
+ *                                   on the phone); mouth: the clip's lip-sync source
  *   card({ kind, title, subtitle, line, seconds })
  *   direct(entityId, { mood, intent, holdSeconds })
  *   event(type)                     NPC minds world event
@@ -39,7 +41,8 @@ import { lineId, beatId } from './render-timeline.js';
  *     ready(item)                   everything this line needs has arrived or failed
  *     text(item)                    subtitle in the chosen language (English if missing)
  *     durationMs(item)              length of a prepared clip, or null
- *     play(item)                    { durationMs, done, stop() } or null when unvoiced
+ *     play(item)                    { durationMs, done, stop(), mouth? } or null when unvoiced;
+ *                                   mouth is a curve (mouth-curve.js) or a live sampler
  *     stopAll(), status()
  *
  * Advance with update(dt) using simulation time, so pauses and menus hold the episode.
@@ -326,8 +329,11 @@ export function createEpisodeRunner(host, { stops = [], crossings = [], onEvent 
       seconds,
       phone: Boolean(spoken.phone),
       voiced: Boolean(handle),
-      // The character playing the speaker in this scene, if any (for mouth movement).
-      entity: spoken.cast ? (scene().actors[spoken.cast] ?? null) : null,
+      // The character playing the speaker in this scene, if any (for mouth movement). A
+      // voice on the phone belongs to someone who is not in the shot, even when that person
+      // is staged somewhere in the scene, so no visible face speaks it.
+      entity: spoken.cast && !spoken.phone ? (scene().actors[spoken.cast] ?? null) : null,
+      mouth: handle?.mouth ?? null,
     });
     current.phase = 'speaking';
     current.handle = handle;

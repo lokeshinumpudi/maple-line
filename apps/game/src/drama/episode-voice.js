@@ -10,6 +10,9 @@ import { VOICE_REVISION } from '@maple-line/voice-score';
  * Hand-written `translations` in the episode win over machine translation. When the
  * director is offline or has no Sarvam key the episode keeps playing with subtitles,
  * and status() says why. Prepared clips live here, outside the serializable store.
+ *
+ * With a `mouth` tracker (live-mouth.js), each played clip's handle carries a `mouth`
+ * source that samples the playing audio, so the speaker's lips follow the voice.
  */
 const REASONS = {
   offline: 'Director offline · subtitles only',
@@ -48,6 +51,7 @@ export function createEpisodeVoice({
   fetchImpl = fetch,
   urls = URL,
   hosted = false,
+  mouth = null,
   onPlaying = () => {},
   onStatus = () => {},
 } = {}) {
@@ -315,8 +319,10 @@ export function createEpisodeVoice({
           if (current === handle) release();
           handle.done = true;
         },
+        mouth: null,
       };
       current = handle;
+      handle.mouth = mouth?.source(item.voice, () => current === handle) ?? null;
       onPlaying(true);
       if (!paused)
         Promise.resolve(audio.play()).catch(() => {
@@ -338,6 +344,8 @@ export function createEpisodeVoice({
     },
     /** A fresh click (starting an episode) may play audio again after a block. */
     unblock() {
+      // A click is the moment an audio context may start, so lip sync can connect.
+      mouth?.wire();
       if (!blocked) return;
       blocked = false;
       publish();
