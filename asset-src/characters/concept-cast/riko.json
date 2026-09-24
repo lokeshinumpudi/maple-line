@@ -13,7 +13,11 @@
     "The front view keeps the image-right half (her left, no bag) below `bagRow` and mirrors it; the back view keeps the image-left half.",
     "The side view shows her left side facing image left. `sideCuts` remove the bag and its strap; `sideClip` is her hair clip, left out when the side view paints her right flank."
   ],
-  "keepHalf": { "front": "right", "back": "left" },
+  "neckerchief": true,
+  "keepHalf": {
+    "front": "right",
+    "back": "left"
+  },
   "bagRow": 204,
   "sideCuts": [
     [

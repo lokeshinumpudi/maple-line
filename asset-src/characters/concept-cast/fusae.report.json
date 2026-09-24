@@ -1,0 +1,52 @@
+{
+  "blender": "5.2.2 LTS",
+  "cast": "fusae",
+  "facing": "-Y in Blender, +Z in three.js (VRM 1.0)",
+  "heightMetres": 1.447,
+  "hipsMetres": 0.79,
+  "materials": [
+    "blush",
+    "body",
+    "brow",
+    "eye-highlight",
+    "eye-white",
+    "glasses",
+    "hair",
+    "hair-bun",
+    "iris",
+    "iris-light",
+    "lash",
+    "mouth",
+    "nose",
+    "pupil",
+    "scalp",
+    "skin",
+    "skirt"
+  ],
+  "shapeKeys": [
+    "blinkL",
+    "blinkR",
+    "happy",
+    "relaxed",
+    "surprised",
+    "aa",
+    "ih",
+    "ou",
+    "ee",
+    "oh",
+    "lookUp",
+    "lookDown",
+    "lookLeft",
+    "lookRight"
+  ],
+  "springs": ["bun"],
+  "triangles": 11937,
+  "trianglesPerMesh": {
+    "Body": 5692,
+    "Face": 345,
+    "Glasses": 792,
+    "Hair": 2652,
+    "Head": 1496,
+    "Skirt": 960
+  }
+}

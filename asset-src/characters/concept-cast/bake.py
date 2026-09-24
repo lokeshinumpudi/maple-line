@@ -177,6 +177,29 @@ def clean_view(img, axis, keep, below_row):
     return out
 
 
+def mirror_regions(img, axis, boxes):
+    """Replace each (x0, y0, x1, y1) pixel box by its mirror about the body axis: a hand the
+    sheet cut off at the edge of the view takes the other hand's paint."""
+    out = img.copy()
+    w = img.shape[1]
+    for x0, y0, x1, y1 in boxes:
+        xs = np.arange(x0, x1)
+        src = np.clip(np.floor(2 * axis - (xs + 0.5)).astype(int), 0, w - 1)
+        out[y0:y1, x0:x1] = img[y0:y1][:, src]
+    return out
+
+
+def painted_view(views, view):
+    """A view's paint with the bag half mirrored away (`bagRow`) and `mirrorRegions` filled."""
+    cfg = views.cfg
+    fr = views.frame[view]
+    img = views.img[view]
+    if cfg.get("bagRow") is not None and view in cfg["keepHalf"]:
+        img = clean_view(img, fr.axis, cfg["keepHalf"][view], cfg["bagRow"])
+    boxes = cfg.get("mirrorRegions", {}).get(view)
+    return mirror_regions(img, fr.axis, boxes) if boxes else img
+
+
 def sample(img, px, py):
     """Bilinear lookup of an (h, w, c) image at float pixel coordinates (x right, y down)."""
     h, w = img.shape[:2]
@@ -202,13 +225,7 @@ def project(views, pos, nrm, vis, covered, power=3.5, only=None, exclude=None):
     """Blend the painted views into texel colours. `only` / `exclude` map a view name to a
     pixel mask that texels may / may not take colour from (hair texels take hair pixels,
     body texels never do). Returns (rgb, painted mask)."""
-    cfg = views.cfg
-    f, b = views.frame["front"], views.frame["back"]
-    images = {
-        "front": clean_view(views.img["front"], f.axis, cfg["keepHalf"]["front"], cfg["bagRow"]),
-        "back": clean_view(views.img["back"], b.axis, cfg["keepHalf"]["back"], cfg["bagRow"]),
-        "side": views.img["side"],
-    }
+    images = {v: painted_view(views, v) for v in ("front", "back", "side")}
     valid = {
         "front": mt.erode(views.sym["front"], 2),
         "back": mt.erode(views.sym["back"], 2),

@@ -275,7 +275,7 @@ def fallback_weights(obj, joints, names):
     return W
 
 
-def skirt_weights(obj, m, names):
+def skirt_weights(obj, m, names, share=0.92):
     idx = {n: i for i, n in enumerate(names)}
     W = np.zeros((len(obj.data.vertices), len(names)), dtype=np.float32)
     top, hem = m["z_skirt_top"], m["z_hem"]
@@ -287,7 +287,7 @@ def skirt_weights(obj, m, names):
         # The front panel rides on the thighs (sitting lifts it); the back stays with the
         # hips, which it is sat on.
         front = float(np.clip((cy - y) / 0.08, 0, 1))
-        legs = 0.92 * t ** 0.8 * (0.55 + 0.45 * front)
+        legs = share * t ** 0.8 * (0.55 + 0.45 * front)
         W[v.index, idx["hips"]] = 1 - legs
         W[v.index, idx["leftUpperLeg"]] = legs * side
         W[v.index, idx["rightUpperLeg"]] = legs * (1 - side)
@@ -303,6 +303,9 @@ def hair_weights(obj, chains, names, hp):
     for prefix, pts in chains.items():
         d = Vector((pts[0].x - C.x, pts[0].y - C.y, 0)).normalized()
         info.append((prefix, d, pts))
+    if not info:  # hair with no hanging chains (a bun) rides on the head
+        W[:, idx["head"]] = 1
+        return W
     for v in obj.data.vertices:
         p = v.co
         root_z = info[0][2][0].z

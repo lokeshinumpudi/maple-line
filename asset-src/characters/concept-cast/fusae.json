@@ -1,0 +1,166 @@
+{
+  "cast": "fusae",
+  "person": "fusae",
+  "title": "Grandma Fusae",
+  "height": 1.45,
+  "views": {
+    "front": "ref/fusae-front.jpg",
+    "side": "ref/fusae-side.jpg",
+    "back": "ref/fusae-back.jpg"
+  },
+  "notes": [
+    "Pixel coordinates are in the 1024 x 1024 view crops, x right and y down.",
+    "The sheet cut the front view at her left hand, so the front keeps the image-left half and `mirrorRegions` paints that hand from the other one.",
+    "`hairCuts` take the bun out of the outline the hair shell follows; `bun` builds it as its own piece on a spring chain.",
+    "The side view shows her left side facing image left, stooped: the head sits forward of the chest."
+  ],
+  "groundShadow": true,
+  "keepHalf": {
+    "front": "left",
+    "back": "left"
+  },
+  "bagRow": null,
+  "mirrorRegions": {
+    "front": [[690, 470, 840, 660]]
+  },
+  "neckWidth": 0.62,
+  "rows": {
+    "shoulder": 268,
+    "waist": 615,
+    "skirtTop": 600,
+    "neck": 255,
+    "hem": 860
+  },
+  "armDepthPx": 495,
+  "toePx": 425,
+  "skirt": {
+    "pleatDepth": 0.008,
+    "legShare": 0.5
+  },
+  "hair": {
+    "locks": 0,
+    "chains": 0,
+    "paint": 0.3,
+    "thickness": 0.006
+  },
+  "hairMask": {
+    "minMean": 0.25,
+    "maxMean": 0.85,
+    "maxSat": 0.3,
+    "minBlueRed": 0.68
+  },
+  "hairCuts": {
+    "side": [
+      [
+        [568, 160],
+        [690, 160],
+        [690, 252],
+        [568, 252]
+      ]
+    ],
+    "back": [
+      [
+        [418, 166],
+        [500, 166],
+        [500, 246],
+        [418, 246]
+      ]
+    ]
+  },
+  "bun": {
+    "side": [605, 205],
+    "radius": [40, 34],
+    "width": 1.1
+  },
+  "headShape": {
+    "back": 0.8,
+    "hairDepth": 0.022
+  },
+  "head": {
+    "front": {
+      "chin": [563, 240],
+      "eyeRow": 172,
+      "eyeSpacing": 66,
+      "mouth": [563, 212],
+      "nose": [563, 190],
+      "brow": 140,
+      "hairline": 98,
+      "fringe": 98,
+      "faceHalfWidth": 60,
+      "cheekRow": 200,
+      "earRow": 190
+    },
+    "side": {
+      "chin": [384, 236],
+      "nose": [371, 182],
+      "eye": [405, 160],
+      "ear": [480, 195],
+      "forehead": [388, 122],
+      "neckFront": 440,
+      "neckBack": 490
+    }
+  },
+  "glasses": {
+    "radius": 26,
+    "offset": 37.5,
+    "row": 176,
+    "standoff": 0.008,
+    "wire": 0.0013
+  },
+  "face": {
+    "eyeWidth": 0.36,
+    "eyeTop": 0.42,
+    "eyeBottom": 0.32,
+    "iris": 1.05,
+    "glint": 0.85,
+    "mouthWidth": 0.55,
+    "smile": 1.0,
+    "blush": true,
+    "lines": true
+  },
+  "posture": {
+    "stoop": 6
+  },
+  "colors": {
+    "skin": "#f1cfae",
+    "skinShade": "#d9a284",
+    "hair": "#b7b5b1",
+    "iris": "#3a2a24",
+    "irisLight": "#6b5242",
+    "lash": "#3a2a24",
+    "brow": "#8f8880",
+    "mouth": "#9c5a50",
+    "blush": "#eba892",
+    "glasses": "#6e4b2e"
+  },
+  "armpitMin": 0.4,
+  "torsoLine": [
+    [285, 100],
+    [330, 115],
+    [380, 126],
+    [440, 134],
+    [540, 138]
+  ],
+  "maskCuts": {
+    "front": [
+      [
+        [555, 862],
+        [571, 862],
+        [571, 990],
+        [555, 990]
+      ]
+    ],
+    "back": [
+      [
+        [450, 862],
+        [466, 862],
+        [466, 990],
+        [450, 990]
+      ]
+    ]
+  },
+  "hairHalf": {
+    "front": "right",
+    "back": "left"
+  }
+}

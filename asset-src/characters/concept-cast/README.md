@@ -1,23 +1,48 @@
 # Concept cast
 
-Builds a game character from three painted views of approved concept art. Riko is the first; her output replaces `apps/game/public/models/characters/vrm/riko.vrm`. The older test figure (`riko-test.vrm`, `?vrm=test`) is retired.
+Builds a game character from three painted views of approved concept art. Each character has a settings file, `<cast>.json`, and the build writes `apps/game/public/models/characters/vrm/<cast>.vrm`. Built so far:
+
+- Riko (`riko.json`), the Momiji student. Her older test figure is retired.
+- Grandma Fusae (`fusae.json`), the staged drama role in `apps/game/src/drama/drama-roles.js`. Her VRM replaces the test figure from `vrm-cast/build.py`; do not rebuild `fusae` with that script.
 
 Everything runs in Blender (5.2, `blender -b`) except the last step, which is the shared `make-vrm.mjs`:
 
 ```sh
 blender -b --factory-startup --python-exit-code 1 \
-  --python asset-src/characters/concept-cast/build.py -- --cast riko [--render <folder>]
-node asset-src/characters/vrm-cast/make-vrm.mjs --from asset-src/characters/concept-cast/build riko
+  --python asset-src/characters/concept-cast/build.py -- --cast <riko|fusae> [--render <folder>]
+node asset-src/characters/vrm-cast/make-vrm.mjs --from asset-src/characters/concept-cast/build <riko|fusae>
 blender -b --factory-startup --python-exit-code 1 --python asset-src/characters/concept-cast/props.py
 blender -b --factory-startup --python-exit-code 1 --python asset-src/characters/concept-cast/tests/run.py
 ```
 
-The build takes about a minute. `--render` writes orthographic renders over the painted views, face close-ups per expression and the hair masks, for checking a change. Intermediate files go to `build/` (ignored by git); `riko.report.json` records triangles, materials, springs and shape keys.
+The build takes about three minutes. `--render` writes orthographic renders over the painted views, face close-ups per expression and the hair masks, for checking a change. Intermediate files go to `build/` (ignored by git); `riko.report.json` records triangles, materials, springs and shape keys.
 
 ## Inputs
 
 - `ref/riko-front.jpg`, `ref/riko-side.jpg`, `ref/riko-back.jpg`: the three views, each 1024 × 1024 on the paper colour. `ref/radio-sheet.jpg` paints the radio. Provenance and prompts are in [THIRD_PARTY.md](../../THIRD_PARTY.md).
+- `ref/fusae-*.jpg`, `ref/aoi-*.jpg`, `ref/ishida-*.jpg`, `ref/sato-*.jpg` and the `*-sheet.jpg` turnarounds: the other cast members' views (Aoi's come from `c-mika.png`). Only Fusae is built from them so far.
 - `riko.json`: what the pixels cannot say on their own. The height (1.55 m); which half of the front and back views is free of her shoulder bag (that half is mirrored); polygons around the bag and strap in the side view and around the hair clip; a few rows (shoulder line, waist, skirt top, neck); face landmarks (chin, eye row and spacing, mouth, brow, ear); the arm's depth and the toe in the side view; and the colours for the drawn face.
+
+### Settings for other characters
+
+`fusae.json` shows the options Riko does not need:
+
+| Setting                            | What it does                                                                                             |
+| ---------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| `groundShadow`                     | A painted shadow under the feet counts as paper in the matte.                                            |
+| `maskCuts`                         | Polygons cut out of a view's matte, such as the paper between feet set close together.                   |
+| `bagRow: null`, `mirrorRegions`    | No bag to mirror away; a hand the sheet cut off is painted from the other hand.                          |
+| `neckerchief`                      | Riko only: strip the neckerchief from the side silhouette.                                               |
+| `torsoLine`, `armpitMin`           | Where baggy sleeves lie against the body all the way down, the line between arm and body, drawn by hand. |
+| `rows.hem`                         | The hem row, when a long dress over close feet hides the gap between the legs.                           |
+| `hairMask`, `hairHalf`, `hairCuts` | Grey hair picked by saturation and hue; which half is mirrored; the bun cut out of the shell's outline.  |
+| `hair`                             | Lock count, spring chains, shell thickness and how much of the painted strokes stays.                    |
+| `bun`                              | A hair bun as its own mesh on a stiff three-joint spring chain.                                          |
+| `headShape`, `head.front.hairline` | Skull depth behind the ears and under the hair; a bare forehead up to the hairline.                      |
+| `glasses`                          | Round wire glasses as a separate mesh, rigid on the head.                                                |
+| `face`                             | Eye size, iris, mouth width, the resting smile, blush and age lines.                                     |
+| `skirt`                            | Pleat depth and how much the hem follows the thighs (less for a long dress).                             |
+| `posture.stoop`                    | Degrees of stoop, read by the game's posture layer.                                                      |
 
 ## Steps
 
@@ -29,11 +54,21 @@ The build takes about a minute. `--render` writes orthographic renders over the 
 6. **Rig** (`rig.py`). The VRM humanoid skeleton (with fingers) is placed on measured landmarks: the arm line, the wrist where the painted run turns to skin, elbows at 47% of the arm, hips at 0.545 of the height (the game reads a VRM's height back from its hips), knees and ankles from the leg runs and the top of the shoes. The body gets Blender heat weights, then region rules: arm bones never move the blouse side, torso bones never move the sleeve, each leg owns its own side, the head is rigid. The skirt follows the hips and, toward the hem, the thighs (the front more than the back). Six spring chains swing the bob. The A-pose is posed out to the VRM T-pose and applied as the rest pose.
 7. **Export**. A GLB with a JPEG atlas and a sidecar of humanoid bones, expressions, springs, colliders and MToon roles. `make-vrm.mjs` turns it into VRM 1.0 and uses the painted texture for the MToon shaded side as well.
 
-## Budgets and results (Riko)
+## Budgets and results
 
-About 13,600 triangles (body 6,000, hair 4,700, head 1,600, skirt 960, face 300) and a 0.5 MB VRM. The radio and phone (`props.py`) add 236 triangles and 50 KB.
+Riko: about 13,600 triangles (body 6,000, hair 4,700, head 1,600, skirt 960, face 300) and a 0.5 MB VRM. The radio and phone (`props.py`) add 236 triangles and 50 KB.
+
+Fusae: see `fusae.report.json` for the triangles per mesh; about 12,000 triangles and a 0.5 MB VRM, 1.45 m tall with a 6 degree stoop.
 
 ## Known gaps
+
+Fusae:
+
+- Her hair is a painted shell with a bun; there are no separate strands at the temples, and seen from the side the skull shows scalp colour in front of the ears.
+- The face has no nose shape; the nose and age lines are faint decals.
+- The long dress follows the hips more than the thighs, so a long stride pushes the knees against it.
+
+Riko:
 
 - The body is decimated triangles, not quads (QuadriFlow shrank the arms).
 - The painted clothes carry the painted light; under the game sun the navy reads darker and flatter than the art.
