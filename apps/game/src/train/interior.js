@@ -17,6 +17,24 @@ const NAMED_PER_CAR = 3;
 /** Deterministic seated activities; the pattern is offset per car so neighbours differ. */
 const ACTIVITIES = ['newspaper', 'window', 'book', 'bag', 'window', 'newspaper', 'bag'];
 export const CAB_CARS = [0, CAR_COUNT - 1];
+/** Through riders' roles for the crowd kit's looks; the pattern is offset per car. */
+const THROUGH_ROLES = [
+  'office commuter',
+  'school student',
+  'retired neighbour',
+  'tourist',
+  'market shopper',
+];
+/** Momiji people with their own hero VRM keep the same look when the crowd draws them aboard. */
+const HERO_LOOKS = { 'commuter-1': 'sato', 'commuter-2': 'riko', 'reader-1': 'ishida' };
+/**
+ * The crowd kit's seated clip for each activity. Riders with a bag on their lap alternate
+ * between a phone call and a doze, so a carriage is not all readers and window watchers.
+ */
+function crowdActivity(activity, index) {
+  if (activity === 'bag') return index % 2 ? 'doze' : 'phone';
+  return activity;
+}
 const DIAL_REST = -2.3;
 const DIAL_SWEEP = 4.6;
 
@@ -150,7 +168,9 @@ export function createCarInterior({
   })).filter((slot) => slot.id !== undefined);
   const batches = new Map();
   const dummy = new THREE.Object3D();
+  let skipDraw = false;
   function instance(geo, mat, x, y, z, sx, sy, sz, rotation = 0) {
+    if (skipDraw) return;
     const key = `${geo.uuid}:${mat.uuid}`;
     if (!batches.has(key)) {
       const mesh = new THREE.InstancedMesh(geo, mat, 100);
@@ -168,6 +188,25 @@ export function createCarInterior({
     batch.mesh.setMatrixAt(batch.count++, dummy.matrix);
   }
   let time = 0;
+  // Riders the crowd kit draws (characters/crowd/) are left out of the instanced batches.
+  const crowdHidden = new Set();
+  const crowdRecords = slots.map((p, i) => ({
+    id: p.id,
+    source: 'interior',
+    role: p.through ? THROUGH_ROLES[(i + index) % THROUGH_ROLES.length] : 'commuter',
+    named: HERO_LOOKS[p.id] ?? null,
+    position: new THREE.Vector3(),
+    heading: 0,
+    walking: false,
+    pose: 'seated',
+    state: 'riding',
+    activity: crowdActivity(p.activity, i + index),
+    // Seat cushion top above the carriage floor under the rider.
+    seatHeight: 0.45,
+    indoors: true,
+    visible: false,
+  }));
+  const crowdDirection = new THREE.Vector3();
   // Car-local head centres of the seated passengers drawn this frame, for camera framing.
   const headSpots = [];
   function update({ dt = 0, speed = 0, power = 0, brake = 0, passengers = [], cabinOn = false }) {
@@ -184,6 +223,10 @@ export function createCarInterior({
       p.visible =
         p.through || passengers.some((person) => person.id === p.id && person.state === 'riding');
       if (!p.visible) continue;
+      if (!p.through)
+        crowdRecords[i].role = passengers.find((person) => person.id === p.id)?.role ?? 'commuter';
+      // A rider the crowd draws keeps a head spot for framing but no instanced parts.
+      skipDraw = crowdHidden.has(p.id);
       const sway = Math.sin(time * 2.2 + i) * Math.min(Math.abs(speed) * 0.001, 0.015);
       const x = p.side * 1.01,
         z = p.z,
@@ -280,6 +323,7 @@ export function createCarInterior({
         instance(boxGeometry, wood, x, 1.27, z + 0.4, 0.3, 0.33, 0.24); // bag beneath bench
       }
     }
+    skipDraw = false;
     for (const { mesh, count } of batches.values()) {
       mesh.count = count;
       mesh.instanceMatrix.needsUpdate = true;
@@ -310,6 +354,32 @@ export function createCarInterior({
   const world = new THREE.Vector3();
   return {
     update,
+    /**
+     * Seated riders for the crowd kit, in world space (call after the train has moved this
+     * frame). The feet are on the floor under the pelvis; the kit's sitting clip moves the
+     * body forward onto the bench (hero-cast seat geometry).
+     */
+    crowdPeople(push) {
+      // Parents only: the carriage's own subtree is large and the train updates it anyway.
+      car.updateWorldMatrix(true, false);
+      slots.forEach((p, i) => {
+        const record = crowdRecords[i];
+        record.visible = p.visible;
+        if (!p.visible) return;
+        const inward = -p.side;
+        record.position.set(p.side * 1.01 + inward * 0.05, 1.11, p.z);
+        car.localToWorld(record.position);
+        crowdDirection.set(inward, 0, 0).transformDirection(car.matrixWorld);
+        record.heading = Math.atan2(crowdDirection.x, crowdDirection.z);
+        push(record);
+      });
+    },
+    setCrowdHidden(id, hidden) {
+      if (!slots.some((p) => p.id === id)) return false;
+      if (hidden) crowdHidden.add(id);
+      else crowdHidden.delete(id);
+      return true;
+    },
     /** World positions of the seated passengers' heads, as [x, y, z]. */
     heads() {
       car.updateMatrixWorld();

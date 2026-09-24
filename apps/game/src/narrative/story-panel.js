@@ -235,6 +235,17 @@ export function mountStoryPanel({
         line.classList.toggle('is-speaking', status === 'playing' && cue?.lineIndex === index);
       }
       if (status === 'playing') card.dataset.speaker = cue?.character ?? 'narrator';
+      // The stage's figures move their mouths for quoted lines (narrative/story-crowd.js).
+      window.dispatchEvent(
+        new CustomEvent('maple:story-voice', {
+          detail: {
+            status,
+            character: cue?.character ?? null,
+            quoted: Boolean(cue?.quoted),
+            text: cue?.text ?? '',
+          },
+        }),
+      );
       narrationStatus = status;
       voiceNote.textContent = message;
       replay.hidden =

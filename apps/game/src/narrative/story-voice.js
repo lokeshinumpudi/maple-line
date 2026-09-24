@@ -91,7 +91,7 @@ export function scoreStoryBeat(beat, choiceId = beat?.selectedChoice, displayLin
       if (!/[\p{L}\p{N}]/u.test(text)) return;
       const emotion =
         quoted && character === 'emi' && text.endsWith('?') ? 'curious' : direction.emotion;
-      cues.push({ text, character, emotion, lineIndex, pauseAfterMs: quoted ? 180 : 120 });
+      cues.push({ text, character, emotion, lineIndex, quoted, pauseAfterMs: quoted ? 180 : 120 });
     };
     for (const match of line.matchAll(/“([^”]+)”/gu)) {
       append(line.slice(offset, match.index), narrativeVoice, false);

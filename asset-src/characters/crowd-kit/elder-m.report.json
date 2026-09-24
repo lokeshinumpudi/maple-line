@@ -1,0 +1,81 @@
+{
+  "blender": "5.2.2 LTS",
+  "body": "elder-m",
+  "facing": "-Y in Blender, +Z in three.js (VRM 1.0)",
+  "heightMetres": 1.64,
+  "parts": {
+    "acc:backpack": 14,
+    "acc:cap": 8,
+    "acc:glasses": 10,
+    "acc:scarf": 13,
+    "acc:shoulder-bag": 11,
+    "acc:straw-hat": 9,
+    "acc:umbrella": 12,
+    "hair:buzz": 3,
+    "hair:elder-thin": 1,
+    "hair:short": 2,
+    "outfit:cardigan": 4,
+    "outfit:coat": 7,
+    "outfit:farmer": 5,
+    "outfit:staff": 6
+  },
+  "shapeKeys": {
+    "lod0": [
+      "blinkL",
+      "blinkR",
+      "happy",
+      "relaxed",
+      "surprised",
+      "aa",
+      "ih",
+      "ou",
+      "ee",
+      "oh",
+      "lookUp",
+      "lookDown",
+      "lookLeft",
+      "lookRight"
+    ],
+    "lod1": [
+      "blink"
+    ]
+  },
+  "triangles": {
+    "lod0": 13910,
+    "lod1": 3115
+  },
+  "trianglesPerPart": {
+    "lod0": {
+      "acc:backpack": 120,
+      "acc:cap": 220,
+      "acc:glasses": 86,
+      "acc:scarf": 240,
+      "acc:shoulder-bag": 232,
+      "acc:straw-hat": 288,
+      "acc:umbrella": 116,
+      "base": 6561,
+      "hair:buzz": 852,
+      "hair:elder-thin": 1798,
+      "hair:short": 2412,
+      "outfit:cardigan": 36,
+      "outfit:coat": 896,
+      "outfit:staff": 53
+    },
+    "lod1": {
+      "acc:backpack": 24,
+      "acc:cap": 110,
+      "acc:glasses": 86,
+      "acc:scarf": 88,
+      "acc:shoulder-bag": 72,
+      "acc:straw-hat": 120,
+      "acc:umbrella": 28,
+      "base": 1444,
+      "hair:buzz": 158,
+      "hair:elder-thin": 338,
+      "hair:short": 414,
+      "outfit:cardigan": 36,
+      "outfit:coat": 144,
+      "outfit:staff": 53
+    }
+  }
+}

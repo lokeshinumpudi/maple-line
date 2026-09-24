@@ -252,6 +252,8 @@ export function createStoryCast({ THREE, scene, railPoint, terrainHeight }) {
   let stageType = null;
   let activeZ = 0;
   let offsets = new Map();
+  // People drawn by the crowd kit's hero-level figures instead (narrative/story-crowd.js).
+  const standIns = new Set();
   const motion = new THREE.Quaternion();
 
   function place(z) {
@@ -317,6 +319,7 @@ export function createStoryCast({ THREE, scene, railPoint, terrainHeight }) {
         dummy.scale.copy(part.scale);
         if (part.prop === 'spanner' && (activeZ > 4700 || spannerReturned))
           dummy.scale.setScalar(0);
+        if (standIns.has(part.person)) dummy.scale.setScalar(0);
         dummy.updateMatrix();
         batch.setMatrixAt(i, dummy.matrix);
         if (updateColours) batch.setColorAt(i, new THREE.Color(part.colour));
@@ -404,5 +407,12 @@ export function createStoryCast({ THREE, scene, railPoint, terrainHeight }) {
     material.dispose();
     for (const { batch } of batches) batch.dispose();
   }
-  return { update, getState, dispose };
+  /** Hide one person's figure while a loaded model stands in for them. */
+  function setStandIn(id, enabled) {
+    if (enabled === standIns.has(id)) return;
+    if (enabled) standIns.add(id);
+    else standIns.delete(id);
+    if (offsets.size) renderPose(animationTime);
+  }
+  return { update, getState, dispose, setStandIn };
 }

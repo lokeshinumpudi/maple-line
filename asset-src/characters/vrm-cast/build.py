@@ -175,7 +175,8 @@ PROFILES = {
     },
 }
 
-ARGS = ma.parse_args({}, {"--cast": {"default": "sato"}})
+# Parsed in the main block, so asset-src/characters/crowd-kit/build.py can import this file.
+ARGS = None
 P = None
 S = 1.0  # height scale against the 1.58 m base
 
@@ -1391,7 +1392,7 @@ def build(cast):
         "facing": "-Y in Blender, +Z in three.js (VRM 1.0)",
     }
     ma.write_report(os.path.join(HERE, f"{cast}.report.json"), report)
-    if ARGS.render:
+    if ARGS is not None and ARGS.render:
         render(os.path.join(ARGS.render, cast), face)
     print("REPORT", report)
 
@@ -1439,5 +1440,7 @@ def render(folder, face):
         key.value = 0.0
 
 
-for cast_name in PROFILES if ARGS.cast == "all" else [ARGS.cast]:
-    build(cast_name)
+if __name__ == "__main__":
+    ARGS = ma.parse_args({}, {"--cast": {"default": "riko"}})
+    for cast_name in PROFILES if ARGS.cast == "all" else [ARGS.cast]:
+        build(cast_name)

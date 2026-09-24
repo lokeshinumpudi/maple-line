@@ -1,0 +1,133 @@
+{
+  "version": 1,
+  "note": "Shared by asset-src/characters/crowd-kit/build.py and the game. Part ids follow the order here: 0 = always drawn, then each body's hair, then its outfits, then the accessories. Slots are palette-texture columns.",
+  "slots": [
+    "skin",
+    "hair",
+    "top",
+    "inner",
+    "lower",
+    "legwear",
+    "shoes",
+    "accent",
+    "eyeWhite",
+    "iris",
+    "irisLight",
+    "pupil",
+    "glint",
+    "line",
+    "brow",
+    "mouth",
+    "blush",
+    "nose",
+    "hat",
+    "hatBand",
+    "bag",
+    "frame",
+    "umbrella",
+    "scarf",
+    "apron",
+    "metal"
+  ],
+  "accessories": ["cap", "straw-hat", "glasses", "shoulder-bag", "umbrella", "scarf", "backpack"],
+  "bodies": {
+    "adult-f": {
+      "file": "models/characters/crowd/adult-f.vrm",
+      "profile": {
+        "height": 1.6,
+        "shoulders": 1.04,
+        "hips": 1.03,
+        "chest": 1.03,
+        "limbs": 1.05,
+        "head": 0.96,
+        "brows": 0.25,
+        "blush": true,
+        "eyes": 0.86
+      },
+      "hair": ["bob", "ponytail", "long", "bun", "low-ponytail"],
+      "outfits": ["office-f", "apron", "casual-f", "coat"]
+    },
+    "adult-m": {
+      "file": "models/characters/crowd/adult-m.vrm",
+      "profile": {
+        "height": 1.72,
+        "shoulders": 1.2,
+        "hips": 0.95,
+        "chest": 1.12,
+        "limbs": 1.18,
+        "head": 0.93,
+        "brows": 1.0,
+        "blush": false,
+        "eyes": 0.72
+      },
+      "hair": ["short", "side-part", "buzz", "low-ponytail"],
+      "outfits": ["suit", "work", "staff", "coat"]
+    },
+    "elder-f": {
+      "file": "models/characters/crowd/elder-f.vrm",
+      "profile": {
+        "height": 1.52,
+        "shoulders": 1.02,
+        "hips": 1.1,
+        "chest": 1.06,
+        "limbs": 1.04,
+        "head": 0.96,
+        "brows": 0.4,
+        "blush": true,
+        "eyes": 0.62,
+        "stoop": 7
+      },
+      "hair": ["bun", "bob", "short"],
+      "outfits": ["cardigan-skirt", "farmer", "apron", "coat"]
+    },
+    "elder-m": {
+      "file": "models/characters/crowd/elder-m.vrm",
+      "profile": {
+        "height": 1.64,
+        "shoulders": 1.12,
+        "hips": 1.0,
+        "chest": 1.1,
+        "limbs": 1.1,
+        "head": 0.95,
+        "brows": 1.0,
+        "blush": false,
+        "eyes": 0.6,
+        "stoop": 8
+      },
+      "hair": ["elder-thin", "short", "buzz"],
+      "outfits": ["cardigan", "farmer", "staff", "coat"]
+    },
+    "teen": {
+      "file": "models/characters/crowd/teen.vrm",
+      "profile": {
+        "height": 1.58,
+        "shoulders": 1.0,
+        "hips": 1.0,
+        "chest": 1.0,
+        "limbs": 1.0,
+        "head": 1.0,
+        "brows": 0.3,
+        "blush": true,
+        "eyes": 1.0
+      },
+      "hair": ["bob", "ponytail", "long", "short", "side-part"],
+      "outfits": ["sailor", "gakuran", "cardigan-school", "casual"]
+    },
+    "child": {
+      "file": "models/characters/crowd/child.vrm",
+      "profile": {
+        "height": 1.2,
+        "shoulders": 0.96,
+        "hips": 0.98,
+        "chest": 0.98,
+        "limbs": 0.98,
+        "head": 1.24,
+        "brows": 0.2,
+        "blush": true,
+        "eyes": 1.1
+      },
+      "hair": ["bob", "twin-tails", "buzz", "short"],
+      "outfits": ["kid-casual", "kid-school", "kid-coat"]
+    }
+  }
+}

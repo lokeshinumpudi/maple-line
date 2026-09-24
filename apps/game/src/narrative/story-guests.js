@@ -42,6 +42,16 @@ const GUESTS = [
     props: ['work jacket', 'grease rag', 'workbench'],
   },
   {
+    id: 'yuta',
+    name: 'Yuta',
+    beatId: 'hinoki-furniture',
+    z: 8000,
+    height: 1.74,
+    coat: '#34405a',
+    hair: '#231d1f',
+    props: ['furniture parcels'],
+  },
+  {
     id: 'mika',
     name: 'Mika',
     beatId: 'yukihara-scaffolding',
@@ -78,6 +88,8 @@ export function createStoryGuests({ THREE, scene, railPoint, terrainHeight }) {
         scale: new THREE.Vector3(sx, sy, sz).multiplyScalar(factor),
         rotation: new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), tilt),
         moving,
+        // Crates and benches beside the guest stay when a model stands in for the guest.
+        prop: Math.abs(x) > 0.45,
       });
     }
     const cloth = guest.coat;
@@ -148,6 +160,16 @@ export function createStoryGuests({ THREE, scene, railPoint, terrainHeight }) {
       for (const x of [-0.97, -0.49])
         for (const z of [-0.04, 0.28]) part('box', '#55635d', x, 0.38, z, 0.05, 0.76, 0.05, false);
       part('box', '#596967', -0.7, 0.89, 0.13, 0.16, 0.11, 0.14, false);
+    } else if (guest.id === 'yuta') {
+      // Two taped furniture parcels on the platform beside him.
+      for (const [x, h] of [
+        [0.72, 0.42],
+        [1.02, 0.3],
+      ]) {
+        part('box', '#b89a6e', x, h / 2, 0, 0.26, h, 0.5, false);
+        part('box', '#d8cfb8', x, h / 2, 0, 0.27, 0.03, 0.51, false);
+      }
+      part('box', '#6b5a44', 0, 0.9, 0.16, 0.34, 0.5, 0.03);
     } else if (guest.id === 'mika') {
       part('round', '#b17a59', 0, 1.31, 0.012, 0.14, 0.075, 0.15);
       part('box', '#bd8b65', -0.09, 1.14, 0.19, 0.08, 0.27, 0.035);
@@ -171,6 +193,8 @@ export function createStoryGuests({ THREE, scene, railPoint, terrainHeight }) {
       return [kind, mesh];
     }),
   );
+  // A guest drawn by a loaded model instead (narrative/story-crowd.js); props stay.
+  let standIn = null;
   let current = null,
     foot = null,
     elapsed = 0,
@@ -187,6 +211,7 @@ export function createStoryGuests({ THREE, scene, railPoint, terrainHeight }) {
         // Two millimetres of breathing; hands hold their authored work pose.
         if (part.moving) dummy.position.y += Math.sin(elapsed * 1.25) * 0.002;
         dummy.scale.copy(part.scale);
+        if (standIn === current.id && !part.prop) dummy.scale.setScalar(0);
         dummy.quaternion.copy(part.rotation);
         dummy.updateMatrix();
         batch.setMatrixAt(index, dummy.matrix);
@@ -296,5 +321,11 @@ export function createStoryGuests({ THREE, scene, railPoint, terrainHeight }) {
     for (const geometry of Object.values(geometries)) geometry.dispose();
     material.dispose();
   }
-  return { update, getState, dispose };
+  function setStandIn(id, enabled) {
+    const next = enabled ? id : standIn === id ? null : standIn;
+    if (next === standIn) return;
+    standIn = next;
+    if (current) pose();
+  }
+  return { update, getState, dispose, setStandIn };
 }
