@@ -268,7 +268,8 @@ export const THE_1742 = Object.freeze({
               ],
             },
             {
-              shot: { type: 'portrait', subject: { cast: 'riko' } },
+              // Wide enough to hold her on the bench: a seated head reads a little off in 9:16.
+              shot: { type: 'portrait', subject: { cast: 'riko' }, lens: 32 },
               cues: [
                 {
                   after: 0,
@@ -307,7 +308,13 @@ export const THE_1742 = Object.freeze({
             },
             {
               // The pause before Fusae answers.
-              shot: { type: 'portrait', subject: { cast: 'riko' }, lens: 70, aperture: 'shallow' },
+              shot: {
+                type: 'portrait',
+                subject: { cast: 'riko' },
+                side: 'left',
+                lens: 70,
+                aperture: 'shallow',
+              },
               hold: 3,
               dialogue: [
                 {

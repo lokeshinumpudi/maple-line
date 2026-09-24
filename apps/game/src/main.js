@@ -988,6 +988,8 @@ const dramaStage = createDramaStage({
     stageForward.set(0, 0, 1).transformDirection(car.matrixWorld);
     const carHeading = Math.atan2(stageForward.x, stageForward.z);
     if (mark.kind === 'car') {
+      // Riders beside a cast member's seat would fill the dialogue shot.
+      if (mark.seated) trainModel.reserveSeat?.(mark.car === 0 ? lead : mark.car, mark.x, mark.z);
       stagePoint.set(mark.x, 1.1, mark.z).applyMatrix4(car.matrixWorld);
       return {
         x: stagePoint.x,

@@ -99,3 +99,20 @@ test('speed gauge honours the shared drive limit and pausing keeps the interior 
   assert.equal(JSON.stringify(train.getSystemsState().interiors), before);
   train.dispose();
 });
+
+test('a reserved drama seat keeps nearby riders out of the shot only while it is renewed', () => {
+  const train = createTrain({ THREE, scene: new THREE.Scene() });
+  const car0 = () => train.getSystemsState().interiors.find((i) => i.carIndex === 0);
+  assert.equal(car0().seated, 4);
+  // A cast member sits beside the first through rider on the left bench.
+  train.reserveSeat(0, -1.0, -2.3);
+  train.update(0.1, { passengers: [] });
+  assert.equal(car0().seated, 3, 'the neighbouring rider is hidden');
+  assert.ok(!car0().passengerIds.includes('through-0-0'));
+  for (const interior of train.getSystemsState().interiors.filter((i) => i.carIndex !== 0))
+    assert.equal(interior.seated, 4, `car ${interior.carIndex} is untouched`);
+  // Once the seat is no longer renewed, the rider comes back.
+  for (let i = 0; i < 10; i++) train.update(0.1, { passengers: [] });
+  assert.equal(car0().seated, 4);
+  train.dispose();
+});

@@ -911,6 +911,10 @@ export function createTrain({ THREE, scene, wireHeight = 12.1 }) {
     setCrowdHidden(id, hidden) {
       for (const interior of interiors) if (interior.setCrowdHidden(id, hidden)) return;
     },
+    /** Keep interior riders clear of a drama seat in one car (see interior.js). */
+    reserveSeat(index, x, z, seconds) {
+      interiors.find((interior) => interior.state().carIndex === index)?.reserveSeat(x, z, seconds);
+    },
     /** World positions of seated passengers' heads in one car (see interior.js). */
     interiorHeads: (index) =>
       interiors.find((interior) => interior.state().carIndex === index)?.heads() ?? [],

@@ -207,6 +207,15 @@ export function createCarInterior({
     visible: false,
   }));
   const crowdDirection = new THREE.Vector3();
+  // Car-local seats a drama scene uses: riders within RESERVE_RADIUS stay out of the shot.
+  // A reservation lapses unless renewed, so it lasts exactly while someone sits there.
+  const reserved = [];
+  const RESERVE_RADIUS = 1.2;
+  const nearReserved = (p) =>
+    reserved.some(
+      (seat) =>
+        seat.until > time && Math.hypot(p.side * 1.01 - seat.x, p.z - seat.z) < RESERVE_RADIUS,
+    );
   // Car-local head centres of the seated passengers drawn this frame, for camera framing.
   const headSpots = [];
   function update({ dt = 0, speed = 0, power = 0, brake = 0, passengers = [], cabinOn = false }) {
@@ -221,7 +230,9 @@ export function createCarInterior({
     for (let i = 0; i < slots.length; i++) {
       const p = slots[i];
       p.visible =
-        p.through || passengers.some((person) => person.id === p.id && person.state === 'riding');
+        (p.through ||
+          passengers.some((person) => person.id === p.id && person.state === 'riding')) &&
+        !nearReserved(p);
       if (!p.visible) continue;
       if (!p.through)
         crowdRecords[i].role = passengers.find((person) => person.id === p.id)?.role ?? 'commuter';
@@ -373,6 +384,14 @@ export function createCarInterior({
         record.heading = Math.atan2(crowdDirection.x, crowdDirection.z);
         push(record);
       });
+    },
+    /** Keep riders clear of a car-local seat (x, z) for `seconds`; renew to hold it. */
+    reserveSeat(x, z, seconds = 0.5) {
+      const seat = reserved.find((item) => Math.hypot(item.x - x, item.z - z) < 0.05);
+      if (seat) seat.until = time + seconds;
+      else reserved.push({ x, z, until: time + seconds });
+      for (let i = reserved.length - 1; i >= 0; i--)
+        if (reserved[i].until <= time - 1) reserved.splice(i, 1);
     },
     setCrowdHidden(id, hidden) {
       if (!slots.some((p) => p.id === id)) return false;
