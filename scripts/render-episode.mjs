@@ -38,6 +38,7 @@ const { values: args } = parseArgs({
     port: { type: 'string', default: '4373' },
     url: { type: 'string' },
     audio: { type: 'string' },
+    subtitles: { type: 'string' },
     'poster-beat': { type: 'string' },
     'poster-at': { type: 'string' },
     'max-seconds': { type: 'string', default: '600' },
@@ -60,6 +61,7 @@ if (args.help) {
   --port <n>               Vite port to start (default 4373)
   --url <base>             use an already running game server instead
   --audio <file>           a .wav/.mp3/.m4a from 0 s, or an audio manifest .json
+  --subtitles source       keep the episode's own words on screen under a translated voice
   --poster-beat <id>       poster from a beat, e.g. momiji-platform/2 (default: first portrait)
   --poster-at <seconds>    poster from a video time instead
   --crf <n>                x264 quality, lower is larger (default 22, capped at 6 Mbit/s)
@@ -208,8 +210,9 @@ async function renderAspect(browser, base, aspect) {
   await page.waitForFunction(() => window.__mapleRender, null, { timeout: 90000 });
   const ready = await page.evaluate(() => window.__mapleRender.ready());
   const played = await page.evaluate(
-    ([source, voiceManifest]) => window.__mapleRender.play(source, { voiceManifest }),
-    [draft ?? args.episode, audio.voice ?? null],
+    ([source, voiceManifest, subtitles]) =>
+      window.__mapleRender.play(source, { voiceManifest, subtitles }),
+    [draft ?? args.episode, audio.voice ?? null, args.subtitles === 'source' ? 'source' : 'voice'],
   );
   const episodeId = played.episode.id;
   const tag = aspect.replace(':', 'x');

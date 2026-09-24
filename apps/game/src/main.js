@@ -4102,7 +4102,7 @@ function installRenderControl() {
      * manifest from `pnpm voice:episode` holds each line for its clip and shows its
      * translated subtitles; the audio itself is mixed in by the render script.
      */
-    play(source, { voiceManifest = null } = {}) {
+    play(source, { voiceManifest = null, subtitles = 'voice' } = {}) {
       const episode = typeof source === 'object' && source ? source : findEpisode(source);
       if (!episode) throw new TypeError(`Unknown episode ${JSON.stringify(source)}.`);
       renderTimeline.reset();
@@ -4111,7 +4111,7 @@ function installRenderControl() {
       endCardFrame = null;
       ended = false;
       renderEventTime = 0;
-      renderVoice = voiceManifest ? createManifestVoice(voiceManifest) : null;
+      renderVoice = voiceManifest ? createManifestVoice(voiceManifest, { subtitles }) : null;
       const playing = watchEpisode(episode);
       current = { ...episode, ...playing.episode };
       return { episode: playing.episode, plannedSeconds: playing.episode.plannedSeconds };

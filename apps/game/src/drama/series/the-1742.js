@@ -16,19 +16,86 @@
  * with the sound off.
  */
 
+/** Hand-written Hindi, spoken the way a family talks; keyed by the English line. */
+const HINDI = {
+  'Meera’s grandparents came to this valley forty years ago.':
+    'मीरा के नाना-नानी चालीस साल पहले इस घाटी में आए थे।',
+  'Tomorrow, her Ammamma moves back to India.': 'कल उसकी अम्मम्मा वापस भारत जा रही हैं।',
+  'Tonight, she wants to hear Grandpa’s old radio one last time, at home.':
+    'आज रात वो आख़िरी बार, अपने घर में, नाना का पुराना रेडियो सुनना चाहती हैं।',
+  'The train gets in at 17:42. The last bus leaves at 17:40.':
+    'ट्रेन पाँच बजकर बयालीस मिनट पर पहुँचती है। आख़िरी बस पाँच बजकर चालीस पर निकल जाती है।',
+  'Two minutes. I’m going to miss it by two minutes.': 'दो मिनट। बस दो मिनट से छूट जाएगी।',
+  'Meera? You’re on the late train too?': 'मीरा? तुम भी लेट वाली ट्रेन से जा रही हो?',
+  'Arjun. Hi. I have to get to Aonuma tonight.': 'अर्जुन। हाय। मुझे आज रात आओनुमा पहुँचना है।',
+  'What’s in the box?': 'डिब्बे में क्या है?',
+  'Grandpa’s radio. I got it fixed. Ammamma wants to hear it tonight.':
+    'नाना का रेडियो। ठीक करवाया है। अम्मम्मा आज रात इसे सुनना चाहती हैं।',
+  'Tonight? But the last bus…': 'आज रात? लेकिन आख़िरी बस तो…',
+  'I know. It leaves before the train gets in.': 'पता है। ट्रेन पहुँचने से पहले ही निकल जाती है।',
+  'Sit in the front car. When the doors open, run.':
+    'आगे वाले डिब्बे में बैठना। दरवाज़े खुलते ही दौड़ पड़ना।',
+  'Thank you.': 'शुक्रिया।',
+  'I missed that bus once. I still think about it.':
+    'एक बार मेरी भी वो बस छूट गई थी। आज तक याद आती है।',
+  'Front car, then. I’ll run with you.': 'तो फिर आगे वाला डिब्बा। मैं भी तुम्हारे साथ दौड़ूँगा।',
+  'You don’t even live in Aonuma.': 'तुम तो आओनुमा में रहते भी नहीं।',
+  'I do tonight.': 'आज रात रहता हूँ।',
+  'The train leaves Momiji on time.': 'ट्रेन मोमिजी से समय पर निकलती है।',
+  'On the train, Meera calls her Ammamma.': 'ट्रेन में मीरा अपनी अम्मम्मा को फ़ोन करती है।',
+  'Meera? Did you fix it?': 'मीरा? ठीक हो गया?',
+  'It works, Ammamma. It sounds just like before.':
+    'चल रहा है, अम्मम्मा। बिल्कुल पहले जैसा बजता है।',
+  'Good girl. Then I’ll see you soon.': 'शाबाश, बेटा। तो फिर जल्दी मिलते हैं।',
+  'Ammamma… the train gets in after the bus leaves.':
+    'अम्मम्मा… ट्रेन बस निकलने के बाद पहुँचती है।',
+  'Then come tomorrow, dear.': 'तो कल आ जाना, बेटा।',
+  'Tomorrow you’ll be gone.': 'कल तो आप चली जाएँगी।',
+  'Then hurry, child.': 'तो फिर जल्दी आ, बच्ची।',
+  'At the farm crossing, the train stops. Now it’s running late.':
+    'खेतों वाले फाटक पर ट्रेन रुक जाती है। अब वो लेट हो रही है।',
+  'No, no, no…': 'नहीं, नहीं, नहीं…',
+  'Give me a second.': 'एक सेकंड रुको।',
+  'Divya? It’s me. Are you driving the last bus tonight?':
+    'दिव्या? मैं बोल रहा हूँ। आज आख़िरी बस तुम चला रही हो?',
+  'Can you wait at Aonuma? Just a few minutes. Please.':
+    'आओनुमा पर थोड़ा रुक सकती हो? बस कुछ मिनट। प्लीज़।',
+  'Who was that?': 'कौन था?',
+  'My sister. She drives the bus.': 'मेरी दीदी। वो बस चलाती है।',
+  'Will she wait?': 'क्या वो रुकेगी?',
+  'She never waits for me. But she might wait for you.':
+    'मेरे लिए तो कभी नहीं रुकती। पर तुम्हारे लिए शायद रुक जाए।',
+  'At Aonuma, a bus driver looks at the clock.': 'आओनुमा में, एक बस ड्राइवर घड़ी की ओर देखती है।',
+  'Aonuma. The train is seven minutes late.': 'आओनुमा। ट्रेन सात मिनट लेट है।',
+  'Meera runs.': 'मीरा दौड़ पड़ती है।',
+  'The bus is still there.': 'बस अब भी वहीं खड़ी है।',
+  'You must be Meera. My brother wouldn’t stop calling.':
+    'तुम मीरा होगी। मेरा भाई फ़ोन पर फ़ोन किए जा रहा था।',
+  'I called twice.': 'दो ही बार किया था।',
+  'Five times. Get in, both of you.': 'पाँच बार। चलो, दोनों बैठ जाओ।',
+  'Ammamma? You came all the way down?': 'अम्मम्मा? आप इतनी दूर नीचे तक आ गईं?',
+  'I couldn’t wait at home. Is that it?': 'घर पर बैठा नहीं गया। यही है वो?',
+  'It’s Grandpa’s radio.': 'नाना का रेडियो है।',
+  'Meera turns the radio on.': 'मीरा रेडियो चालू करती है।',
+  'That’s his station. He used to sing along.': 'यही उनका स्टेशन है। वो साथ-साथ गुनगुनाया करते थे।',
+  'Then let’s listen all the way home.': 'तो फिर घर तक यही सुनते चलते हैं।',
+  'She waited seven minutes. Someone asked her to.':
+    'वो सात मिनट रुकी रही। किसी ने रुकने को कहा था।',
+};
+
 /** The narrator carries the setup and the turns, in few words; the same words are captions. */
 const narrate = (text, te) => ({
   cast: 'narrator',
   text,
   emotion: 'warm',
-  translations: { 'te-IN': te },
+  translations: { 'te-IN': te, ...(HINDI[text] ? { 'hi-IN': HINDI[text] } : {}) },
 });
 /** A line with its hand-written Telugu. */
 const say = (cast, text, te, extra = {}) => ({
   cast,
   text,
   ...extra,
-  translations: { 'te-IN': te },
+  translations: { 'te-IN': te, ...(HINDI[text] ? { 'hi-IN': HINDI[text] } : {}) },
 });
 
 const CAST = {
@@ -263,7 +330,10 @@ export const THE_1742 = Object.freeze({
       endCard: {
         title: 'The 17:42 · Episode 1 · Two Minutes',
         line: 'Next: The Crossing',
-        lineTranslations: { 'te-IN': 'తర్వాతి భాగం: The Crossing' },
+        lineTranslations: {
+          'te-IN': 'తర్వాతి భాగం: The Crossing',
+          'hi-IN': 'अगला भाग: The Crossing',
+        },
       },
     },
     {
@@ -457,7 +527,7 @@ export const THE_1742 = Object.freeze({
       endCard: {
         title: 'The 17:42 · Episode 2 · The Crossing',
         line: 'Next: 17:42',
-        lineTranslations: { 'te-IN': 'తర్వాతి భాగం: 17:42' },
+        lineTranslations: { 'te-IN': 'తర్వాతి భాగం: 17:42', 'hi-IN': 'अगला भाग: 17:42' },
       },
     },
     {
@@ -595,7 +665,10 @@ export const THE_1742 = Object.freeze({
                 framing: 'two',
               },
               line: '(Static. Then soft music.)',
-              lineTranslations: { 'te-IN': '(గరగర శబ్దం. ఆ తర్వాత మెల్లని సంగీతం.)' },
+              lineTranslations: {
+                'te-IN': '(గరగర శబ్దం. ఆ తర్వాత మెల్లని సంగీతం.)',
+                'hi-IN': '(खरखराहट। फिर धीमा संगीत।)',
+              },
               hold: 5,
               cues: [{ after: 0, direct: { cast: 'ammamma', mood: 'wistful', intent: 'linger' } }],
               dialogue: [narrate('Meera turns the radio on.', 'మీరా రేడియో ఆన్ చేసింది.')],
@@ -648,7 +721,10 @@ export const THE_1742 = Object.freeze({
       endCard: {
         title: 'The 17:42 · Episode 3 · 17:42',
         line: 'She waited seven minutes. Someone asked her to.',
-        lineTranslations: { 'te-IN': 'ఆమె ఏడు నిమిషాలు ఆగింది. ఎవరో ఆగమని అడిగారు.' },
+        lineTranslations: {
+          'te-IN': 'ఆమె ఏడు నిమిషాలు ఆగింది. ఎవరో ఆగమని అడిగారు.',
+          'hi-IN': 'वो सात मिनट रुकी रही। किसी ने रुकने को कहा था।',
+        },
       },
     },
   ],

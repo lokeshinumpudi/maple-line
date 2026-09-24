@@ -141,16 +141,20 @@ export function buildVoiceManifest({
  * A video render uses it so each line holds for its clip and shows the translated
  * subtitle; the renderer mixes the audio files afterwards at the recorded line times.
  */
-export function createManifestVoice(manifest) {
+/**
+ * `subtitles: 'source'` keeps the episode's own (English) words on screen while the clips
+ * speak the manifest's language, e.g. a Hindi voice with English subtitles.
+ */
+export function createManifestVoice(manifest, { subtitles = 'voice' } = {}) {
   const details = new Map((manifest?.lines ?? []).map((entry) => [entry.line, entry]));
-  const captions = manifest?.captions ?? {};
+  const captions = subtitles === 'source' ? {} : (manifest?.captions ?? {});
   const find = (item) => (item.line ? details.get(item.line) : undefined);
   return {
     active: () => true,
     prepare() {},
     ready: () => true,
     text: (item) =>
-      find(item)?.text ??
+      (subtitles === 'source' ? null : find(item)?.text) ??
       (item.caption && typeof captions[item.caption] === 'string'
         ? captions[item.caption]
         : null) ??
