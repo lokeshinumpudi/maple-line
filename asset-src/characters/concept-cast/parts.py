@@ -156,6 +156,10 @@ def hair_masks(views):
         dark = mt.closing(dark, 4 if view == "front" else 2)
         dark = mt.largest_component(dark) if view != "front" else keep_large(dark, 150)
         dark = mt.fill_holes(dark)
+        smooth = cfg.get("hair", {}).get("edgeSmooth", 0)
+        if smooth:
+            # A soft outline: painted wisps at the edge make a ragged shell otherwise.
+            dark = mt.box_blur(dark.astype(np.float32), smooth) > 0.5
         # A solid fringe: above the brow line every row is hair from edge to edge, so the
         # forehead showing between painted strands does not cut holes in the shell.
         for row in range(0, hc["front"].get("fringe", hc["front"]["brow"] + 3)):
@@ -236,7 +240,7 @@ def in_hair(views, masks, p, pad=1):
     return facing and hit("side", y)
 
 
-def build_hair(views, hp, material, rows=20, cols=48, thickness=0.012, locks=30, shift=0.0):
+def build_hair(views, hp, material, rows=20, cols=48, thickness=0.012, locks=30, shift=0.0, fill=30):
     masks = hair_masks(views)
     top = views.cfg["height"]
     # Lowest hair row in any view.
@@ -318,8 +322,10 @@ def build_hair(views, hp, material, rows=20, cols=48, thickness=0.012, locks=30,
     bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=0.0005)
     # Close pinholes where a ring step missed a thin painted strand, and the gap over the
     # ear the painted side view leaves between strands; the face opening and
-    # the hem are far longer loops and stay open.
-    bmesh.ops.holes_fill(bm, edges=bm.edges, sides=30)
+    # the hem are far longer loops and stay open. Hair pulled back behind the ears leaves
+    # the ear opening as a hole of its own; filling that one fans a long shard of faces
+    # down the cheek, so `hair.fill` can lower the limit to true pinholes.
+    bmesh.ops.holes_fill(bm, edges=bm.edges, sides=fill)
     obj = to_object(bm, "Hair", material)
     # Thickness inwards, so the outside keeps the silhouette.
     bpy.ops.object.select_all(action="DESELECT")
@@ -579,18 +585,33 @@ def build_glasses(hp, head, material, spec, views):
             for k in range(sides):
                 bm.faces.new((a[k], a[(k + 1) % sides], b[(k + 1) % sides], b[k]))
 
+    standoff = spec.get("standoff", 0.01)
+
+    def on_face(p, lift):
+        """The point moved back until it sits `lift` in front of the face."""
+        hit, _n, _i, _d = bvh.ray_cast(Vector((p.x, -2.0, p.z)), Vector((0, 1, 0)), 4.0)
+        return Vector((p.x, (hit.y - lift) if hit else p.y, p.z))
+
     bm = bmesh.new()
     for c in rings:
         pts = [c + Vector((r * math.cos(2 * math.pi * k / 28), 0.0, r * math.sin(2 * math.pi * k / 28))) for k in range(28)]
+        if spec.get("conform"):
+            # Rings follow the curve of the face, so the outer rims do not stand off it.
+            pts = [on_face(p, standoff) if on_face(p, standoff).y > p.y else p for p in pts]
         tube(bm, pts, wire, closed=True)
     left, right = rings
-    # Bridge: a small arch over the nose between the inner edges of the rings.
+    # Bridge: a small arch resting on the nose between the inner edges of the rings.
     a, b = left - Vector((r, 0, 0)), right + Vector((r, 0, 0))
     mid = (a + b) / 2 + Vector((0, -0.002, 0.004))
+    if spec.get("conform"):
+        a, b = (on_face(q, standoff) if on_face(q, standoff).y > q.y else q for q in (a, b))
+        mid = on_face(mid, wire * 1.2)
     tube(bm, [a, (a + mid) / 2 + Vector((0, 0, 0.002)), mid, (b + mid) / 2 + Vector((0, 0, 0.002)), b], wire)
     # Temples: from the outer edge of each ring back to the top of the ear.
     for c, side in ((left, 1), (right, -1)):
         start = c + Vector((side * r, 0, 0.002))
+        if spec.get("conform") and on_face(start, standoff).y > start.y:
+            start = on_face(start, standoff)
         ear = Vector((side * hp["rx"] * 0.98, hp["y_ear"] - 0.004, hp["z_ear"] + 0.016))
         bend = Vector((side * hp["rx"] * 1.02, (start.y + ear.y) / 2, (start.z + ear.z) / 2 + 0.002))
         tube(bm, [start, bend, ear, ear + Vector((0, 0.012, -0.012))], wire * 0.9)

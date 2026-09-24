@@ -33,6 +33,7 @@ import parts  # noqa: E402
 import bake  # noqa: E402
 import face as fc  # noqa: E402
 import rig  # noqa: E402
+import flatskin  # noqa: E402
 import shape as sh  # noqa: E402
 
 BUILD = os.path.join(HERE, "build")
@@ -453,7 +454,7 @@ def retopo(obj, faces, smooth=0):
 # 3. Texture: bake the painted views into one atlas.
 
 
-def paint(views, objs, occluders, hair_masks, size=1024):
+def paint(views, objs, occluders, hair_masks, m, size=1024):
     """Atlas for [body, skirt, hair]: hair texels take colour only from hair pixels and
     everything else never does, so the neck gets no hair and the fringe no forehead. The
     hair clip is masked out of every view; it is its own mesh."""
@@ -476,6 +477,14 @@ def paint(views, objs, occluders, hair_masks, size=1024):
     t = np.clip((pos[..., 2] - z_collar) / 0.025, 0, 1)[..., None]
     neck_rgb = skin * (1 - 0.8 * t) + shade * 0.8 * t
     body_rgb[neck] = neck_rgb[neck]
+    skin_w = np.zeros(ids.shape, dtype=np.float32)
+    flat_cfg = views.cfg.get("flatSkin")
+    if flat_cfg:
+        # Anime skin is one even colour; the toon shader draws the light (flatskin.py).
+        spec = {**flat_cfg, "colour": skin, "shade": shade}
+        body_rgb, body_ok, skin_w = flatskin.apply(
+            views, pos, nrm, vis, covered & (ids != hair_id), ids, body_rgb, body_ok, hair, m, z_collar, spec, log=log
+        )
     # Shoe soles face the ground in every painted view: plain dark leather.
     sole = (ids == 0) & (pos[..., 2] < 0.02) & (nrm[..., 2] < -0.3)
     body_rgb[sole] = hex_rgb("#3a2419")
@@ -488,6 +497,9 @@ def paint(views, objs, occluders, hair_masks, size=1024):
     rgb, have = bake.dilate_fill(rgb, ok & is_hair, steps=40, allowed=is_hair)
     rgb2, have2 = bake.dilate_fill(rgb, ok & ~is_hair & covered, steps=40, allowed=covered & ~is_hair)
     rgb = np.where(is_hair[..., None], rgb, rgb2)
+    if flat_cfg:
+        cloth = covered & ~is_hair & (skin_w < 0.5)
+        rgb = flatskin.clean_seams(rgb, cloth, width=max(2, size // 512), radius=max(2, size // 512))
     # Hair: calm the painted strokes (blur in the atlas, then pull toward the art's hair
     # colour) so the hair reads as one soft near-black mass with gentle streaks; under the
     # game light the painted browns alone came out too warm and light.
@@ -576,7 +588,7 @@ def skin(views, grid, m, hp, body, skirt, hair, head, face, extras=(), bun=None,
     hanging = list(chains)
     if bun is not None:
         # The bun swings on a short chain from the back of the head through its centre.
-        centre, radii = bun
+        centre, radii, _first = bun
         attach = Vector((0.0, centre.y - radii[1] * 0.9, centre.z + radii[2] * 0.2))
         chains["bun"] = [attach, centre, centre + Vector((0, radii[1] * 0.9, -radii[2] * 0.2))]
     arm = rig.create_armature(joints, chains)
@@ -601,10 +613,10 @@ def skin(views, grid, m, hp, body, skirt, hair, head, face, extras=(), bun=None,
     hair_names = ["head"] + [f"{p}_{i}" for p, pts in chains.items() for i in range(len(pts) - 1)]
     W = rig.hair_weights(hair, {k: chains[k] for k in hanging}, hair_names, hp)
     if bun is not None:
-        centre, radii = bun
-        co = np.array([v.co[:] for v in hair.data.vertices])
-        d = ((co - np.array(centre[:])) / (np.array(radii) * 1.2)) ** 2
-        inside = d.sum(axis=1) <= 1.0
+        # Only the bun's own vertices (joined last, after the shell) ride its chain; shell
+        # vertices near it stay on the head, or a swinging bun drags the shell into a shard.
+        centre, radii, first = bun
+        inside = np.arange(len(hair.data.vertices)) >= first
         W[inside] = 0
         W[inside, hair_names.index("bun_0")] = 1
     rig.set_weights(hair, hair_names, W)
@@ -632,6 +644,8 @@ def to_gltf(v):
     return [round(v.x, 5), round(v.z, 5), round(-v.y, 5)]
 
 
+ARGS_JPEG = [86]  # set per character from `atlasQuality`
+
 MTOON_ROLES = {
     # shadeTint multiplies the base colour (or the texture) on the shaded side.
     "painted": {"shadeTint": [0.8, 0.72, 0.8], "toony": 0.9, "shift": -0.05, "outline": 0.0018, "rim": 0.25, "outlineColor": [0.16, 0.12, 0.16]},
@@ -643,13 +657,18 @@ MTOON_ROLES = {
     "flat": {"shadeTint": [0.92, 0.9, 0.94], "toony": 1.0, "shift": -0.4, "outline": 0.0, "rim": 0.0},
     "glint": {"shadeTint": [1, 1, 1], "toony": 1.0, "shift": -1.0, "outline": 0.0, "rim": 0.0, "emissive": 0.6},
     "blush": {"shadeTint": [0.95, 0.9, 0.9], "toony": 1.0, "shift": -0.4, "outline": 0.0, "rim": 0.0, "alpha": 0.4},
-    "lines": {"shadeTint": [0.9, 0.8, 0.8], "toony": 1.0, "shift": -0.4, "outline": 0.0, "rim": 0.0, "alpha": 0.8},
+    "lines": {"shadeTint": [0.9, 0.8, 0.8], "toony": 1.0, "shift": -0.4, "outline": 0.0, "rim": 0.0, "alpha": 0.6},
     "nose": {"shadeTint": [0.9, 0.8, 0.8], "toony": 1.0, "shift": -0.4, "outline": 0.0, "rim": 0.0, "alpha": 0.5},
 }
 
 
 def export(cfg, arm, meshes, joints, chains, hp, m):
     os.makedirs(BUILD, exist_ok=True)
+    ARGS_JPEG[0] = cfg.get("atlasQuality", 86)
+    # Skin shades to a darker, slightly cooler brown (never grey, never orange), and the
+    # painted body skin and the flat face shade the same way.
+    if cfg.get("skinShadeTint"):
+        MTOON_ROLES["skin"] = {**MTOON_ROLES["skin"], "shadeTint": cfg["skinShadeTint"], "shift": -0.05, "toony": 0.9}
     cast = cfg["cast"]
     glb = os.path.join(BUILD, f"{cast}.glb")
     bpy.ops.object.select_all(action="DESELECT")
@@ -661,7 +680,7 @@ def export(cfg, arm, meshes, joints, chains, hp, m):
         export_extras=True, export_animation_mode="ACTIONS", export_def_bones=False,
         export_influence_nb=4, export_morph=True, export_morph_normal=False, export_morph_animation=False,
         export_try_sparse_sk=True, export_materials="EXPORT", export_image_format="JPEG",
-        export_jpeg_quality=86, export_animations=False, export_skins=True,
+        export_jpeg_quality=ARGS_JPEG[0], export_animations=False, export_skins=True,
         export_meshopt_compression_enable=True, export_meshopt_extension="EXT_meshopt_compression",
     )
     H = cfg["height"]
@@ -847,7 +866,8 @@ def main():
     head = parts.build_head(hp, grey)
     hair_cfg = cfg.get("hair", {})
     hair, hair_masks = parts.build_hair(
-        views, hp, grey, thickness=hair_cfg.get("thickness", 0.012), locks=hair_cfg.get("locks", 30), shift=hair_cfg.get("ringShift", 0.0)
+        views, hp, grey, thickness=hair_cfg.get("thickness", 0.012), locks=hair_cfg.get("locks", 30), shift=hair_cfg.get("ringShift", 0.0),
+        fill=hair_cfg.get("fill", 30),
     )
     bun = None
     if cfg.get("bun"):
@@ -856,7 +876,7 @@ def main():
         bun_hex = "#%02x%02x%02x" % tuple(int(round(float(c) * 255)) for c in painted) if painted is not None else cfg["colors"]["hair"]
         bun_mat = flat_material("hair-bun", bun_hex, "painted-hair")
         bun_obj, bun_centre, bun_radii = parts.build_bun(views, hp, bun_mat, cfg["bun"])
-        bun = (bun_centre, bun_radii)
+        bun = [bun_centre, bun_radii, None]
     else:
         bun_obj = None
     skirt_cfg = cfg.get("skirt", {})
@@ -864,10 +884,11 @@ def main():
     painted = [o for o in (body, skirt, hair) if o is not None]
     log("faces", {o.name: len(o.data.polygons) for o in (*painted, head)})
     # 3. Paint: bake the views into the atlas.
-    atlas = paint(views, painted, [head], hair_masks)
+    atlas = paint(views, painted, [head], hair_masks, m, size=cfg.get("atlas", 1024))
     set_texture_materials(atlas, body, skirt, hair)
     parts.classify_scalp(head, views, hair_masks, hp)
     if bun_obj is not None:
+        bun[2] = len(hair.data.vertices)
         hair = join([hair, bun_obj], "Hair")
     head.data.materials.clear()
     head.data.materials.append(flat_material("skin", cfg["colors"]["skin"], "skin"))
