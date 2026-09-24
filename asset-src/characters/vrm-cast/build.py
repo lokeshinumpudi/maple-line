@@ -155,11 +155,12 @@ PROFILES = {
         "outfit": "suit",
         "cap": True,
         "capLift": 0.022,
+        "skinShadeTint": [0.7, 0.62, 0.85],
         "capTilt": 0.7,
         "brows": 0.3,
         "eyes": {"height": 0.95, "iris": "#4a3024", "irisLight": "#9a6a44", "lash": "#261a1a"},
         "colors": {
-            "skin": "#c68656",
+            "skin": "#a8704c",
             "hair": "#2e2220",
             "hairTie": "#1f8a86",
             "top": "#1f7d79",
@@ -1240,6 +1241,9 @@ def sidecar(cast, j, springs, meshes):
     materials = {}
     for name, mat in MATERIALS.items():
         role = MTOON_ROLES[mat["mtoon"]]
+        if mat["mtoon"] == "skin" and P.get("skinShadeTint"):
+            # Brown skin shades to a darker, slightly cooler brown, not orange.
+            role = {**role, "shadeTint": P["skinShadeTint"], "shift": -0.05}
         materials[name] = {"role": mat["mtoon"], **role}
     return {
         "cast": cast,
