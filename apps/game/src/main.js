@@ -175,6 +175,8 @@ try {
 const frameBudget = createFrameBudget({
   renderer,
   devicePixelRatio,
+  // In director mode a resolution step waits (up to 3 s) for the next cut to hide it.
+  canApply: () => view !== 'director' || (filmDirector.getState().shot?.elapsed ?? 0) < 0.15,
   ...(mobilePlay ? { pixelBudget: 700000, maxPixelRatio: 1 } : {}),
   // Renders draw one CSS pixel per output pixel at the requested size, every frame.
   ...(renderMode

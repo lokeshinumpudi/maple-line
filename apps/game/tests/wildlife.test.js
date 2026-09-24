@@ -116,7 +116,15 @@ test('the low graphics tier skips the mirror and bed passes and reflects the sky
     getRenderTarget: () => null,
     setRenderTarget() {},
     render: () => renders++,
+    xr: { enabled: false },
+    shadowMap: { autoUpdate: false },
+    state: { buffers: { depth: { setMask() {} } } },
+    autoClear: true,
   };
+  // A camera above the water, looking down at it, so the mirror faces the camera.
+  camera.position.set(0, 20, 0);
+  camera.lookAt(0, -0.4, -40);
+  camera.updateMatrixWorld();
   const water = createRiverWater({
     scene,
     camera,
@@ -132,8 +140,12 @@ test('the low graphics tier skips the mirror and bed passes and reflects the sky
   assert.equal(renders, 0);
   water.setQuality({ reflectionSize: 512, refraction: true });
   assert.equal(water.getState().reflectionSize, 512);
+  scene.updateMatrixWorld();
+  // The bed capture and the mirror both render before the main pass, not inside it.
   water.capture();
-  assert.equal(renders, 1);
+  assert.equal(renders, 2);
+  water.capture({ refreshReflection: false });
+  assert.equal(renders, 3);
   water.dispose();
 });
 

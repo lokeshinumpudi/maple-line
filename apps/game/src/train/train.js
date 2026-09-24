@@ -757,10 +757,24 @@ export function createTrain({ THREE, scene, wireHeight = 12.1 }) {
   /** Every mesh a glTF node draws: the node itself, or one child per primitive. */
   const meshesOf = (node) => (node.isMesh ? [node] : node.children.filter((child) => child.isMesh));
   const modelMaterials = new Map();
-  function modelMaterial(source) {
+  const instancedMaterials = new Map();
+  /**
+   * The runtime material for a glTF material. Instanced parts (door leaves, wheelsets) get
+   * their own copy: three.js picks a program per material, and one material drawn by both a
+   * plain and an instanced mesh re-selects its program on every draw, in every pass.
+   */
+  function modelMaterial(source, { instanced = false } = {}) {
     if (source.name === 'train-sign') return paints.sign;
-    if (modelMaterials.has(source)) return modelMaterials.get(source);
-    const result = source;
+    const cache = instanced ? instancedMaterials : modelMaterials;
+    if (cache.has(source)) return cache.get(source);
+    const result = instanced ? source.clone() : source;
+    // Blender exports every material double-sided. Opaque parts are closed solids, so their
+    // back faces are hidden inside them; drawn, they z-fight with every face they touch
+    // (roof vents on the roof, gangway rubber on the end wall, seals on door leaves).
+    if (source.name !== 'train-glass') {
+      result.side = THREE.FrontSide;
+      result.shadowSide = THREE.FrontSide;
+    }
     if (source.name === 'train-paint')
       applyWeatherFinish(result, TRAIN_FAMILIES.paint, exteriorWetness.uniform);
     if (source.name === 'train-roof')
@@ -772,14 +786,21 @@ export function createTrain({ THREE, scene, wireHeight = 12.1 }) {
       result.transparent = true;
       result.depthWrite = false;
       result.side = THREE.DoubleSide;
+      // Thin panes need no back-then-front pass; two passes also flag the material for a
+      // new program on every draw.
+      result.forceSinglePass = true;
     }
     materials.add(result);
-    modelMaterials.set(source, result);
+    cache.set(source, result);
     return result;
   }
   function instanced(part, count, name, car) {
     return meshesOf(part).map((source) => {
-      const mesh = new THREE.InstancedMesh(source.geometry, modelMaterial(source.material), count);
+      const mesh = new THREE.InstancedMesh(
+        source.geometry,
+        modelMaterial(source.material, { instanced: true }),
+        count,
+      );
       mesh.name = `${car.name} / ${name} / ${source.material.name}`;
       mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
       mesh.frustumCulled = false;
