@@ -79,21 +79,21 @@ test('scenes validate marks, moves, bus cues, prop subjects, clocks and crossing
   const episode = (scene, beat) => ({
     id: 'staged',
     title: 'Staged',
-    cast: { riko: { name: 'Riko' } },
+    cast: { meera: { name: 'Meera' } },
     scenes: [
       {
         id: 's1',
         heading: 'EXT. AONUMA',
         stopAt: 'aonuma',
-        actors: { riko: 'commuter-2' },
-        marks: { riko: 'front-car-door' },
+        actors: { meera: 'commuter-2' },
+        marks: { meera: 'front-car-door' },
         ...scene,
         beats: [
           {
             shot: { type: 'insert', subject: { prop: 'aonuma-bus' } },
             cues: [
               { after: 0, bus: { state: 'wait' } },
-              { after: 1, move: { cast: 'riko', to: 'aonuma-bus-door', pace: 'run' } },
+              { after: 1, move: { cast: 'meera', to: 'aonuma-bus-door', pace: 'run' } },
             ],
             ...beat,
           },
@@ -102,20 +102,20 @@ test('scenes validate marks, moves, bus cues, prop subjects, clocks and crossing
     ],
   });
   const clean = normalizeEpisode(episode({ set: { clock: '17:47' } }), context);
-  assert.deepEqual(clean.scenes[0].marks, { riko: 'front-car-door' });
+  assert.deepEqual(clean.scenes[0].marks, { meera: 'front-car-door' });
   assert.equal(clean.scenes[0].set.clock, '17:47');
   assert.deepEqual(clean.scenes[0].beats[0].shot.subject, { prop: 'aonuma-bus' });
   assert.deepEqual(clean.scenes[0].beats[0].cues[0].bus, { state: 'wait' });
   const bad = (scene, beat, pattern) =>
     assert.throws(() => normalizeEpisode(episode(scene, beat), context), pattern);
-  bad({ marks: { riko: 'the-moon' } }, {}, /marks\.riko must be one of/);
+  bad({ marks: { meera: 'the-moon' } }, {}, /marks\.meera must be one of/);
   bad({ set: { clock: '25:00' } }, {}, /clock must be a 24-hour time/);
   bad({ holdAt: 'sakuragawa-farm-road' }, {}, /holdAt cannot be used with stopAt/);
   bad({}, { shot: { type: 'insert', subject: { prop: 'teapot' } } }, /subject\.prop must be one/);
   bad({}, { cues: [{ after: 0, bus: { state: 'fly' } }] }, /bus\.state must be one of/);
   bad(
     {},
-    { cues: [{ after: 0, move: { cast: 'riko', to: 'aonuma-bus-door', pace: 'skip' } }] },
+    { cues: [{ after: 0, move: { cast: 'meera', to: 'aonuma-bus-door', pace: 'skip' } }] },
     /move\.pace must be one of/,
   );
   // A held crossing can be released like a platform stop.
@@ -155,7 +155,7 @@ test('the runner stands people on marks before the first shot and performs moves
   const marks = calls.filter((call) => call[0] === 'mark');
   assert.deepEqual(
     marks.map((call) => call[1]),
-    ['commuter-2', 'fusae', 'aoi'],
+    ['commuter-2', 'commuter-1', 'ammamma', 'divya'],
   );
   assert.ok(calls.indexOf(marks.at(-1)) < firstCut);
   for (let t = 0; t < 200 && runner.getState().status === 'playing'; t += 0.1) runner.update(0.1);
@@ -171,13 +171,15 @@ test('the runner stands people on marks before the first shot and performs moves
   assert.ok(calls.some((call) => call[0] === 'stop' && call[2] === 'sakuragawa-farm-road'));
 });
 
-test('Riko is the same figure in every episode, and every staged part has a fixed role', () => {
+test('Meera and Arjun are the same figures in every episode; staged parts have fixed roles', () => {
   for (const episode of THE_1742.episodes)
-    for (const scene of episode.scenes)
-      if (scene.actors?.riko) assert.equal(scene.actors.riko, FIXED_ROLES.riko.entity);
+    for (const scene of episode.scenes) {
+      if (scene.actors?.meera) assert.equal(scene.actors.meera, FIXED_ROLES.meera.entity);
+      if (scene.actors?.arjun) assert.equal(scene.actors.arjun, FIXED_ROLES.arjun.entity);
+    }
   const aonuma = THE_1742.episodes[2].scenes[0];
-  assert.equal(aonuma.actors.fusae, FIXED_ROLES.fusae.entity);
-  assert.equal(aonuma.actors.aoi, FIXED_ROLES.aoi.entity);
+  assert.equal(aonuma.actors.ammamma, FIXED_ROLES.ammamma.entity);
+  assert.equal(aonuma.actors.divya, FIXED_ROLES.divya.entity);
   for (const mark of Object.values(aonuma.marks)) assert.ok(STAGE_MARKS[mark]);
 });
 
@@ -198,8 +200,8 @@ test('the story reads with the sound off: key times are on screen as text', () =
       .join(' | ');
   assert.match(screen(one), /17:42/);
   assert.match(screen(one), /17:40/);
-  assert.match(screen(one), /care home/);
-  assert.match(screen(two), /five minutes late/);
+  assert.match(screen(one), /moves back to India/);
+  assert.match(screen(two), /running late/);
   assert.match(screen(three), /17:47/);
   assert.ok(one.scenes[0].beats.some((beat) => beat.shot.subject?.prop === 'momiji-timetable'));
   assert.ok(three.scenes[0].beats.some((beat) => beat.shot.subject?.prop === 'aonuma-bus'));

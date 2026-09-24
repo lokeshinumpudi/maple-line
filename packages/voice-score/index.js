@@ -56,18 +56,19 @@ export const VOICE_CAST = {
   },
   son: { name: 'Haru’s son', speaker: 'rahul', pace: 1.0, gender: 'Male' },
   // The 17:42 (drama episodes).
-  riko: {
-    name: 'Riko',
+  meera: {
+    name: 'Meera',
     speaker: 'ishita',
     pace: 1.05,
     gender: 'Female',
     v4: { 'te-IN': 'pooja_te_conversation' },
   },
-  sato: { name: 'Mr. Sato', speaker: 'varun', pace: 0.98, gender: 'Male' },
+  // Arjun, 17, Meera's classmate: a young male voice no other part uses.
+  arjun: { name: 'Arjun', speaker: 'aayan', pace: 1.03, gender: 'Male' },
   ishida: { name: 'Mr. Ishida', speaker: 'anand', pace: 0.88, gender: 'Male' },
-  fusae: { name: 'Grandma Fusae', speaker: 'rupali', pace: 0.93, gender: 'Female' },
-  // Aoi, 24, drives the Aonuma bus: bright and quick. Not the campaign's Mika.
-  aoi: { name: 'Aoi', speaker: 'shreya', pace: 1.04, gender: 'Female' },
+  ammamma: { name: 'Ammamma', speaker: 'rupali', pace: 0.93, gender: 'Female' },
+  // Divya, 24, Arjun's sister, drives the Aonuma bus: bright and quick.
+  divya: { name: 'Divya', speaker: 'shreya', pace: 1.04, gender: 'Female' },
 };
 /** Direction is expressed through pace and timed silence, not unsupported emotion tags. */
 export const VOICE_DELIVERY = {

@@ -962,7 +962,7 @@ const modelLoader = createModelLoader({
   onError: (path) => controlMessage(`${path} could not load; showing the simple version.`),
 });
 // Episodes can stage people on marks (drama/drama-stage.js): a staged person's model follows
-// the stage instead of the population simulation, so Riko can leave Momiji and reach Aonuma.
+// the stage instead of the population simulation, so Meera can leave Momiji and reach Aonuma.
 const stageFrames = new Map();
 const frameOfStop = (stopId) => {
   if (!stageFrames.has(stopId)) {

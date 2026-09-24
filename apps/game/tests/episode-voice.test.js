@@ -21,18 +21,22 @@ const context = {
 const episode = (line = {}) => ({
   id: 'voiced',
   title: 'Voiced',
-  cast: { riko: { name: 'Riko' }, clerk: { name: 'Clerk', voice: 'sato' }, extra: { name: 'X' } },
+  cast: {
+    meera: { name: 'Meera' },
+    clerk: { name: 'Clerk', voice: 'arjun' },
+    extra: { name: 'X' },
+  },
   scenes: [
     {
       id: 's1',
       heading: 'EXT. PLATFORM',
-      actors: { riko: 'commuter-2' },
+      actors: { meera: 'commuter-2' },
       beats: [
         {
-          shot: { type: 'portrait', subject: { cast: 'riko' } },
+          shot: { type: 'portrait', subject: { cast: 'meera' } },
           line: 'The platform is quiet.',
           dialogue: [
-            { cast: 'riko', text: 'Front car.', ...line },
+            { cast: 'meera', text: 'Front car.', ...line },
             { cast: 'clerk', text: 'Mind the gap.' },
           ],
         },
@@ -87,13 +91,13 @@ test('older episodes normalize exactly as before and voice fields are optional',
   const line = plain.scenes[0].beats[0].dialogue[0];
   assert.deepEqual(Object.keys(line), ['cast', 'text']);
   assert.equal('lineTranslations' in plain.scenes[0].beats[0], false);
-  assert.equal(plain.cast.clerk.voice, 'sato');
+  assert.equal(plain.cast.clerk.voice, 'arjun');
   const voiced = normalizeEpisode(
     episode({ emotion: 'dry', translations: { 'te-IN': 'ముందు బోగీ.' } }),
     context,
   );
   assert.deepEqual(voiced.scenes[0].beats[0].dialogue[0], {
-    cast: 'riko',
+    cast: 'meera',
     text: 'Front car.',
     emotion: 'dry',
     translations: { 'te-IN': 'ముందు బోగీ.' },
@@ -106,8 +110,8 @@ test('older episodes normalize exactly as before and voice fields are optional',
   ])
     assert.throws(() => normalizeEpisode(episode(change), context), pattern);
   const badVoice = episode();
-  badVoice.cast.riko.voice = 'nobody';
-  assert.throws(() => normalizeEpisode(badVoice, context), /cast\.riko\.voice must be one of/);
+  badVoice.cast.meera.voice = 'nobody';
+  assert.throws(() => normalizeEpisode(badVoice, context), /cast\.meera\.voice must be one of/);
 });
 
 test('every speaking part in The 17:42 has a distinct Sarvam voice and a valid delivery', () => {
@@ -119,24 +123,24 @@ test('every speaking part in The 17:42 has a distinct Sarvam voice and a valid d
     assert.equal(lines.length, spoken.length, `${source.id} has an unvoiced line`);
     for (const line of lines) parts.add(line.voice);
   }
-  assert.deepEqual([...parts].sort(), ['aoi', 'fusae', 'ishida', 'narrator', 'riko', 'sato']);
+  assert.deepEqual([...parts].sort(), ['ammamma', 'arjun', 'divya', 'ishida', 'meera', 'narrator']);
   const speakers = [...parts].map((part) => VOICE_CAST[part].speaker);
   assert.equal(new Set(speakers).size, speakers.length);
 });
 
 test('a v4 model keeps v3 voices for parts without a confirmed v4 speaker', () => {
-  assert.deepEqual(voiceFor('riko', 'natural'), {
+  assert.deepEqual(voiceFor('meera', 'natural'), {
     model: 'bulbul:v3',
     speaker: 'ishita',
     pace: 1.05,
   });
   assert.equal(
-    voiceFor('riko', 'natural', { model: 'bulbul:v4-flash', language: 'te-IN' }).speaker,
+    voiceFor('meera', 'natural', { model: 'bulbul:v4-flash', language: 'te-IN' }).speaker,
     'pooja_te_conversation',
   );
-  assert.deepEqual(voiceFor('sato', 'dry', { model: 'bulbul:v4-flash', language: 'te-IN' }), {
+  assert.deepEqual(voiceFor('arjun', 'dry', { model: 'bulbul:v4-flash', language: 'te-IN' }), {
     model: 'bulbul:v3',
-    ...voiceFor('sato', 'dry'),
+    ...voiceFor('arjun', 'dry'),
   });
 });
 
@@ -149,9 +153,9 @@ test('a voiced line holds its beat until the clip ends and shows the translated 
     ready: () => true,
     text: (item) =>
       item.id.endsWith('.line') ? 'ప్లాట్‌ఫాం నిశ్శబ్దంగా ఉంది.' : `te:${item.text}`,
-    durationMs: (item) => (item.voice === 'riko' ? 6000 : null),
+    durationMs: (item) => (item.voice === 'meera' ? 6000 : null),
     play(item) {
-      if (item.voice !== 'riko') return null;
+      if (item.voice !== 'meera') return null;
       handle = { durationMs: 6000, done: false, stop: () => (handle.done = true) };
       plays.push(['play', item.id]);
       return handle;
@@ -192,7 +196,7 @@ test('a clip that never reports its end cannot hold the beat forever', () => {
     ready: () => true,
     text: (item) => item.text,
     durationMs: () => 1000,
-    play: (item) => (item.voice === 'riko' ? { durationMs: 1000, done: false, stop() {} } : null),
+    play: (item) => (item.voice === 'meera' ? { durationMs: 1000, done: false, stop() {} } : null),
     stopAll: () => {},
     status: () => ({ mode: 'voice', language: 'en-IN', reason: null }),
   };
@@ -219,10 +223,10 @@ test('offline director: labelled subtitles, authored translations still win, no 
   const authored = {
     id: 'a',
     text: 'Front car.',
-    voice: 'riko',
+    voice: 'meera',
     translations: { 'te-IN': 'ముందు బోగీ.' },
   };
-  const machine = { id: 'b', text: 'Mind the gap.', voice: 'sato', translations: null };
+  const machine = { id: 'b', text: 'Mind the gap.', voice: 'arjun', translations: null };
   voice.prepare([authored, machine]);
   await new Promise((resolve) => setImmediate(resolve));
   assert.equal(voice.ready(authored), true);
@@ -276,7 +280,7 @@ test('prepared lines fetch translation then audio and report the clip length', a
   });
   voice.configure({ language: 'te-IN', enabled: true });
   await voice.check();
-  const item = { id: 'x', text: 'What’s in the box?', voice: 'sato', emotion: 'curious' };
+  const item = { id: 'x', text: 'What’s in the box?', voice: 'arjun', emotion: 'curious' };
   voice.prepare([item]);
   for (let i = 0; i < 20 && !voice.ready(item); i++)
     await new Promise((resolve) => setTimeout(resolve, 1));
@@ -286,12 +290,12 @@ test('prepared lines fetch translation then audio and report the clip length', a
   assert.deepEqual(bodies[0][1], {
     text: 'What’s in the box?',
     language: 'te-IN',
-    character: 'sato',
+    character: 'arjun',
   });
   assert.deepEqual(bodies[1][1], {
     text: 'పెట్టెలో ఏముంది?',
     language: 'te-IN',
-    character: 'sato',
+    character: 'arjun',
     emotion: 'curious',
     priority: 'prefetch',
     textLanguage: 'te-IN',
@@ -335,16 +339,14 @@ test('the audio manifest uses renderer line ids and runner timing', () => {
   for (const clip of manifest.clips) assert.deepEqual(Object.keys(clip), ['line', 'file']);
   // The narrator opens the episode; narration is a voiced line like any other.
   assert.equal(manifest.lines[0].cast, 'narrator');
-  assert.equal(manifest.lines[0].text, 'Tomorrow, Grandma Fusae moves to a care home in the city.');
-  // Beat 5 is Sato and Riko: the fifth and sixth voiced lines (1400 and 1500 ms).
+  assert.equal(manifest.lines[0].text, 'Meera’s grandparents came to this valley forty years ago.');
+  // Beat 5 is Arjun and Meera talking: voiced lines six to eleven (1500 to 2000 ms).
   const beat = clean.scenes[0].beats[4];
   const entry = manifest.plan.beats.find((item) => item.beat === 'momiji-platform/5');
-  assert.equal(
-    entry.plannedMs,
-    Math.round(beatSeconds(beat, [voicedSeconds(1400), voicedSeconds(1500)]) * 1000),
-  );
+  const lengths = beat.dialogue.map((_, i) => voicedSeconds(1500 + i * 100));
+  assert.equal(entry.plannedMs, Math.round(beatSeconds(beat, lengths) * 1000));
   assert.equal(entry.lines[0].offsetMs, 1000);
-  assert.equal(entry.lines[1].offsetMs, 1000 + Math.round(voicedSeconds(1400) * 1000) + 350);
+  assert.equal(entry.lines[1].offsetMs, 1000 + Math.round(voicedSeconds(1500) * 1000) + 350);
   // The first beat carries the title card lead; later beats start where the previous ended.
   assert.equal(manifest.plan.beats[0].plannedMs, 4500 + 6000);
   const before = manifest.plan.beats.slice(0, 4).reduce((sum, item) => sum + item.plannedMs, 0);
@@ -386,7 +388,7 @@ test('a render replays manifest lengths and emits line events with the same ids'
   const spoken = events.filter((event) => event.type === 'line');
   assert.equal(spoken[0].id, 'momiji-platform/1/1');
   assert.equal(spoken[0].cast, 'narrator');
-  assert.equal(spoken[0].text, 'te:Tomorrow, Grandma Fusae moves to a care home in the city.');
+  assert.equal(spoken[0].text, 'te:Meera’s grandparents came to this valley forty years ago.');
   assert.equal(spoken[0].seconds, voicedSeconds(3000));
   assert.equal(spoken[0].voiced, true);
   assert.deepEqual(

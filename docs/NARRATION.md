@@ -30,7 +30,7 @@ The server admits at most 32 outstanding unique clips and runs two provider chai
 
 ## Drama episodes
 
-The drama episodes use the same routes, cache and cast package, with six more parts (Riko, Mr. Sato, Mr. Ishida, Fusae, Mrs. Hara and Mr. Tanabe) and three more deliveries (`anxious`, `dry`, `tired`). Unlike the story, an episode shows translated subtitles: the game asks `/api/director/narration/translate` for each line, then voices the translated text. See [episode voices](drama/README.md#voices-and-languages) for casting, the language picker, the offline fallback, the video clip script and Sarvam's limits and prices.
+The drama episodes use the same routes, cache and cast package, with five more parts (Meera, Arjun, Mr. Ishida, Ammamma and Divya), the shared narrator and three more deliveries (`anxious`, `dry`, `tired`). Unlike the story, an episode shows translated subtitles: the game asks `/api/director/narration/translate` for each line, then voices the translated text. See [episode voices](drama/README.md#voices-and-languages) for casting, the language picker, the offline fallback, the video clip script and Sarvam's limits and prices.
 
 ## Playback and boundaries
 

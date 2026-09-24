@@ -2,7 +2,7 @@
 
 Maple Line can perform short dramas inside the running game. An episode is data: a cast, scenes and beats. The game stages it with the same systems a player uses — the director camera, the NPC minds, auto drive, doors, weather and time of day — so a writer or an agent can work on story without touching code.
 
-The first series is [_The 17:42_](THE-1742.md). Tomorrow Grandma Fusae moves to a care home in the city; tonight she wants to hear Grandpa's old radio one last time, at home up the valley. Riko has it, freshly repaired. The last bus up the hill leaves Aonuma at 17:40, and Riko's train gets in at 17:42. Mr. Sato, on the same train, asks his daughter Aoi, who drives that bus, to wait. The series stays on the passenger side of the timetable problem in Haru's campaign and does not use or change the campaign's characters, dialogue or saves.
+The first series is [_The 17:42_](THE-1742.md). Meera's family is Telugu; her grandparents came to this Japanese valley forty years ago. Tomorrow her Ammamma moves back to India; tonight she wants to hear Grandpa's old radio one last time, at home up the valley. Meera has it, freshly repaired. The last bus up the hill leaves Aonuma at 17:40, and Meera's train gets in at 17:42. Her classmate Arjun rides with her and calls his older sister Divya, who drives that bus, to ask her to wait. The episodes are conversations in simple English, and each scene sets up the next. The series stays on the passenger side of the timetable problem in Haru's campaign and does not use or change the campaign's characters, dialogue or saves.
 
 A narrator (the shared `narrator` voice part, `shubh`, as in Haru's notebook) carries the setup and the turns in four to six short lines an episode. Narration is an ordinary dialogue line with cast `narrator`, so the runner, the render timeline and the voice manifest all list it with the characters; it is shown as a caption without a speaker label and never plays over a character's line.
 
@@ -24,9 +24,9 @@ Shot subjects can be a cast part (`{ "cast": "riko" }`), a level crossing (`{ "c
 
 ### Stage marks and fixed roles
 
-Casting uses characters the world already simulates, and a scene can take one of them off the simulation with `marks` (`apps/game/src/drama/drama-stage.js`). A mark is a door of the front car (placed there means aboard and hidden until a `move` steps them out; arriving there boards), a seat in the front car (seated, moving with the train), a station-local spot, or a spot at the bus (the doorway, or aboard). The person's model follows the staged figure the way it follows a simulated one, so Riko is the Momiji student `commuter-2` in every episode: she boards the front car at Momiji, sits in it in Episode 2 and steps off it at Aonuma in Episode 3.
+Casting uses characters the world already simulates, and a scene can take one of them off the simulation with `marks` (`apps/game/src/drama/drama-stage.js`). A mark is a door of the front car (placed there means aboard and hidden until a `move` steps them out; arriving there boards), a seat in the front car (seated, moving with the train), a station-local spot, or a spot at the bus (the doorway, or aboard). The person's model follows the staged figure the way it follows a simulated one, so Meera is the Momiji student `commuter-2` and Arjun is `commuter-1` in every episode: they board the front car at Momiji, sit facing each other in it in Episode 2 and step off it at Aonuma in Episode 3.
 
-`apps/game/src/drama/drama-roles.js` lists fixed named roles with the look each should wear: `riko`, `fusae` (grey bun, round glasses, patterned cardigan, blue dress) and `aoi` (young bus driver, teal and cream uniform and cap, ponytail). Fusae and Aoi have no simulated person; their VRMs are built from profiles of the same names in `asset-src/characters/vrm-cast` and are drawn only while an episode stands them on a mark. A crowd kit that dresses named roles can map these ids.
+`apps/game/src/drama/drama-roles.js` lists fixed named roles with the look each should wear: `meera`, `arjun`, `ammamma` (grey bun, round glasses, patterned cardigan, blue dress) and `divya` (young bus driver, teal and cream uniform and cap, ponytail). Ammamma and Divya have no simulated person; their VRMs are built from the `fusae` and `aoi` profiles in `asset-src/characters/vrm-cast` (the asset names are unchanged) and are drawn only while an episode stands them on a mark. Arjun is still played by the office-commuter model until a teenage one exists. A crowd kit that dresses named roles can map these ids.
 
 Unstaged parts are played by the simulated people. Momiji has commuters, residents and a newspaper reader; each regional station has eight residents (for example `aonuma-resident-5`, the kiosk vendor). Regional residents exist only while their station area is loaded, so cast them in scenes set at that station. If a cast figure is not on screen when its shot starts, the runner uses a platform or orbit shot instead and writes that in the log.
 
@@ -116,13 +116,14 @@ Use `lineTranslations` on a beat for its on-screen `line`. Machine translation g
 
 A cast id that matches a part in the voice cast (`packages/voice-score`) is voiced by that part; `voice` on the cast entry picks another part. Lines with only a `speaker` label stay subtitles. The 17:42 cast:
 
-| Part       | Sarvam speaker (bulbul:v3) | Base pace | Casting intent                |
-| ---------- | -------------------------- | --------- | ----------------------------- |
-| Riko       | `ishita`                   | 1.05      | Female, 17, a little quick    |
-| Mr. Sato   | `varun`                    | 0.98      | Mid-life male, even           |
-| Mr. Ishida | `anand`                    | 0.88      | Male, slowed for an older man |
-| Fusae      | `rupali`                   | 0.93      | Female, 80, slower and warm   |
-| Aoi        | `shreya`                   | 1.04      | Female, 24, bright bus driver |
+| Part       | Sarvam speaker (bulbul:v3) | Base pace | Casting intent                          |
+| ---------- | -------------------------- | --------- | --------------------------------------- |
+| Narrator   | `shubh`                    | 0.95      | Warm storyteller, as in Haru's notebook |
+| Meera      | `ishita`                   | 1.05      | Female, 17, a little quick              |
+| Arjun      | `aayan`                    | 1.03      | Male, 17, easy and warm                 |
+| Mr. Ishida | `anand`                    | 0.88      | Male, slowed for an older man           |
+| Ammamma    | `rupali`                   | 0.93      | Female, 80, slower and warm             |
+| Divya      | `shreya`                   | 1.04      | Female, 24, bright bus driver           |
 
 Sarvam does not publish ages or genders for its speakers; these were chosen by name and not auditioned against each other. Every part uses a different speaker from the campaign cast. `emotion` changes pace and the pause after a line (`anxious`, `dry` and `tired` were added for the drama); it does not change the voice.
 
@@ -187,7 +188,7 @@ Checked against Sarvam's documentation on 23 September 2026:
 
 ## Limits
 
-- Mr. Sato (`commuter-1`), Riko (`commuter-2`), Mr. Ishida (`reader-1`) and the staged Fusae and Aoi have character models with faces; their mouths move on their lines. Everyone else is still a low-poly figure without a face. The radio has no sound of its own in a video; its static and music are an on-screen line. The [Blender asset skill](../../.agents/skills/maple-blender-assets/SKILL.md) covers adding more.
+- Arjun (`commuter-1`), Meera (`commuter-2`), Mr. Ishida (`reader-1`) and the staged Ammamma and Divya have character models with faces; their mouths move on their lines. Everyone else is still a low-poly figure without a face. The radio has no sound of its own in a video; its static and music are an on-screen line. The [Blender asset skill](../../.agents/skills/maple-blender-assets/SKILL.md) covers adding more.
 - Voices need the local director and a Sarvam key; everywhere else dialogue is subtitles. Haru's campaign keeps its own narration. The jaw of a modelled figure moves for the length of the line, not in step with the words. A rendered video carries voice clips through an audio manifest.
 - Voice casting and the Telugu translations have been checked by reading, not by a listening review.
 - Stage marks are fixed places; people walk straight lines between a mark's `via` points and do not avoid each other.

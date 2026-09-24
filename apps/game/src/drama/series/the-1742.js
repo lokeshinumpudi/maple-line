@@ -1,17 +1,21 @@
 /**
  * The 17:42 — a three-episode companion drama for the director.
  *
- * Tomorrow Grandma Fusae moves to a care home in the city. Tonight she wants to hear
- * Grandpa's old radio one last time, in her own house up the valley. Riko has it, freshly
- * repaired. The last bus up the hill leaves Aonuma at 17:40; Riko's train gets in at 17:42.
- * Haru's campaign follows the driver who endorsed that timetable; this series stays on
- * the passenger side and does not use or alter the campaign's characters or saves.
+ * Meera's grandparents, a Telugu family, came to this Japanese valley forty years ago.
+ * Tomorrow her Ammamma moves back to India; tonight she wants to hear Grandpa's old radio
+ * one last time, at home up the hill. Meera has it, freshly repaired. The last bus up the
+ * hill leaves Aonuma at 17:40; Meera's train gets in at 17:42. Her classmate Arjun rides
+ * with her, and his older sister Divya drives that bus. Haru's campaign follows the driver
+ * who endorsed that timetable; this series stays on the passenger side and does not use
+ * or alter the campaign's characters or saves.
  *
- * Riko is the same figure in every episode: the Momiji student `commuter-2`, whose model
- * the stage (drama/drama-stage.js) moves onto the train and off it at Aonuma. Fusae and
- * the bus driver Aoi are staged people with their own models. Every key time is also on
- * screen as words (a timetable insert, captions), so the story reads with the sound off.
+ * Meera is the same figure in every episode: the Momiji student `commuter-2`, whose model
+ * the stage (drama/drama-stage.js) moves onto the train and off it at Aonuma; Arjun is
+ * `commuter-1`. Ammamma and Divya are staged people with their own models. Every key time
+ * is also on screen as words (a timetable insert, captions, narration), so the story reads
+ * with the sound off.
  */
+
 /** The narrator carries the setup and the turns, in few words; the same words are captions. */
 const narrate = (text, te) => ({
   cast: 'narrator',
@@ -19,23 +23,30 @@ const narrate = (text, te) => ({
   emotion: 'warm',
   translations: { 'te-IN': te },
 });
+/** A line with its hand-written Telugu. */
+const say = (cast, text, te, extra = {}) => ({
+  cast,
+  text,
+  ...extra,
+  translations: { 'te-IN': te },
+});
 
 const CAST = {
   narrator: { name: 'Narrator', note: 'Tells the story in a few warm words between the scenes.' },
-  riko: { name: 'Riko', note: '17. Carrying Grandpa’s radio home, freshly repaired.' },
-  sato: {
-    name: 'Mr. Sato',
-    note: '44. Takes the same train home. Quietly kind. His daughter drives the Aonuma bus.',
+  meera: { name: 'Meera', note: '17. Carrying Grandpa’s radio home, freshly repaired.' },
+  arjun: {
+    name: 'Arjun',
+    note: '17. Her classmate. Quietly likes her. His sister drives the bus.',
   },
   ishida: {
     name: 'Mr. Ishida',
-    note: '70s. Reads on the Momiji bench. Missed that bus once, forty years ago.',
+    note: '70s. Reads on the Momiji bench. Missed that bus once, long ago.',
   },
-  fusae: {
-    name: 'Grandma Fusae',
-    note: '80. Moves to a care home in the city tomorrow. Heard on the phone, then at Aonuma.',
+  ammamma: {
+    name: 'Ammamma',
+    note: '80. Meera’s grandmother. Moves back to India tomorrow.',
   },
-  aoi: { name: 'Aoi', note: '24. Drives the last bus up the hill. Cheerful. Mr. Sato’s daughter.' },
+  divya: { name: 'Divya', note: '24. Arjun’s older sister. Drives the last bus up the hill.' },
 };
 
 export const THE_1742 = Object.freeze({
@@ -43,12 +54,13 @@ export const THE_1742 = Object.freeze({
   title: 'The 17:42',
   japanese: '十七時四十二分',
   logline:
-    'Tomorrow Grandma Fusae moves to a care home in the city. Tonight she wants to hear Grandpa’s old radio one last time, at home up the valley. Riko has it. The last bus up the hill leaves Aonuma at 17:40. Riko’s train gets in at 17:42.',
+    'Tomorrow Meera’s Ammamma moves back to India. Tonight she wants to hear Grandpa’s old radio one last time, at home up the valley. The last bus up the hill leaves Aonuma at 17:40. Meera’s train gets in at 17:42.',
   // Hand-written Telugu lines a native speaker should read before a video is shared.
   review: [
-    'Episode 2, Mr. Sato: “Aoi? It’s Dad…”. The spelling of Aoi (అఓయి) and Aonuma (అఓనుమా) in Telugu script.',
+    'The spelling of Aonuma (అఓనుమా) and Momiji (మొమిజి) in Telugu script.',
+    'Episode 1, Meera: “రెండు నిమిషాల తేడాతో బస్సు మిస్ అయిపోతాను” mixes in the English “miss”, as teenagers talk; “తప్పిపోతుంది” is the pure-Telugu choice.',
+    'Episode 2, Ammamma: “మంచి పిల్లవి” for “Good girl”.',
     'Episode 3, the radio line “(Static. Then soft music.)”: గరగర for radio static.',
-    'Episode 1, the care-home line: వృద్ధాశ్రమం is the everyday word but can sound bleak; ఆశ్రమం or కేర్ హోమ్ are the alternatives.',
   ],
   episodes: [
     {
@@ -57,7 +69,7 @@ export const THE_1742 = Object.freeze({
       number: 1,
       title: 'Two Minutes',
       logline:
-        'At Momiji, Riko works out she will miss the last bus up the hill by two minutes. Two strangers on the platform notice the radio she is carrying.',
+        'At Momiji, Meera works out she will miss the last bus up the hill by two minutes. Her classmate Arjun and an old man on the bench notice the radio she is carrying.',
       cast: CAST,
       scenes: [
         {
@@ -72,113 +84,136 @@ export const THE_1742 = Object.freeze({
             clock: '16:51',
           },
           stopAt: 'momiji',
-          actors: { riko: 'commuter-2', sato: 'commuter-1', ishida: 'reader-1' },
+          actors: { meera: 'commuter-2', arjun: 'commuter-1', ishida: 'reader-1' },
           beats: [
             {
               shot: { type: 'establishing', aperture: 'deep' },
               caption: 'Momiji',
               subtitle: 'sunset · 16:51',
-              dialogue: [
-                narrate(
-                  'Tomorrow, Grandma Fusae moves to a care home in the city.',
-                  'రేపు ఫుసాయే బామ్మ పట్నంలోని వృద్ధాశ్రమానికి మారిపోతోంది.',
-                ),
-              ],
               hold: 6,
               cues: [
                 {
                   after: 0,
-                  direct: { cast: 'riko', mood: 'wistful', intent: 'linger', hold: 60 },
+                  direct: { cast: 'meera', mood: 'wistful', intent: 'linger', hold: 60 },
                 },
-                { after: 0, direct: { cast: 'sato', mood: 'content', intent: 'linger', hold: 60 } },
+                {
+                  after: 0,
+                  direct: { cast: 'arjun', mood: 'content', intent: 'linger', hold: 60 },
+                },
                 { after: 0, direct: { cast: 'ishida', mood: 'content', intent: 'sit', hold: 120 } },
+              ],
+              dialogue: [
+                narrate(
+                  'Meera’s grandparents came to this valley forty years ago.',
+                  'నలభై ఏళ్ళ క్రితం మీరా తాతయ్య, అమ్మమ్మ ఈ లోయకి వచ్చారు.',
+                ),
               ],
             },
             {
-              shot: { type: 'portrait', subject: { cast: 'riko' }, lens: 60 },
+              shot: { type: 'portrait', subject: { cast: 'meera' }, lens: 60 },
+              hold: 6,
               dialogue: [
                 narrate(
-                  'Tonight she wants to hear Grandpa’s radio one last time, at home.',
-                  'ఈ రాత్రి సొంత ఇంట్లో, తాతయ్య రేడియోని ఆఖరిసారి వినాలనుకుంటోంది.',
+                  'Tomorrow, her Ammamma moves back to India.',
+                  'రేపు వాళ్ళ అమ్మమ్మ మళ్ళీ ఇండియాకి వెళ్ళిపోతోంది.',
+                ),
+                narrate(
+                  'Tonight, she wants to hear Grandpa’s old radio one last time, at home.',
+                  'ఈ రాత్రి, సొంత ఇంట్లో, తాతయ్య పాత రేడియోని ఆఖరిసారి వినాలని ఆవిడ కోరిక.',
                 ),
               ],
-              hold: 6,
             },
             {
               shot: { type: 'insert', subject: { prop: 'momiji-timetable' } },
+              hold: 6,
               dialogue: [
                 narrate(
-                  'The last bus up the hill leaves at 17:40. Riko’s train gets in at 17:42.',
-                  'కొండ మీదికి ఆఖరి బస్సు సాయంత్రం 5:40కి బయలుదేరుతుంది. రికో రైలు 5:42కి చేరుతుంది.',
+                  'The train gets in at 17:42. The last bus leaves at 17:40.',
+                  'రైలు 5:42కి చేరుతుంది. ఆఖరి బస్సు 5:40కే వెళ్ళిపోతుంది.',
                 ),
               ],
-              hold: 6,
             },
             {
-              shot: { type: 'portrait', subject: { cast: 'riko' } },
-              cues: [{ after: 0, direct: { cast: 'riko', mood: 'anxious', intent: 'linger' } }],
+              shot: { type: 'portrait', subject: { cast: 'meera' } },
+              cues: [{ after: 0, direct: { cast: 'meera', mood: 'anxious', intent: 'linger' } }],
               dialogue: [
-                {
-                  cast: 'riko',
-                  text: 'Two minutes. I’ll miss the last bus by two minutes.',
+                say(
+                  'meera',
+                  'Two minutes. I’m going to miss it by two minutes.',
+                  'రెండే నిమిషాలు. రెండు నిమిషాల తేడాతో బస్సు మిస్ అయిపోతాను.',
+                  { emotion: 'anxious' },
+                ),
+              ],
+            },
+            {
+              shot: { type: 'portrait', subject: { cast: 'arjun' }, partner: { cast: 'meera' } },
+              cues: [
+                { after: 0, direct: { cast: 'arjun', mood: 'curious', intent: 'linger' } },
+                { after: 0, direct: { cast: 'meera', mood: 'anxious', intent: 'linger' } },
+              ],
+              dialogue: [
+                say(
+                  'arjun',
+                  'Meera? You’re on the late train too?',
+                  'మీరా? నువ్వు కూడా ఈ లేట్ ట్రైన్‌కేనా?',
+                  { emotion: 'curious' },
+                ),
+                say(
+                  'meera',
+                  'Arjun. Hi. I have to get to Aonuma tonight.',
+                  'అర్జున్. హాయ్. ఈ రాత్రి నేను అఓనుమా వెళ్ళాలి.',
+                ),
+                say('arjun', 'What’s in the box?', 'ఆ డబ్బాలో ఏముంది?', { emotion: 'curious' }),
+                say(
+                  'meera',
+                  'Grandpa’s radio. I got it fixed. Ammamma wants to hear it tonight.',
+                  'తాతయ్య రేడియో. బాగు చేయించాను. ఈ రాత్రే అమ్మమ్మ దీన్ని వినాలనుకుంటోంది.',
+                  { emotion: 'warm' },
+                ),
+                say('arjun', 'Tonight? But the last bus…', 'ఈ రాత్రా? కానీ ఆఖరి బస్సు…', {
                   emotion: 'anxious',
-                  translations: {
-                    'te-IN': 'రెండే నిమిషాలు. రెండు నిమిషాల తేడాతో ఆఖరి బస్సు తప్పిపోతుంది.',
-                  },
-                },
+                }),
+                say(
+                  'meera',
+                  'I know. It leaves before the train gets in.',
+                  'తెలుసు. రైలు చేరకముందే అది వెళ్ళిపోతుంది.',
+                  { emotion: 'tired' },
+                ),
               ],
-            },
-            {
-              shot: { type: 'portrait', subject: { cast: 'sato' }, side: 'right' },
-              cues: [{ after: 0, direct: { cast: 'sato', mood: 'curious', intent: 'linger' } }],
-              dialogue: [
-                {
-                  cast: 'sato',
-                  text: 'Is that a radio?',
-                  emotion: 'curious',
-                  translations: { 'te-IN': 'అది రేడియోనా?' },
-                },
-                {
-                  cast: 'riko',
-                  text: 'Grandpa’s. I got it fixed. Grandma wants to hear it tonight.',
-                  emotion: 'warm',
-                  translations: {
-                    'te-IN': 'తాతయ్యది. బాగు చేయించాను. ఈ రాత్రి బామ్మ దీన్ని వినాలనుకుంటోంది.',
-                  },
-                },
-              ],
-            },
-            {
-              // Sato says nothing. Hold on him: this is where he decides.
-              shot: { type: 'portrait', subject: { cast: 'sato' }, lens: 75, aperture: 'shallow' },
-              hold: 4,
-              cues: [{ after: 0, direct: { cast: 'sato', mood: 'wistful', intent: 'linger' } }],
             },
             {
               shot: { type: 'portrait', subject: { cast: 'ishida' }, lens: 40 },
               dialogue: [
-                {
-                  cast: 'ishida',
-                  text: 'Ride in the front car. Run the moment the doors open.',
-                  emotion: 'reassuring',
+                say(
+                  'ishida',
+                  'Sit in the front car. When the doors open, run.',
                   // "Car" is a railway carriage (బోగీ), not a motor car.
-                  translations: { 'te-IN': 'ముందు బోగీలో ఎక్కు. తలుపులు తెరుచుకోగానే పరిగెత్తు.' },
-                },
-                {
-                  cast: 'riko',
-                  text: 'Thank you.',
-                  emotion: 'warm',
-                  translations: { 'te-IN': 'చాలా థాంక్స్ అండీ.' },
-                },
-                {
-                  cast: 'ishida',
-                  text: 'I missed that bus once. Forty years ago. I never went back up the hill.',
-                  emotion: 'reflective',
-                  translations: {
-                    'te-IN':
-                      'ఒకసారి నాకూ ఆ బస్సు తప్పిపోయింది. నలభై ఏళ్ళ క్రితం. మళ్ళీ ఆ కొండ పైకి ఎప్పుడూ వెళ్ళలేదు.',
-                  },
-                },
+                  'ముందు బోగీలో కూర్చో. తలుపులు తెరుచుకోగానే పరిగెత్తు.',
+                  { emotion: 'reassuring' },
+                ),
+                say('meera', 'Thank you.', 'థాంక్యూ అండీ.', { emotion: 'warm' }),
+                say(
+                  'ishida',
+                  'I missed that bus once. I still think about it.',
+                  'ఒకసారి నాకూ ఆ బస్సు తప్పిపోయింది. ఇప్పటికీ దాని గురించి ఆలోచిస్తుంటాను.',
+                  { emotion: 'reflective' },
+                ),
+              ],
+            },
+            {
+              shot: { type: 'portrait', subject: { cast: 'arjun' }, partner: { cast: 'meera' } },
+              cues: [{ after: 0, direct: { cast: 'arjun', mood: 'cheerful', intent: 'linger' } }],
+              dialogue: [
+                say(
+                  'arjun',
+                  'Front car, then. I’ll run with you.',
+                  'అయితే ముందు బోగీ. నేనూ నీతో పాటు పరిగెడతాను.',
+                  { emotion: 'warm' },
+                ),
+                say('meera', 'You don’t even live in Aonuma.', 'నువ్వు అసలు అఓనుమాలో ఉండవు కదా.', {
+                  emotion: 'playful',
+                }),
+                say('arjun', 'I do tonight.', 'ఈ రాత్రికి ఉంటాను.', { emotion: 'playful' }),
               ],
             },
             {
@@ -188,19 +223,19 @@ export const THE_1742 = Object.freeze({
               cues: [
                 {
                   after: 0,
-                  direct: { cast: 'riko', mood: 'curious', intent: 'watch-train', hold: 30 },
+                  direct: { cast: 'meera', mood: 'curious', intent: 'watch-train', hold: 30 },
                 },
-                { after: 0, direct: { cast: 'sato', intent: 'watch-train', hold: 30 } },
+                { after: 0, direct: { cast: 'arjun', intent: 'watch-train', hold: 30 } },
                 { after: 1, event: 'train-arrival' },
               ],
             },
             {
-              // Riko hurries to the front car and gets in; Sato boards with the commuters.
-              shot: { type: 'portrait', subject: { cast: 'riko' }, lens: 35 },
-              dialogue: [narrate('Riko takes the front car.', 'రికో ముందు బోగీ ఎక్కింది.')],
+              // Meera and Arjun hurry to the front car and get in.
+              shot: { type: 'portrait', subject: { cast: 'meera' }, lens: 35 },
               hold: 7,
               cues: [
-                { after: 0, move: { cast: 'riko', to: 'front-car-door', pace: 'run' } },
+                { after: 0, move: { cast: 'meera', to: 'front-car-door', pace: 'run' } },
+                { after: 0.3, move: { cast: 'arjun', to: 'front-car-door-rear', pace: 'run' } },
                 { after: 0.5, doors: 'open' },
                 { after: 1, event: 'doors-open' },
               ],
@@ -217,8 +252,8 @@ export const THE_1742 = Object.freeze({
               cues: [{ after: 0.5, release: true }],
               dialogue: [
                 narrate(
-                  'The train left Momiji on time. It would not stay on time.',
-                  'రైలు మొమిజి నుంచి సరైన సమయానికే బయలుదేరింది. కానీ దారిలో ఆలస్యం ఎదురైంది.',
+                  'The train leaves Momiji on time.',
+                  'రైలు మొమిజి నుంచి సమయానికే బయలుదేరుతుంది.',
                 ),
               ],
             },
@@ -237,7 +272,7 @@ export const THE_1742 = Object.freeze({
       number: 2,
       title: 'The Crossing',
       logline:
-        'On the train, Riko tells her grandmother she will miss the bus. At the Sakuragawa farm road the train is held, and Mr. Sato, across the aisle, makes a call.',
+        'On the train, Meera tells her Ammamma she will miss the bus. At the Sakuragawa farm road the train is held, and Arjun calls his sister.',
       cast: CAST,
       scenes: [
         {
@@ -252,8 +287,8 @@ export const THE_1742 = Object.freeze({
             clock: '17:09',
           },
           holdAt: 'sakuragawa-farm-road',
-          actors: { riko: 'commuter-2', sato: 'commuter-1' },
-          marks: { riko: 'front-car-seat', sato: 'front-car-seat-across' },
+          actors: { meera: 'commuter-2', arjun: 'commuter-1' },
+          marks: { meera: 'front-car-seat', arjun: 'front-car-seat-across' },
           beats: [
             {
               shot: { type: 'telephoto' },
@@ -262,68 +297,66 @@ export const THE_1742 = Object.freeze({
               hold: 8,
               dialogue: [
                 narrate(
-                  'On the train, Riko calls her grandmother.',
-                  'రైలులోంచి రికో బామ్మకు ఫోన్ చేసింది.',
+                  'On the train, Meera calls her Ammamma.',
+                  'రైలులోంచి మీరా వాళ్ళ అమ్మమ్మకి ఫోన్ చేసింది.',
                 ),
               ],
             },
             {
-              // Wide enough to hold her on the bench: a seated head reads a little off in 9:16.
-              shot: { type: 'portrait', subject: { cast: 'riko' }, lens: 32 },
+              // In the car the portraits stay wide: a seated head reads off-centre on a long lens.
+              shot: { type: 'portrait', subject: { cast: 'meera' }, lens: 32 },
               cues: [
                 {
                   after: 0,
-                  direct: { cast: 'riko', mood: 'anxious', intent: 'check-phone', hold: 40 },
+                  direct: { cast: 'meera', mood: 'anxious', intent: 'check-phone', hold: 40 },
                 },
               ],
               dialogue: [
-                {
-                  cast: 'fusae',
+                say('ammamma', 'Meera? Did you fix it?', 'మీరా? బాగు చేయించావా, తల్లీ?', {
                   phone: true,
-                  text: 'Did you get it working?',
                   emotion: 'warm',
-                  translations: { 'te-IN': 'రేడియో బాగయిందా, తల్లీ?' },
-                },
-                {
-                  cast: 'riko',
-                  text: 'It works. But the train’s running late. I’ll miss the bus.',
-                  emotion: 'anxious',
-                  translations: {
-                    'te-IN': 'పని చేస్తోంది. కానీ రైలు లేటుగా నడుస్తోంది. బస్సు తప్పిపోతుంది.',
-                  },
-                },
-                {
-                  cast: 'fusae',
+                }),
+                say(
+                  'meera',
+                  'It works, Ammamma. It sounds just like before.',
+                  'పని చేస్తోంది అమ్మమ్మా. అచ్చం మునుపటిలాగే వినిపిస్తోంది.',
+                  { emotion: 'warm' },
+                ),
+                say(
+                  'ammamma',
+                  'Good girl. Then I’ll see you soon.',
+                  'మంచి పిల్లవి. అయితే కాసేపట్లో కలుద్దాం, బంగారం.',
+                  { phone: true, emotion: 'warm' },
+                ),
+                say(
+                  'meera',
+                  'Ammamma… the train gets in after the bus leaves.',
+                  'అమ్మమ్మా… బస్సు వెళ్ళిపోయాకే రైలు చేరుతుంది.',
+                  { emotion: 'anxious' },
+                ),
+                say('ammamma', 'Then come tomorrow, dear.', 'అయితే రేపు రామ్మా.', {
                   phone: true,
-                  text: 'Then come tomorrow.',
-                  translations: { 'te-IN': 'అయితే రేపు రా.' },
-                },
-                {
-                  cast: 'riko',
-                  text: 'Tomorrow you won’t be there.',
+                }),
+                say('meera', 'Tomorrow you’ll be gone.', 'రేపటికి నువ్వు వెళ్ళిపోతావుగా.', {
                   emotion: 'vulnerable',
-                  translations: { 'te-IN': 'రేపు నువ్వు అక్కడ ఉండవుగా.' },
-                },
+                }),
               ],
             },
             {
-              // The pause before Fusae answers.
+              // The pause before Ammamma answers.
               shot: {
                 type: 'portrait',
-                subject: { cast: 'riko' },
+                subject: { cast: 'meera' },
                 side: 'left',
-                lens: 70,
+                lens: 32,
                 aperture: 'shallow',
               },
               hold: 3,
               dialogue: [
-                {
-                  cast: 'fusae',
+                say('ammamma', 'Then hurry, child.', 'అయితే త్వరగా రా, తల్లీ.', {
                   phone: true,
-                  text: 'Then hurry, child.',
                   emotion: 'warm',
-                  translations: { 'te-IN': 'అయితే త్వరగా రా, తల్లీ.' },
-                },
+                }),
               ],
             },
             {
@@ -335,53 +368,76 @@ export const THE_1742 = Object.freeze({
                 lens: 32,
               },
               caption: 'Sakuragawa farm road',
-              dialogue: [
-                narrate(
-                  'At the Sakuragawa farm road, the train is held. Now it is five minutes late.',
-                  'సకురగావా పొలం దారి దగ్గర రైలును ఆపేశారు. ఇప్పుడు ఐదు నిమిషాలు ఆలస్యం.',
-                ),
-              ],
               waitFor: 'stopped',
               hold: 8,
+              dialogue: [
+                narrate(
+                  'At the farm crossing, the train stops. Now it’s running late.',
+                  'పొలాల దగ్గర రైల్వే గేటు వద్ద రైలు ఆగిపోయింది. ఇప్పుడు ఆలస్యంగా నడుస్తోంది.',
+                ),
+              ],
             },
             {
-              shot: { type: 'portrait', subject: { cast: 'sato' }, partner: { cast: 'riko' } },
+              shot: {
+                type: 'portrait',
+                subject: { cast: 'meera' },
+                partner: { cast: 'arjun' },
+                lens: 32,
+              },
+              cues: [{ after: 0, direct: { cast: 'meera', mood: 'anxious', intent: 'linger' } }],
+              dialogue: [
+                say('meera', 'No, no, no…', 'అయ్యో, వద్దు, వద్దు…', { emotion: 'anxious' }),
+                say('arjun', 'Give me a second.', 'ఒక్క నిమిషం ఆగు.', { emotion: 'reassuring' }),
+              ],
+            },
+            {
+              shot: {
+                type: 'portrait',
+                subject: { cast: 'arjun' },
+                partner: { cast: 'meera' },
+                lens: 32,
+              },
               cues: [
                 {
                   after: 0,
-                  direct: { cast: 'sato', mood: 'content', intent: 'check-phone', hold: 20 },
+                  direct: { cast: 'arjun', mood: 'content', intent: 'check-phone', hold: 20 },
                 },
               ],
               dialogue: [
-                narrate('Mr. Sato has heard every word.', 'సాటో గారు ప్రతి మాటా విన్నారు.'),
-                {
-                  cast: 'sato',
-                  text: 'Aoi? It’s Dad. The 17:40 from Aonuma. Can you wait tonight?',
-                  emotion: 'warm',
-                  translations: {
-                    'te-IN': 'అఓయి? నాన్నని. అఓనుమా నుంచి ఐదు నలభై బస్సు. ఈ రాత్రి కాసేపు ఆగగలవా?',
-                  },
-                },
+                say(
+                  'arjun',
+                  'Divya? It’s me. Are you driving the last bus tonight?',
+                  'దివ్యా? నేనే. ఈ రాత్రి ఆఖరి బస్సు నువ్వేనా నడిపేది?',
+                ),
+                say(
+                  'arjun',
+                  'Can you wait at Aonuma? Just a few minutes. Please.',
+                  'అఓనుమాలో కాసేపు ఆగగలవా? కొన్ని నిమిషాలే. ప్లీజ్.',
+                  { emotion: 'warm' },
+                ),
               ],
             },
             {
-              // Riko looks up.
-              shot: { type: 'portrait', subject: { cast: 'riko' }, partner: { cast: 'sato' } },
-              hold: 3,
-              cues: [{ after: 0, direct: { cast: 'riko', mood: 'curious', intent: 'linger' } }],
-            },
-            {
-              shot: { type: 'portrait', subject: { cast: 'sato' }, partner: { cast: 'riko' } },
-              cues: [{ after: 0, direct: { cast: 'sato', mood: 'cheerful', intent: 'linger' } }],
+              shot: {
+                type: 'portrait',
+                subject: { cast: 'meera' },
+                partner: { cast: 'arjun' },
+                lens: 32,
+              },
+              cues: [
+                { after: 0, direct: { cast: 'meera', mood: 'curious', intent: 'linger' } },
+                { after: 0, direct: { cast: 'arjun', mood: 'cheerful', intent: 'linger' } },
+              ],
               dialogue: [
-                {
-                  cast: 'sato',
-                  text: 'My daughter drives that bus. She never waits for me.',
-                  emotion: 'playful',
-                  translations: {
-                    'te-IN': 'ఆ బస్సు నడిపేది మా అమ్మాయే. నా కోసం మాత్రం ఎప్పుడూ ఆగదు.',
-                  },
-                },
+                say('meera', 'Who was that?', 'ఎవరు అది?', { emotion: 'curious' }),
+                say('arjun', 'My sister. She drives the bus.', 'మా అక్క. తనే బస్సు నడుపుతుంది.'),
+                say('meera', 'Will she wait?', 'ఆగుతుందా?', { emotion: 'curious' }),
+                say(
+                  'arjun',
+                  'She never waits for me. But she might wait for you.',
+                  'నా కోసం ఎప్పుడూ ఆగదు. కానీ నీ కోసం ఆగుతుందేమో.',
+                  { emotion: 'playful' },
+                ),
               ],
             },
             {
@@ -391,7 +447,7 @@ export const THE_1742 = Object.freeze({
               dialogue: [
                 narrate(
                   'At Aonuma, a bus driver looks at the clock.',
-                  'అఓనుమాలో, ఒక బస్సు డ్రైవర్ గడియారం వైపు చూసింది.',
+                  'అఓనుమాలో ఒక బస్సు డ్రైవర్ గడియారం వైపు చూస్తోంది.',
                 ),
               ],
             },
@@ -410,7 +466,7 @@ export const THE_1742 = Object.freeze({
       number: 3,
       title: '17:42',
       logline:
-        'The train reaches Aonuma seven minutes after the last bus should have gone. Riko runs. The bus is still there.',
+        'The train reaches Aonuma seven minutes late. Meera and Arjun run. The bus is still there, and so is Ammamma.',
       cast: CAST,
       scenes: [
         {
@@ -425,27 +481,35 @@ export const THE_1742 = Object.freeze({
             clock: '17:47',
           },
           stopAt: 'aonuma',
-          actors: { riko: 'commuter-2', fusae: 'fusae', aoi: 'aoi' },
-          marks: { riko: 'front-car-door', fusae: 'aonuma-bus-stop', aoi: 'aonuma-bus-step' },
+          actors: { meera: 'commuter-2', arjun: 'commuter-1', ammamma: 'ammamma', divya: 'divya' },
+          marks: {
+            meera: 'front-car-door',
+            arjun: 'front-car-door-rear',
+            ammamma: 'aonuma-bus-stop',
+            divya: 'aonuma-bus-step',
+          },
           beats: [
             {
               shot: { type: 'establishing', aperture: 'deep' },
               caption: 'Aonuma · 17:47',
               subtitle: 'blue hour · rain',
               hold: 6,
-              dialogue: [
-                narrate(
-                  'Aonuma. Seven minutes after the last bus should have gone.',
-                  'అఓనుమా. ఆఖరి బస్సు వెళ్ళాల్సిన సమయం దాటి ఏడు నిమిషాలైంది.',
-                ),
-              ],
               cues: [
                 { after: 0, bus: { state: 'wait' } },
                 {
                   after: 0,
-                  direct: { cast: 'fusae', mood: 'content', intent: 'linger', hold: 120 },
+                  direct: { cast: 'ammamma', mood: 'content', intent: 'linger', hold: 120 },
                 },
-                { after: 0, direct: { cast: 'aoi', mood: 'cheerful', intent: 'linger', hold: 60 } },
+                {
+                  after: 0,
+                  direct: { cast: 'divya', mood: 'cheerful', intent: 'linger', hold: 60 },
+                },
+              ],
+              dialogue: [
+                narrate(
+                  'Aonuma. The train is seven minutes late.',
+                  'అఓనుమా. రైలు ఏడు నిమిషాలు ఆలస్యం.',
+                ),
               ],
             },
             {
@@ -461,89 +525,103 @@ export const THE_1742 = Object.freeze({
               cues: [{ after: 1, event: 'train-arrival' }],
             },
             {
-              // The doors open and Riko runs, the radio against her chest.
+              // The doors open. Meera runs, the radio against her chest; Arjun beside her.
               shot: { type: 'platform', lens: 40 },
               hold: 4,
               cues: [
                 { after: 0, doors: 'open' },
-                { after: 0.8, move: { cast: 'riko', to: 'aonuma-bus-door', pace: 'run' } },
+                { after: 0.8, move: { cast: 'meera', to: 'aonuma-bus-door', pace: 'run' } },
+                { after: 1, move: { cast: 'arjun', to: 'aonuma-bus-side', pace: 'run' } },
               ],
             },
             {
-              shot: { type: 'portrait', subject: { cast: 'riko' }, lens: 32 },
-              dialogue: [narrate('Riko runs.', 'రికో పరిగెడుతుంది.')],
+              shot: { type: 'portrait', subject: { cast: 'meera' }, lens: 32 },
               hold: 4,
+              dialogue: [narrate('Meera runs.', 'మీరా పరిగెడుతోంది.')],
             },
             {
               // The bus is still there: headlights on, doors open.
               shot: { type: 'insert', subject: { prop: 'aonuma-bus' } },
-              dialogue: [narrate('The bus is still there.', 'బస్సు ఇంకా అక్కడే ఉంది.')],
               hold: 5,
+              dialogue: [narrate('The bus is still there.', 'బస్సు ఇంకా అక్కడే ఉంది.')],
             },
             {
-              shot: { type: 'portrait', subject: { cast: 'aoi' }, partner: { cast: 'riko' } },
+              shot: { type: 'portrait', subject: { cast: 'divya' }, partner: { cast: 'meera' } },
               cues: [
-                { after: 0, direct: { cast: 'aoi', mood: 'cheerful', intent: 'wave', hold: 4 } },
+                { after: 0, direct: { cast: 'divya', mood: 'cheerful', intent: 'wave', hold: 4 } },
               ],
               dialogue: [
-                {
-                  cast: 'aoi',
-                  text: 'You’re the girl with the radio? Dad said you’d run.',
+                say(
+                  'divya',
+                  'You must be Meera. My brother wouldn’t stop calling.',
+                  'నువ్వేనా మీరా? మా తమ్ముడు ఫోన్ చేస్తూనే ఉన్నాడు.',
+                  { emotion: 'playful' },
+                ),
+                say('arjun', 'I called twice.', 'రెండుసార్లే చేశాను.', { emotion: 'dry' }),
+                say('divya', 'Five times. Get in, both of you.', 'ఐదుసార్లు. ఇద్దరూ ఎక్కండి.', {
                   emotion: 'playful',
-                  translations: {
-                    'te-IN':
-                      'రేడియో అమ్మాయి నువ్వేనా? నువ్వు పరిగెత్తుకుంటూ వస్తావని నాన్న చెప్పారు.',
-                  },
-                },
+                }),
               ],
             },
             {
-              shot: { type: 'portrait', subject: { cast: 'riko' }, partner: { cast: 'fusae' } },
-              cues: [{ after: 0, direct: { cast: 'riko', mood: 'cheerful', intent: 'linger' } }],
-              dialogue: [
-                {
-                  cast: 'riko',
-                  text: 'Grandma, you came down?',
-                  emotion: 'excited',
-                  translations: { 'te-IN': 'బామ్మా, నువ్వు కిందికి వచ్చేశావా?' },
-                },
-                {
-                  cast: 'fusae',
-                  text: 'I wasn’t going to hear it through a phone.',
-                  emotion: 'warm',
-                  translations: { 'te-IN': 'దాన్ని ఫోన్‌లో వింటానా ఏమిటి?' },
-                },
-              ],
-            },
-            {
-              // Under the bus lights Riko turns the radio on.
               shot: {
                 type: 'portrait',
-                subject: { cast: 'riko' },
-                partner: { cast: 'fusae' },
+                subject: { cast: 'meera' },
+                partner: { cast: 'ammamma' },
+              },
+              cues: [{ after: 0, direct: { cast: 'meera', mood: 'cheerful', intent: 'linger' } }],
+              dialogue: [
+                say(
+                  'meera',
+                  'Ammamma? You came all the way down?',
+                  'అమ్మమ్మా? ఇంత దూరం కిందికి వచ్చేశావా?',
+                  { emotion: 'excited' },
+                ),
+                say(
+                  'ammamma',
+                  'I couldn’t wait at home. Is that it?',
+                  'ఇంట్లో ఉండలేకపోయాను, బంగారం. అదేనా?',
+                  { emotion: 'warm' },
+                ),
+                say('meera', 'It’s Grandpa’s radio.', 'తాతయ్య రేడియో.', { emotion: 'warm' }),
+              ],
+            },
+            {
+              // Under the bus lights Meera turns the radio on.
+              shot: {
+                type: 'portrait',
+                subject: { cast: 'meera' },
+                partner: { cast: 'ammamma' },
                 framing: 'two',
               },
-              dialogue: [narrate('Riko turns the radio on.', 'రికో రేడియో ఆన్ చేసింది.')],
               line: '(Static. Then soft music.)',
               lineTranslations: { 'te-IN': '(గరగర శబ్దం. ఆ తర్వాత మెల్లని సంగీతం.)' },
               hold: 5,
-              cues: [{ after: 0, direct: { cast: 'fusae', mood: 'wistful', intent: 'linger' } }],
+              cues: [{ after: 0, direct: { cast: 'ammamma', mood: 'wistful', intent: 'linger' } }],
+              dialogue: [narrate('Meera turns the radio on.', 'మీరా రేడియో ఆన్ చేసింది.')],
             },
             {
               shot: {
                 type: 'portrait',
-                subject: { cast: 'fusae' },
+                subject: { cast: 'ammamma' },
+                partner: { cast: 'meera' },
                 lens: 70,
                 aperture: 'shallow',
               },
-              cues: [{ after: 0, direct: { cast: 'fusae', mood: 'content', intent: 'linger' } }],
+              cues: [{ after: 0, direct: { cast: 'ammamma', mood: 'content', intent: 'linger' } }],
               dialogue: [
-                {
-                  cast: 'fusae',
-                  text: 'That’s his station.',
-                  emotion: 'reflective',
-                  translations: { 'te-IN': 'ఇదే... ఆయన ఎప్పుడూ వినే స్టేషన్.' },
-                },
+                say(
+                  'ammamma',
+                  'That’s his station. He used to sing along.',
+                  'ఇదే ఆయన స్టేషన్. దాంతో పాటు పాడుతుండేవారు.',
+                  { emotion: 'reflective' },
+                ),
+                say(
+                  'meera',
+                  'Then let’s listen all the way home.',
+                  'అయితే ఇంటి దాకా వింటూనే వెళ్దాం.',
+                  { emotion: 'warm' },
+                ),
               ],
             },
             {
@@ -551,14 +629,15 @@ export const THE_1742 = Object.freeze({
               shot: { type: 'insert', subject: { prop: 'aonuma-bus-stop' } },
               hold: 10,
               cues: [
-                { after: 0.3, move: { cast: 'fusae', to: 'aonuma-bus-aboard' } },
-                { after: 0.8, move: { cast: 'riko', to: 'aonuma-bus-aboard' } },
-                { after: 4.2, move: { cast: 'aoi', to: 'aonuma-bus-aboard' } },
+                { after: 0.3, move: { cast: 'ammamma', to: 'aonuma-bus-aboard' } },
+                { after: 0.8, move: { cast: 'meera', to: 'aonuma-bus-aboard' } },
+                { after: 1.2, move: { cast: 'arjun', to: 'aonuma-bus-aboard' } },
+                { after: 4.2, move: { cast: 'divya', to: 'aonuma-bus-aboard' } },
                 { after: 5.5, bus: { state: 'leave' } },
               ],
               dialogue: [
                 narrate(
-                  'She waited seven minutes. Somebody asked her to.',
+                  'She waited seven minutes. Someone asked her to.',
                   'ఆమె ఏడు నిమిషాలు ఆగింది. ఎవరో ఆగమని అడిగారు.',
                 ),
               ],
@@ -568,7 +647,7 @@ export const THE_1742 = Object.freeze({
       ],
       endCard: {
         title: 'The 17:42 · Episode 3 · 17:42',
-        line: 'She waited seven minutes. Somebody asked her to.',
+        line: 'She waited seven minutes. Someone asked her to.',
         lineTranslations: { 'te-IN': 'ఆమె ఏడు నిమిషాలు ఆగింది. ఎవరో ఆగమని అడిగారు.' },
       },
     },

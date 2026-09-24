@@ -3,7 +3,7 @@
  * a scene can take a cast member off that simulation and put them on a named mark instead
  * (the front car's door at Aonuma, a seat in the front car, the bus stop), and a cue can
  * walk or run them to another mark. The hero model that draws the person (a VRM) follows
- * the staged figure exactly as it follows a simulated one, so Riko is the same figure at
+ * the staged figure exactly as it follows a simulated one, so Meera is the same figure at
  * Momiji and at Aonuma.
  *
  * Marks are data. The host turns a mark into a world pose each frame (a seat moves with
@@ -24,7 +24,9 @@
  */
 export const STAGE_MARKS = Object.freeze({
   'front-car-door': { kind: 'door', car: 0, door: 1 },
-  // Longitudinal benches face across the aisle: Riko on the platform side, Sato opposite.
+  // The front car's other platform-side door, so two people do not share one doorway.
+  'front-car-door-rear': { kind: 'door', car: 0, door: 0 },
+  // Longitudinal benches face across the aisle: Meera on the platform side, Arjun opposite.
   // At the front end of the car, clear of the seats the other riders use.
   'front-car-seat': { kind: 'car', car: 0, x: -1.0, z: 3.05, face: Math.PI / 2, seated: true },
   'front-car-seat-across': {
@@ -35,7 +37,7 @@ export const STAGE_MARKS = Object.freeze({
     face: -Math.PI / 2,
     seated: true,
   },
-  // At the open front of the bus-stop shelter, beside the bus, watching for Riko.
+  // At the open front of the bus-stop shelter, beside the bus, watching for Meera.
   'aonuma-bus-stop': {
     kind: 'station',
     stop: 'aonuma',
@@ -43,7 +45,7 @@ export const STAGE_MARKS = Object.freeze({
     z: 29.45,
     face: Math.PI,
   },
-  // By the open front door, facing Grandma under the shelter roof.
+  // By the open front door, facing Ammamma under the shelter roof.
   'aonuma-bus-door': {
     kind: 'station',
     stop: 'aonuma',
@@ -54,6 +56,19 @@ export const STAGE_MARKS = Object.freeze({
       [5.8, 21.5],
       [6.4, 24.4],
       [9.6, 25.6],
+    ],
+  },
+  // Beside her, a step nearer the platform, facing the door and the driver.
+  'aonuma-bus-side': {
+    kind: 'station',
+    stop: 'aonuma',
+    x: 9.3,
+    z: 26.9,
+    face: 0.5,
+    via: [
+      [5.2, 21.0],
+      [5.9, 24.0],
+      [8.8, 25.4],
     ],
   },
   'aonuma-bus-step': { kind: 'bus', spot: 'step' },

@@ -87,9 +87,9 @@ The timeline JSON lists every beat and line with `t`, the time in seconds from t
       "id": "momiji-platform/2/1",
       "scene": "momiji-platform",
       "beat": 2,
-      "cast": "riko",
-      "speaker": "Riko",
-      "text": "Seventeen forty-two in. Seventeen forty out.",
+      "cast": "meera",
+      "speaker": "Meera",
+      "text": "Two minutes. I’m going to miss it by two minutes.",
       "seconds": 3.21,
       "phone": false
     }
