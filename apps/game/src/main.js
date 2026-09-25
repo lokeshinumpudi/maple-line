@@ -1213,8 +1213,15 @@ function activateRideSound() {
   const enabled = $('start-with-sound').checked;
   if (enabled !== sound || (enabled && audioCtx?.state !== 'running')) void setSound(enabled);
 }
+// The first start of a session opens on the director's film camera, even for a player
+// whose saved view is another one; a deep link or the embed then sets its own camera.
+let openedOnDirector = false;
 function start() {
   activateRideSound();
+  if (!openedOnDirector) {
+    openedOnDirector = true;
+    if (!embedded && !renderMode && view !== 'director') selectCamera('director');
+  }
   changeDrive((next) => {
     next.started = true;
     next.paused = false;

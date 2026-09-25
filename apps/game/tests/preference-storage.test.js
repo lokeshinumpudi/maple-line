@@ -61,7 +61,7 @@ test('invalid and unknown saved fields are ignored without granting arbitrary st
   const persistence = attachPreferenceStorage({ gameStore, storage: memoryStorage(saved(input)) });
   const state = gameStore.getState();
   assert.equal(state.preferences.weather, 'snow');
-  assert.equal(state.preferences.view, 'scenic');
+  assert.equal(state.preferences.view, 'director');
   assert.equal(state.preferences.dusk, false);
   assert.equal(state.preferences.sound, true);
   assert.equal(state.preferences.narrationEnabled, false);

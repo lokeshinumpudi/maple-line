@@ -38,7 +38,7 @@ export function createGameStore(startDistance = 0) {
       drive: initialDrive(startDistance),
       preferences: {
         mode: 'explore',
-        view: 'scenic',
+        view: 'director',
         weather: 'clear',
         dusk: false,
         sunPhase: 'daylight',
