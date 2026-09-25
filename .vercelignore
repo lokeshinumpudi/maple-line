@@ -15,3 +15,6 @@ assets/audio-library
 **/dist-ship
 **/dist-public
 *.log
+media/renders
+.claude
+**/dist-embed
