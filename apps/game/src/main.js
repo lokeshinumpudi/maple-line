@@ -1220,7 +1220,11 @@ function start() {
   activateRideSound();
   if (!openedOnDirector) {
     openedOnDirector = true;
-    if (!embedded && !renderMode && view !== 'director') selectCamera('director');
+    if (!embedded && !renderMode) {
+      if (view !== 'director') selectCamera('director');
+      // Open wide on the train; a trackside first shot waits for a train still far off.
+      filmDirector.cut({ type: 'helicopter', duration: 9 });
+    }
   }
   changeDrive((next) => {
     next.started = true;
